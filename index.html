@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Perumahan UI Prototype</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-glow page-glow-a"></div>
+    <div class="page-glow page-glow-b"></div>
+
+    <header class="topbar container" data-reveal>
+      <a class="brand" href="#">
+        <span class="brand-mark">SP</span>
+        <span class="brand-text">Smart Perumahan</span>
+      </a>
+      <nav class="topnav">
+        <a href="#dashboard">Dashboard</a>
+        <a href="#fitur">Fitur MVP</a>
+        <a href="#future">Future</a>
+      </nav>
+      <button class="btn btn-primary">Mulai Trial</button>
+    </header>
+
+    <main class="container">
+      <section class="hero" data-reveal>
+        <p class="eyebrow">Sistem Manajemen Transaksi & IPL</p>
+        <h1>Keuangan lingkungan yang transparan, rapi, dan mudah dilacak.</h1>
+        <p class="hero-copy">
+          Prototype ini menampilkan pengalaman Admin (Web App) dan Warga (Mobile App)
+          untuk pengelolaan IPL: dari pembuatan tagihan otomatis sampai laporan kas yang
+          bisa dipantau semua pihak.
+        </p>
+        <div class="hero-tags">
+          <span>Transparan</span>
+          <span>Tagihan Otomatis</span>
+          <span>Pembayaran Multi Metode</span>
+          <span>Laporan Real-time</span>
+        </div>
+      </section>
+
+      <section id="dashboard" class="surface flow-switch" data-reveal>
+        <div class="section-title">
+          <h2>Simulasi User Flow</h2>
+          <p>Berpindah view untuk melihat alur Admin dan Warga.</p>
+        </div>
+        <div class="switcher" role="tablist" aria-label="Pilih flow pengguna">
+          <button class="switch-btn active" data-target="admin-view">Flow Admin</button>
+          <button class="switch-btn" data-target="warga-view">Flow Warga</button>
+        </div>
+
+        <article class="flow-panel admin-view active">
+          <div class="panel-grid">
+            <aside class="menu-card" data-reveal>
+              <p class="menu-title">Menu Admin</p>
+              <ul>
+                <li class="active">Dashboard</li>
+                <li>Kelola Warga</li>
+                <li>Set IPL</li>
+                <li>Generate Tagihan</li>
+                <li>Input Pembayaran</li>
+                <li>Laporan Keuangan</li>
+              </ul>
+              <div class="mini-note">
+                Jatuh tempo IPL: <strong>setiap tanggal 10</strong>
+              </div>
+            </aside>
+
+            <div class="dashboard-content">
+              <div class="metric-grid">
+                <div class="metric-card" data-reveal>
+                  <p>Total Rumah</p>
+                  <h3>284</h3>
+                </div>
+                <div class="metric-card" data-reveal>
+                  <p>Total Warga</p>
+                  <h3>276</h3>
+                </div>
+                <div class="metric-card" data-reveal>
+                  <p>Tagihan Bulan Ini</p>
+                  <h3>Rp42,6 Jt</h3>
+                </div>
+                <div class="metric-card" data-reveal>
+                  <p>Pembayaran Masuk</p>
+                  <h3>Rp31,8 Jt</h3>
+                </div>
+                <div class="metric-card metric-alert" data-reveal>
+                  <p>Belum Bayar</p>
+                  <h3>72 Rumah</h3>
+                </div>
+              </div>
+
+              <div class="content-grid">
+                <section class="card" data-reveal>
+                  <div class="card-head">
+                    <h4>Tagihan IPL Otomatis</h4>
+                    <span class="badge">Maret 2026</span>
+                  </div>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Warga</th>
+                        <th>Unit</th>
+                        <th>Nominal</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Budi Santoso</td>
+                        <td>Blok A-12</td>
+                        <td>Rp150.000</td>
+                        <td><span class="status paid">Lunas</span></td>
+                      </tr>
+                      <tr>
+                        <td>Sri Wulandari</td>
+                        <td>Blok B-03</td>
+                        <td>Rp150.000</td>
+                        <td><span class="status pending">Belum Bayar</span></td>
+                      </tr>
+                      <tr>
+                        <td>Agus Pratama</td>
+                        <td>Blok C-21</td>
+                        <td>Rp150.000</td>
+                        <td><span class="status verify">Verifikasi</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </section>
+
+                <section class="card" data-reveal>
+                  <div class="card-head">
+                    <h4>Riwayat Transaksi Terbaru</h4>
+                    <span class="badge neutral">Realtime</span>
+                  </div>
+                  <ul class="timeline">
+                    <li>
+                      <div>
+                        <p>10 Jan 2026 - Pembayaran IPL</p>
+                        <small>Budi Santoso via Transfer Bank</small>
+                      </div>
+                      <strong>Rp150.000</strong>
+                    </li>
+                    <li>
+                      <div>
+                        <p>11 Jan 2026 - Pembayaran IPL</p>
+                        <small>Nadia Putri via QRIS</small>
+                      </div>
+                      <strong>Rp150.000</strong>
+                    </li>
+                    <li>
+                      <div>
+                        <p>12 Jan 2026 - Pengeluaran Kebersihan</p>
+                        <small>Vendor Cleaning Service</small>
+                      </div>
+                      <strong class="expense">-Rp1.500.000</strong>
+                    </li>
+                  </ul>
+                </section>
+              </div>
+
+              <section class="finance-strip" data-reveal>
+                <div>
+                  <p>Saldo Awal</p>
+                  <h4>Rp10.000.000</h4>
+                </div>
+                <div>
+                  <p>Pemasukan IPL</p>
+                  <h4>Rp5.000.000</h4>
+                </div>
+                <div>
+                  <p>Pengeluaran</p>
+                  <h4>Rp1.500.000</h4>
+                </div>
+                <div class="saldo">
+                  <p>Saldo Akhir</p>
+                  <h4>Rp13.500.000</h4>
+                </div>
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <article class="flow-panel warga-view">
+          <div class="warga-layout">
+            <section class="phone-mock" data-reveal>
+              <div class="phone-notch"></div>
+              <div class="phone-head">
+                <p>Dashboard Warga</p>
+                <strong>Halo, Budi</strong>
+              </div>
+              <div class="bill-box">
+                <p>Tagihan IPL Januari 2026</p>
+                <h3>Rp150.000</h3>
+                <span>Jatuh tempo 10 Jan 2026</span>
+              </div>
+              <div class="payment-options">
+                <p>Pilih metode bayar</p>
+                <div>
+                  <span>Transfer</span>
+                  <span>QRIS</span>
+                  <span>E-wallet</span>
+                  <span>Cash</span>
+                </div>
+              </div>
+              <button class="btn btn-secondary">Bayar Sekarang</button>
+              <div class="history-box">
+                <p>Riwayat Terakhir</p>
+                <ul>
+                  <li>
+                    <span>Des 2025 - Lunas</span>
+                    <strong>Rp150.000</strong>
+                  </li>
+                  <li>
+                    <span>Nov 2025 - Lunas</span>
+                    <strong>Rp150.000</strong>
+                  </li>
+                </ul>
+              </div>
+            </section>
+
+            <section class="card warga-report" data-reveal>
+              <div class="card-head">
+                <h4>Transparansi Penggunaan Dana</h4>
+                <span class="badge">Untuk Warga</span>
+              </div>
+              <div class="progress-list">
+                <div>
+                  <p>Kebersihan Lingkungan</p>
+                  <div class="progress"><span style="--w: 40%"></span></div>
+                </div>
+                <div>
+                  <p>Keamanan</p>
+                  <div class="progress"><span style="--w: 30%"></span></div>
+                </div>
+                <div>
+                  <p>Perbaikan Fasilitas</p>
+                  <div class="progress"><span style="--w: 20%"></span></div>
+                </div>
+                <div>
+                  <p>Dana Cadangan</p>
+                  <div class="progress"><span style="--w: 10%"></span></div>
+                </div>
+              </div>
+              <p class="hint">
+                Warga bisa pantau status pembayaran pribadi dan penggunaan dana kas tanpa
+                perlu tanya manual lewat chat.
+              </p>
+            </section>
+          </div>
+        </article>
+      </section>
+
+      <section id="fitur" class="surface features" data-reveal>
+        <div class="section-title">
+          <h2>Core Feature MVP</h2>
+          <p>Setiap fitur dipetakan langsung dari PRD untuk memudahkan implementasi backend.</p>
+        </div>
+        <div class="feature-grid">
+          <article data-reveal>
+            <h4>Manajemen Warga</h4>
+            <p>Data rumah, pemilik, blok, nomor unit, dan status penghuni aktif.</p>
+          </article>
+          <article data-reveal>
+            <h4>Set IPL</h4>
+            <p>Nominal iuran, periode bulanan, dan aturan jatuh tempo otomatis.</p>
+          </article>
+          <article data-reveal>
+            <h4>Tagihan Otomatis</h4>
+            <p>Generate bill per rumah tiap bulan lengkap dengan status pembayaran.</p>
+          </article>
+          <article data-reveal>
+            <h4>Pencatatan Pembayaran</h4>
+            <p>Transfer, cash, QRIS, e-wallet, termasuk upload bukti transaksi.</p>
+          </article>
+          <article data-reveal>
+            <h4>Riwayat & Audit</h4>
+            <p>Semua transaksi tersimpan rapi untuk rekonsiliasi kas lingkungan.</p>
+          </article>
+          <article data-reveal>
+            <h4>Laporan Keuangan</h4>
+            <p>Total pemasukan, pengeluaran, saldo awal, dan saldo akhir kas.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="future" class="surface future" data-reveal>
+        <div class="section-title">
+          <h2>Roadmap Future Feature</h2>
+          <p>Desain sudah menyiapkan ruang untuk pengembangan tahap berikutnya.</p>
+        </div>
+        <div class="future-tags">
+          <span>Notifikasi Tagihan</span>
+          <span>Reminder Belum Bayar</span>
+          <span>Booking Fasilitas</span>
+          <span>Laporan Pengeluaran Detail</span>
+          <span>Marketplace Warga</span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="container footer" data-reveal>
+      <p>Prototype UI Smart Perumahan - Fokus pada Admin Web dan Warga Mobile Experience</p>
+    </footer>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
