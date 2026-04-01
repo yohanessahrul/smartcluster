@@ -18,13 +18,36 @@ if (!globalDbState.smartPerumahanPgTypeParsersReady) {
 function getConnectionString() {
   if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
   if (process.env.SUPABASE_DB_URL) return process.env.SUPABASE_DB_URL;
+  if (process.env.POSTGRES_URL) return process.env.POSTGRES_URL;
+  if (process.env.POSTGRES_URL_NON_POOLING) return process.env.POSTGRES_URL_NON_POOLING;
+  if (process.env.POSTGRES_PRISMA_URL) return process.env.POSTGRES_PRISMA_URL;
   return `postgresql://${process.env.PGUSER || "postgres"}:${process.env.PGPASSWORD || "postgres"}@${
     process.env.PGHOST || "localhost"
   }:${process.env.PGPORT || "5432"}/${process.env.PGDATABASE || "smart_perumahan"}`;
 }
 
+function shouldRequireExplicitDbUrl() {
+  const nodeEnv = (process.env.NODE_ENV || "").toLowerCase();
+  const vercelEnv = (process.env.VERCEL_ENV || "").toLowerCase();
+  return nodeEnv === "production" || vercelEnv === "production";
+}
+
 if (!globalDbState.smartPerumahanPgPool) {
-  if (!process.env.DATABASE_URL && !process.env.SUPABASE_DB_URL) {
+  const hasExplicitDbUrl = Boolean(
+    process.env.DATABASE_URL ||
+      process.env.SUPABASE_DB_URL ||
+      process.env.POSTGRES_URL ||
+      process.env.POSTGRES_URL_NON_POOLING ||
+      process.env.POSTGRES_PRISMA_URL,
+  );
+
+  if (!hasExplicitDbUrl && shouldRequireExplicitDbUrl()) {
+    throw new Error(
+      "DATABASE_URL belum diset di environment production. Tambahkan DATABASE_URL/SUPABASE_DB_URL/POSTGRES_URL di Vercel.",
+    );
+  }
+
+  if (!hasExplicitDbUrl) {
     console.warn(
       "[next-api] DATABASE_URL/SUPABASE_DB_URL tidak ditemukan. Menggunakan fallback PGUSER/PGPASSWORD/PGHOST/PGPORT/PGDATABASE.",
     );
