@@ -5,10 +5,11 @@ import { FileSpreadsheet } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { TablePagination } from "@/components/ui/table-pagination";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatRupiahFromAny } from "@/lib/currency";
 import { formatDateTimeUnified } from "@/lib/date-time";
 import { downloadRowsAsExcel } from "@/lib/download-excel";
@@ -125,44 +126,50 @@ export default function WargaRiwayatPage() {
                   </div>
                 </div>
 
-                <Table className="min-w-[1160px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>IPL ID</TableHead>
-                      <TableHead>Transaction Type</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Payment Method</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Status Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRows.length ? (
-                      pagedRows.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.id}</TableCell>
-                          <TableCell>{item.bill_id ?? "-"}</TableCell>
-                          <TableCell>{item.transaction_type}</TableCell>
-                          <TableCell>{item.category}</TableCell>
-                          <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
-                          <TableCell>{formatDateTimeUnified(item.date)}</TableCell>
-                          <TableCell>{item.payment_method}</TableCell>
-                          <TableCell>{item.status}</TableCell>
-                          <TableCell>{formatDateTimeUnified(item.status_date)}</TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center text-muted-foreground">
-                          No record available
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                <div className="space-y-3">
+                  {filteredRows.length ? (
+                    pagedRows.map((item) => (
+                      <div key={item.id} className="rounded-lg border border-border bg-background p-3 sm:p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Transaction ID</p>
+                            <p className="font-medium">{item.id}</p>
+                          </div>
+                          <PaymentStatusBadge status={item.status} />
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>
+                            {item.transaction_type}
+                          </Badge>
+                          <Badge variant="secondary">{item.category}</Badge>
+                        </div>
+
+                        <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                          <p>
+                            <span className="text-muted-foreground">IPL ID:</span> {item.bill_id ?? "-"}
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Amount:</span> {formatRupiahFromAny(item.amount)}
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Date:</span> {formatDateTimeUnified(item.date)}
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Payment Method:</span> {item.payment_method}
+                          </p>
+                          <p className="sm:col-span-2">
+                            <span className="text-muted-foreground">Status Date:</span> {formatDateTimeUnified(item.status_date)}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-border bg-background p-6 text-center text-sm text-muted-foreground">
+                      No record available
+                    </div>
+                  )}
+                </div>
                 <TablePagination
                   page={currentPage}
                   pageSize={pageSize}

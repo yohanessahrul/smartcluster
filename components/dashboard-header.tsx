@@ -53,7 +53,7 @@ export function DashboardHeader({ title, description }: DashboardHeaderProps) {
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       {session ? (
-        <div ref={menuRef} className="relative">
+        <div ref={menuRef} className="relative hidden lg:block">
           <Button
             type="button"
             variant="outline"

@@ -5,7 +5,6 @@ import { FileSpreadsheet } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
@@ -13,7 +12,6 @@ import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination } from "@/components/ui/table-pagination";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTimeUnified } from "@/lib/date-time";
 import { downloadRowsAsExcel } from "@/lib/download-excel";
 import { BillRow } from "@/lib/mock-data";
@@ -191,65 +189,64 @@ export default function WargaTagihanPage() {
                     </Button>
                   </div>
                 </div>
-                <Table className="min-w-[860px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Unit</TableHead>
-                      <TableHead>Periode</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Status Date</TableHead>
-                      <TableHead className="min-w-[84px]">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRows.length ? (
-                      pagedRows.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{houseDisplay}</TableCell>
-                          <TableCell>{item.periode}</TableCell>
-                          <TableCell>{item.amount}</TableCell>
-                          <TableCell>
-                            <PaymentStatusBadge status={item.status} />
-                          </TableCell>
-                          <TableCell>{formatDateTimeUnified(item.status_date)}</TableCell>
-                          <TableCell className="min-w-[84px]">
-                            {item.status === "Belum bayar" ? (
-                              <Button
-                                size="sm"
-                                className="h-8 px-3"
-                                aria-label="Bayar"
-                                title="Bayar"
-                                onClick={() => openPayModal(item)}
-                              >
-                                Bayar
-                              </Button>
-                            ) : item.status === "Pending" ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-3"
-                                aria-label="Lihat detail IPL"
-                                title="Lihat detail IPL"
-                                onClick={() => openPreviewModal(item)}
-                              >
-                                Lihat
-                              </Button>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground">
-                          No record available
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                <div className="space-y-3">
+                  {filteredRows.length ? (
+                    pagedRows.map((item) => (
+                      <div key={item.id} className="rounded-lg border border-border bg-background p-3 sm:p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Periode</p>
+                            <p className="font-medium">{item.periode}</p>
+                          </div>
+                          <PaymentStatusBadge status={item.status} />
+                        </div>
+
+                        <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                          <p>
+                            <span className="text-muted-foreground">Unit:</span> {houseDisplay}
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Amount:</span> {item.amount}
+                          </p>
+                          <p className="sm:col-span-2">
+                            <span className="text-muted-foreground">Status Date:</span> {formatDateTimeUnified(item.status_date)}
+                          </p>
+                        </div>
+
+                        <div className="mt-3 flex justify-end">
+                          {item.status === "Belum bayar" ? (
+                            <Button
+                              size="sm"
+                              className="h-8 px-3"
+                              aria-label="Bayar"
+                              title="Bayar"
+                              onClick={() => openPayModal(item)}
+                            >
+                              Bayar
+                            </Button>
+                          ) : item.status === "Pending" ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-3"
+                              aria-label="Lihat detail IPL"
+                              title="Lihat detail IPL"
+                              onClick={() => openPreviewModal(item)}
+                            >
+                              Lihat
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-lg border border-border bg-background p-6 text-center text-sm text-muted-foreground">
+                      No record available
+                    </div>
+                  )}
+                </div>
                 <TablePagination
                   page={currentPage}
                   pageSize={pageSize}

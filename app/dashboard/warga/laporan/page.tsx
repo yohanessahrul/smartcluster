@@ -5,11 +5,10 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
-import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { ApiLoadingState } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SimpleModal } from "@/components/ui/simple-modal";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatRupiah, parseRupiahToNumber } from "@/lib/currency";
 import { formatDateTimeUnified } from "@/lib/date-time";
 import { apiClient } from "@/lib/api-client";
@@ -191,66 +190,67 @@ export default function WargaLaporanPage() {
               <Badge variant="outline">{loadingTransactions ? "Memuat..." : `${journalRows.length} baris jurnal`}</Badge>
             </CardHeader>
             <CardContent>
-              <Table className="min-w-[820px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Ref</TableHead>
-                    <TableHead>Jenis</TableHead>
-                    <TableHead>Keterangan</TableHead>
-                    <TableHead>Debit</TableHead>
-                    <TableHead>Kredit</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loadingTransactions ? (
-                    <ApiTableLoadingRow colSpan={5} message="Memuat data transaksi..." />
-                  ) : journalRows.length ? (
-                    <>
-                      {journalRows.map((row) => {
-                        const isIncome = row.transactionType === "Pemasukan";
-                        return (
-                          <TableRow key={row.key}>
-                            <TableCell>{row.ref}</TableCell>
-                            <TableCell>
-                              <Badge variant={isIncome ? "success" : "warning"}>
-                                {isIncome ? "Pemasukan" : "Pengeluaran"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {row.isPopulated ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setSelectedPopulatePeriod(row.populatedPeriod ?? null)}
-                                >
-                                  {`${row.description} · ${row.populatedCount ?? 0} transaksi`}
-                                </Button>
-                              ) : (
-                                row.description
-                              )}
-                            </TableCell>
-                            <TableCell>{row.debit > 0 ? formatRupiah(row.debit) : "-"}</TableCell>
-                            <TableCell>{row.credit > 0 ? formatRupiah(row.credit) : "-"}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      <TableRow>
-                        <TableCell className="font-semibold text-muted-foreground">TOTAL</TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell>-</TableCell>
-                        <TableCell className="font-semibold">{formatRupiah(totalIncome)}</TableCell>
-                        <TableCell className="font-semibold">{formatRupiah(totalExpense)}</TableCell>
-                      </TableRow>
-                    </>
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        No record available
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              {loadingTransactions ? (
+                <ApiLoadingState message="Memuat data transaksi..." />
+              ) : journalRows.length ? (
+                <div className="space-y-3">
+                  {journalRows.map((row) => {
+                    const isIncome = row.transactionType === "Pemasukan";
+                    return (
+                      <div key={row.key} className="rounded-lg border border-border bg-background p-3 sm:p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Ref</p>
+                            <p className="font-medium">{row.ref}</p>
+                          </div>
+                          <Badge variant={isIncome ? "success" : "warning"}>
+                            {isIncome ? "Pemasukan" : "Pengeluaran"}
+                          </Badge>
+                        </div>
+
+                        <div className="mt-3 text-sm">
+                          {row.isPopulated ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSelectedPopulatePeriod(row.populatedPeriod ?? null)}
+                            >
+                              {`${row.description} · ${row.populatedCount ?? 0} transaksi`}
+                            </Button>
+                          ) : (
+                            <p>{row.description}</p>
+                          )}
+                        </div>
+
+                        <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                          <p>
+                            <span className="text-muted-foreground">Debit:</span> {row.debit > 0 ? formatRupiah(row.debit) : "-"}
+                          </p>
+                          <p>
+                            <span className="text-muted-foreground">Kredit:</span> {row.credit > 0 ? formatRupiah(row.credit) : "-"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  <div className="rounded-lg border border-border bg-muted/20 p-3 sm:p-4">
+                    <p className="text-sm font-semibold text-muted-foreground">TOTAL</p>
+                    <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                      <p>
+                        <span className="text-muted-foreground">Debit:</span> <span className="font-semibold">{formatRupiah(totalIncome)}</span>
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Kredit:</span> <span className="font-semibold">{formatRupiah(totalExpense)}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-border bg-background p-6 text-center text-sm text-muted-foreground">
+                  No record available
+                </div>
+              )}
               {transactionError ? <p className="mt-3 text-sm text-destructive">{transactionError}</p> : null}
             </CardContent>
           </Card>
@@ -261,40 +261,43 @@ export default function WargaLaporanPage() {
             title={`Detail Populate: Pembayaran IPL Warga (${selectedPopulateGroup?.period ?? "-"})`}
             className="w-[96vw] max-w-5xl"
           >
-            <Table className="min-w-[980px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Jenis</TableHead>
-                  <TableHead>Nama Transaksi</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Payment Method</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedPopulateGroup?.rows.length ? (
-                  selectedPopulateGroup.rows.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>{formatDateTimeUnified(item.date)}</TableCell>
-                      <TableCell>{item.id}</TableCell>
-                      <TableCell>{item.transaction_type}</TableCell>
-                      <TableCell>{item.transaction_name}</TableCell>
-                      <TableCell>{formatRupiah(parseRupiahToNumber(item.amount))}</TableCell>
-                      <TableCell>{item.payment_method}</TableCell>
-                      <TableCell>{item.status}</TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      No record available
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <div className="space-y-3">
+              {selectedPopulateGroup?.rows.length ? (
+                selectedPopulateGroup.rows.map((item) => (
+                  <div key={item.id} className="rounded-lg border border-border bg-background p-3 sm:p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">ID</p>
+                        <p className="font-medium">{item.id}</p>
+                      </div>
+                      <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>{item.transaction_type}</Badge>
+                    </div>
+
+                    <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                      <p>
+                        <span className="text-muted-foreground">Tanggal:</span> {formatDateTimeUnified(item.date)}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Amount:</span> {formatRupiah(parseRupiahToNumber(item.amount))}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Nama Transaksi:</span> {item.transaction_name}
+                      </p>
+                      <p>
+                        <span className="text-muted-foreground">Payment Method:</span> {item.payment_method}
+                      </p>
+                      <p className="sm:col-span-2">
+                        <span className="text-muted-foreground">Status:</span> {item.status}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-lg border border-border bg-background p-6 text-center text-sm text-muted-foreground">
+                  No record available
+                </div>
+              )}
+            </div>
           </SimpleModal>
         </div>
       )}

@@ -33,27 +33,39 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
         </Button>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
-        <div className="hidden lg:block">{sidebar}</div>
-        <main className="min-w-0">{children}</main>
+      <div className="relative lg:min-h-screen">
+        <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[260px]">
+          <div className="h-full">{sidebar}</div>
+        </div>
+        <main className="min-w-0 lg:ml-[272px]">{children}</main>
       </div>
 
       {open ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-foreground/45"
-            onClick={() => setOpen(false)}
-            aria-label="Tutup menu"
-          />
-          <div className="absolute right-0 top-0 h-full w-[86%] max-w-[320px] overflow-y-auto p-3">
-            <div className="mb-2 flex justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 bg-[hsl(var(--menu-bg))] text-[hsl(var(--menu-fg))] lg:hidden">
+          <div className="flex min-h-full flex-col overflow-y-auto p-4 pt-5">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="font-heading text-base">Smart Cluster</p>
+                <p className="text-xs text-[hsl(var(--menu-muted))]">{roleLabel}</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-[hsl(var(--menu-border))] bg-white/80 text-black hover:bg-white"
+                onClick={() => setOpen(false)}
+              >
                 <X className="mr-1 h-4 w-4" />
                 Tutup
               </Button>
             </div>
-            {sidebar}
+
+            <div className="flex-1">
+              <div className="rounded-lg bg-white/45 p-3 shadow-sm [&>aside]:h-full [&>aside]:rounded-none [&>aside]:border-0 [&>aside]:bg-transparent [&>aside]:p-0">
+                {sidebar}
+              </div>
+            </div>
+
           </div>
         </div>
       ) : null}
