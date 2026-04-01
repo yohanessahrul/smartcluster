@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 120 20% 96%;
+    --foreground: 175 33% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 175 33% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 175 33% 11%;
+    --primary: 171 84% 31%;
+    --primary-foreground: 150 40% 97%;
+    --secondary: 165 26% 93%;
+    --secondary-foreground: 175 30% 18%;
+    --muted: 160 24% 93%;
+    --muted-foreground: 180 14% 39%;
+    --accent: 32 100% 64%;
+    --accent-foreground: 175 35% 14%;
+    --destructive: 10 67% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 168 23% 84%;
+    --input: 168 23% 84%;
+    --ring: 171 84% 31%;
+    --radius: 1rem;
+    --radius-xl: 1.75rem;
+
+    --success-soft: 150 52% 91%;
+    --success-ink: 156 73% 29%;
+    --warning-soft: 30 100% 90%;
+    --warning-ink: 31 79% 34%;
+    --warning-bg: 27 100% 95%;
+    --warning-border: 28 100% 84%;
+
+    --spark-teal: 170 56% 67%;
+    --spark-amber: 35 100% 76%;
+
+    --menu-bg: 173 51% 12%;
+    --menu-fg: 171 29% 88%;
+    --menu-muted: 172 22% 63%;
+    --menu-active: 168 64% 43%;
+    --menu-border: 171 20% 28%;
+    --menu-note: 172 25% 22%;
+
+    --phone-bg: 173 48% 16%;
+    --phone-fg: 173 42% 95%;
+    --phone-notch: 168 31% 9%;
+    --phone-muted: 172 24% 71%;
+    --phone-card-ink: 168 39% 18%;
+    --phone-card-muted: 173 23% 40%;
+    --phone-chip-border: 172 24% 34%;
+    --form-radius: 8px;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at 8% 12%, hsl(var(--spark-teal) / 0.28), transparent 38%),
+      radial-gradient(circle at 86% 4%, hsl(var(--spark-teal) / 0.18), transparent 30%),
+      radial-gradient(circle at 20% 88%, hsl(var(--spark-amber) / 0.2), transparent 42%);
+    min-height: 100vh;
+  }
+
+  select:not([multiple]):not([size]) {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%236b7280' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px 14px;
+  }
+
+  select::-ms-expand {
+    display: none;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    border-radius: var(--form-radius) !important;
+  }
+}

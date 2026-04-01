@@ -1,16 +1,95 @@
-# Smart Perumahan - Frontend UI Prototype
+# Smart Perumahan - Next.js + shadcn/ui
 
-Prototype UI berbasis PRD Smart Perumahan untuk:
+Prototype frontend berbasis PRD Smart Perumahan menggunakan:
 
-- Admin Web App (dashboard, metrik, tagihan, transaksi, laporan)
-- Warga Mobile App (tagihan IPL, metode bayar, riwayat, transparansi dana)
+- Next.js App Router
+- Next.js Route Handlers API (`app/api/*`)
+- PostgreSQL (bisa langsung ke Supabase PostgreSQL)
+- Supabase Storage (upload bukti pembayaran IPL)
+- Tailwind CSS
+- shadcn/ui components
+- Palette warna custom (tetap memakai tone hijau-teal + amber)
+- PWA ready (manifest + service worker + offline page)
+- Better Auth (email/password session)
 
 ## Menjalankan
 
-Cukup buka file `index.html` di browser.
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Inisialisasi database PostgreSQL:
+
+```bash
+psql "$DATABASE_URL" -f backend/schema.sql
+psql "$DATABASE_URL" -f backend/seed.sql
+```
+
+## Integrasi Supabase (Database + Storage)
+
+1. Buat project di Supabase (Free Tier).
+2. Isi `.env.local`:
+   - `DATABASE_URL` atau `SUPABASE_DB_URL` ke PostgreSQL Supabase (pooler).
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `SUPABASE_STORAGE_BUCKET` (default: `payment-proofs`)
+3. Jalankan schema ke DB Supabase:
+
+```bash
+psql "$DATABASE_URL" -f backend/schema.sql
+```
+
+Catatan:
+- Upload bukti pembayaran IPL sudah otomatis ke Supabase Storage lewat endpoint `POST /api/storage/payment-proof`.
+- Bucket akan dicoba dibuat otomatis saat upload pertama jika belum ada.
+
+Service:
+
+- Frontend + Backend API: `http://localhost:3000`
+
+Route dashboard:
+
+- `http://localhost:3000/login`
+- `http://localhost:3000/dashboard`
+- `http://localhost:3000/dashboard/admin`
+- `http://localhost:3000/dashboard/admin/users`
+- `http://localhost:3000/dashboard/admin/houses`
+- `http://localhost:3000/dashboard/admin/bills`
+- `http://localhost:3000/dashboard/admin/transactions`
+- `http://localhost:3000/dashboard/warga`
+- `http://localhost:3000/dashboard/warga/profile`
+- `http://localhost:3000/dashboard/warga/tagihan`
+- `http://localhost:3000/dashboard/warga/riwayat`
+- `http://localhost:3000/dashboard/warga/laporan`
 
 ## Struktur
 
-- `index.html` - layout utama dan konten UI
-- `styles.css` - visual system, responsif, animasi
-- `script.js` - switch flow Admin/Warga + reveal animation
+- `app/page.tsx` - halaman landing
+- `app/api/*` - Next.js backend API (CRUD + generate IPL + pay QRIS)
+- `backend/schema.sql` - schema PostgreSQL
+- `backend/seed.sql` - data awal
+- `app/dashboard/*` - route selector role + dashboard role-based
+- `app/offline/page.tsx` - fallback halaman saat offline
+- `app/pwa/icon-192/route.tsx` - icon PWA 192x192
+- `app/pwa/icon-512/route.tsx` - icon PWA 512x512
+- `app/globals.css` - token warna dan styling global
+- `components/ui/*` - komponen shadcn yang dipakai
+- `components/dashboard-sidebar.tsx` - menu dashboard admin
+- `components/warga-sidebar.tsx` - menu dashboard warga
+- `components/admin-access-guard.tsx` - guard role admin
+- `components/warga-access-guard.tsx` - guard login + relasi house untuk warga
+- `components/pwa-register.tsx` - registrasi service worker
+- `components/login-form.tsx` - form login email + password (modal bootstrap Better Auth)
+- `lib/auth.ts` - konfigurasi server Better Auth
+- `lib/auth-client.ts` - Better Auth client + resolver role dan house by email
+- `app/api/dev/reset-token/route.ts` - endpoint dev untuk flow reset password tanpa email gateway
+- `lib/api-client.ts` - client fetch ke backend Next.js API
+- `lib/server/db.ts` - koneksi PostgreSQL untuk Next.js API
+- `lib/server/smart-api.ts` - business logic backend (migrasi dari Express)
+- `lib/server/supabase.ts` - helper Supabase Storage (upload bukti pembayaran)
+- `lib/mock-data.ts` - type model + data fallback
+- `lib/utils.ts` - helper `cn`
+- `public/manifest.webmanifest` - konfigurasi PWA
+- `public/sw.js` - service worker cache/offline
