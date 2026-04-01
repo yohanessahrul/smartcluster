@@ -102,7 +102,7 @@ type GlobalApiState = typeof globalThis & {
   smartPerumahanApiSchemaVersion?: number;
 };
 
-const API_SCHEMA_VERSION = 2;
+const API_SCHEMA_VERSION = 3;
 
 export class ApiHttpError extends Error {
   status: number;
@@ -446,9 +446,16 @@ async function ensureHouseColumns() {
   await query("ALTER TABLE houses ALTER COLUMN is_occupied SET DEFAULT FALSE");
   await query("ALTER TABLE houses ALTER COLUMN is_occupied SET NOT NULL");
   await query("ALTER TABLE houses DROP CONSTRAINT IF EXISTS houses_residential_status_check");
-  await query(
-    "ALTER TABLE houses ADD CONSTRAINT houses_residential_status_check CHECK (residential_status IN ('Owner', 'Contract'))",
-  );
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE houses
+      ADD CONSTRAINT houses_residential_status_check
+      CHECK (residential_status IN ('Owner', 'Contract'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
 }
 
 async function ensureHouseUserOrderColumn() {
@@ -471,9 +478,27 @@ async function ensureHouseUserOrderColumn() {
   await query("ALTER TABLE house_users ALTER COLUMN user_order SET DEFAULT 1");
   await query("ALTER TABLE house_users ALTER COLUMN user_order SET NOT NULL");
   await query("ALTER TABLE house_users DROP CONSTRAINT IF EXISTS house_users_user_order_check");
-  await query("ALTER TABLE house_users ADD CONSTRAINT house_users_user_order_check CHECK (user_order IN (1, 2))");
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE house_users
+      ADD CONSTRAINT house_users_user_order_check
+      CHECK (user_order IN (1, 2));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
   await query("ALTER TABLE house_users DROP CONSTRAINT IF EXISTS house_users_house_id_user_order_key");
-  await query("ALTER TABLE house_users ADD CONSTRAINT house_users_house_id_user_order_key UNIQUE (house_id, user_order)");
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE house_users
+      ADD CONSTRAINT house_users_house_id_user_order_key
+      UNIQUE (house_id, user_order);
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
 }
 
 async function ensureUserRoleConstraint() {
@@ -495,7 +520,16 @@ async function ensureUserRoleConstraint() {
   await query("UPDATE users SET role = 'warga' WHERE role IS NULL OR BTRIM(role) = ''");
   await query("UPDATE users SET role = 'warga' WHERE role NOT IN ('admin', 'warga', 'finance')");
   await query("ALTER TABLE users ALTER COLUMN role SET NOT NULL");
-  await query("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'warga', 'finance'))");
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE users
+      ADD CONSTRAINT users_role_check
+      CHECK (role IN ('admin', 'warga', 'finance'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
 }
 
 async function ensureBillColumns() {
@@ -553,9 +587,16 @@ async function ensureBillColumns() {
   `);
   await query("ALTER TABLE bills ALTER COLUMN status SET NOT NULL");
   await query("ALTER TABLE bills ALTER COLUMN status SET DEFAULT 'Belum bayar'");
-  await query(
-    "ALTER TABLE bills ADD CONSTRAINT bills_status_check CHECK (status IN ('Belum bayar', 'Pending', 'Verifikasi', 'Lunas'))",
-  );
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE bills
+      ADD CONSTRAINT bills_status_check
+      CHECK (status IN ('Belum bayar', 'Pending', 'Verifikasi', 'Lunas'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
   await query("UPDATE bills SET status_date = NOW() WHERE status_date IS NULL");
   await query(`
     UPDATE bills b
@@ -584,9 +625,16 @@ async function ensureBillColumns() {
   await query("ALTER TABLE bills ALTER COLUMN payment_method SET NOT NULL");
   await query("ALTER TABLE bills ALTER COLUMN payment_method SET DEFAULT 'Transfer Bank'");
   await query("ALTER TABLE bills DROP CONSTRAINT IF EXISTS bills_payment_method_check");
-  await query(
-    "ALTER TABLE bills ADD CONSTRAINT bills_payment_method_check CHECK (payment_method IN ('Transfer Bank', 'Cash', 'QRIS', 'E-wallet'))",
-  );
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE bills
+      ADD CONSTRAINT bills_payment_method_check
+      CHECK (payment_method IN ('Transfer Bank', 'Cash', 'QRIS', 'E-wallet'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
 }
 
 async function ensureTransactionColumns() {
@@ -703,59 +751,35 @@ async function ensureTransactionColumns() {
   await query("ALTER TABLE transactions ALTER COLUMN date SET DEFAULT NOW()");
   await query("ALTER TABLE transactions ALTER COLUMN status_date SET NOT NULL");
   await query("ALTER TABLE transactions ALTER COLUMN status_date SET DEFAULT NOW()");
+  await query("ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_category_check");
   await query(`
     DO $$
     BEGIN
-      IF EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'transactions_category_check'
-      ) THEN
-        ALTER TABLE transactions
-        DROP CONSTRAINT transactions_category_check;
-      END IF;
+      ALTER TABLE transactions
+      ADD CONSTRAINT transactions_category_check
+      CHECK (category IN ('IPL Warga', 'IPL Cluster', 'Barang Inventaris', 'Other'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
     END $$;
   `);
   await query(`
     DO $$
     BEGIN
-      IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'transactions_category_check'
-      ) THEN
-        ALTER TABLE transactions
-        ADD CONSTRAINT transactions_category_check
-        CHECK (category IN ('IPL Warga', 'IPL Cluster', 'Barang Inventaris', 'Other'));
-      END IF;
+      ALTER TABLE transactions
+      ADD CONSTRAINT transactions_transaction_type_check
+      CHECK (transaction_type IN ('Pemasukan', 'Pengeluaran'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
     END $$;
   `);
   await query(`
     DO $$
     BEGIN
-      IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'transactions_transaction_type_check'
-      ) THEN
-        ALTER TABLE transactions
-        ADD CONSTRAINT transactions_transaction_type_check
-        CHECK (transaction_type IN ('Pemasukan', 'Pengeluaran'));
-      END IF;
-    END $$;
-  `);
-  await query(`
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conname = 'transactions_status_check'
-      ) THEN
-        ALTER TABLE transactions
-        ADD CONSTRAINT transactions_status_check
-        CHECK (status IN ('Lunas', 'Belum bayar', 'Verifikasi', 'Pending'));
-      END IF;
+      ALTER TABLE transactions
+      ADD CONSTRAINT transactions_status_check
+      CHECK (status IN ('Lunas', 'Belum bayar', 'Verifikasi', 'Pending'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
     END $$;
   `);
 }
@@ -786,7 +810,11 @@ export async function ensureBackendReady() {
       await ensureBillColumns();
       await ensureTransactionColumns();
       globalState.smartPerumahanApiSchemaVersion = API_SCHEMA_VERSION;
-    })();
+    })().catch((error) => {
+      globalState.smartPerumahanApiReadyPromise = undefined;
+      globalState.smartPerumahanApiSchemaVersion = undefined;
+      throw error;
+    });
   }
   return globalState.smartPerumahanApiReadyPromise;
 }

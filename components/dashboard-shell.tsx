@@ -24,7 +24,7 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
     <>
       <div className="mb-4 flex items-center justify-between lg:hidden">
         <div>
-          <p className="font-heading text-base">Smart Perumahan</p>
+          <p className="font-heading text-base">Smart Cluster</p>
           <p className="text-xs text-muted-foreground">{roleLabel}</p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>

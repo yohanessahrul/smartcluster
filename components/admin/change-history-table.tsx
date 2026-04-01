@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AuditLogRow } from "@/lib/api-client";
@@ -38,11 +39,7 @@ export function ChangeHistoryTable({ title, rows, loading }: ChangeHistoryTableP
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  Memuat history...
-                </TableCell>
-              </TableRow>
+              <ApiTableLoadingRow colSpan={5} message="Memuat history perubahan..." />
             ) : rows.length ? (
               pagination.pagedRows.map((row) => (
                 <TableRow key={row.id}>

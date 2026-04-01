@@ -3,13 +3,14 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Crosshair, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { BooleanBadge } from "@/components/ui/boolean-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
+import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -97,10 +98,15 @@ function makeBillId(numberValue: number) {
 }
 
 function statusBadge(status: BillRow["status"]) {
-  if (status === "Lunas") return <Badge variant="success">Lunas</Badge>;
-  if (status === "Belum bayar") return <Badge variant="warning">Belum bayar</Badge>;
-  if (status === "Pending") return <Badge variant="warning">Pending</Badge>;
-  return <Badge variant="secondary">Verifikasi</Badge>;
+  return <PaymentStatusBadge status={status} />;
+}
+
+function canFinanceVerify(status: BillRow["status"]) {
+  return status.trim().toLowerCase() !== "belum bayar";
+}
+
+function isImageProof(url: string) {
+  return /\.(png|jpe?g|webp|gif|bmp|svg)(\?.*)?$/i.test(url);
 }
 
 type StatusTimelineRow = {
@@ -397,8 +403,6 @@ type FinanceVerifyModalProps = {
   open: boolean;
   onClose: () => void;
   currentProofUrl?: string | null;
-  proofFile: File | null;
-  onProofFileChange: (file: File | null) => void;
   value: FinanceVerifyForm;
   onChange: (value: FinanceVerifyForm) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -409,8 +413,6 @@ function FinanceVerifyModal({
   open,
   onClose,
   currentProofUrl,
-  proofFile,
-  onProofFileChange,
   value,
   onChange,
   onSubmit,
@@ -447,19 +449,20 @@ function FinanceVerifyModal({
           </select>
         </div>
         <div>
-          <label className={labelClass}>Bukti Pembayaran</label>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            className={`${inputClass} py-1.5`}
-            onChange={(event) => onProofFileChange(event.target.files?.[0] ?? null)}
-          />
-          {proofFile ? <p className="mt-1 text-xs text-muted-foreground">File dipilih: {proofFile.name}</p> : null}
+          <label className={labelClass}>Preview Bukti Pembayaran</label>
           {currentProofUrl ? (
-            <a href={currentProofUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-primary underline underline-offset-2">
-              Lihat bukti saat ini
-            </a>
-          ) : null}
+            isImageProof(currentProofUrl) ? (
+              <div className="overflow-hidden rounded-lg border border-border bg-muted/20">
+                <img src={currentProofUrl} alt="Bukti pembayaran warga" className="h-auto max-h-[360px] w-full object-contain" />
+              </div>
+            ) : (
+              <a href={currentProofUrl} target="_blank" rel="noreferrer" className="inline-block text-sm text-primary underline underline-offset-2">
+                Lihat bukti pembayaran
+              </a>
+            )
+          ) : (
+            <p className="text-sm text-muted-foreground">Bukti pembayaran belum tersedia.</p>
+          )}
         </div>
         <Button type="submit">Simpan Verifikasi</Button>
       </form>
@@ -525,7 +528,6 @@ export function BillsCrud() {
   const [editForm, setEditForm] = useState<BillRow>(emptyForm);
   const [createProofFile, setCreateProofFile] = useState<File | null>(null);
   const [editProofFile, setEditProofFile] = useState<File | null>(null);
-  const [verifyProofFile, setVerifyProofFile] = useState<File | null>(null);
   const [generateForm, setGenerateForm] = useState<GenerateForm>({
     month: getDefaultMonth(),
     amount: "Rp150.000",
@@ -560,7 +562,7 @@ export function BillsCrud() {
   }, []);
 
   useEffect(() => {
-    if (session?.role === "admin") {
+    if (session?.role === "admin" || session?.role === "finance") {
       loadHistory();
       return;
     }
@@ -568,6 +570,7 @@ export function BillsCrud() {
     setHistoryLoading(false);
   }, [session?.role]);
 
+  const hasFullAccess = session?.role === "admin" || session?.role === "finance";
   const isAdmin = session?.role === "admin";
   const isFinance = session?.role === "finance";
 
@@ -739,7 +742,6 @@ export function BillsCrud() {
 
   function openVerifyModal(row: BillRow) {
     setVerifyingId(row.id);
-    setVerifyProofFile(null);
     setVerifyForm({
       status: row.status,
       payment_method: row.payment_method ?? "Transfer Bank",
@@ -808,11 +810,6 @@ export function BillsCrud() {
     }
 
     try {
-      let paymentProofUrl = current.payment_proof_url ?? null;
-      if (verifyProofFile) {
-        const uploaded = await apiClient.uploadBillPaymentProof(verifyingId, verifyProofFile, { actorEmail });
-        paymentProofUrl = uploaded.public_url;
-      }
       await apiClient.updateBill(
         verifyingId,
         {
@@ -822,18 +819,17 @@ export function BillsCrud() {
           payment_method: verifyForm.payment_method,
           status: verifyForm.status,
           status_date: statusDate,
-          payment_proof_url: paymentProofUrl,
+          payment_proof_url: current.payment_proof_url ?? null,
           paid_to_developer: current.paid_to_developer,
           date_paid_period_to_developer: current.date_paid_period_to_developer,
         },
         { actorEmail }
       );
       await loadInitialData();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setVerifyOpen(false);
       setVerifyingId(null);
-      setVerifyProofFile(null);
       setVerifyError("");
       setMessage("");
       setSuccessToast("Verifikasi IPL berhasil disimpan.");
@@ -946,12 +942,12 @@ export function BillsCrud() {
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data IPL</CardTitle>
-          {isAdmin || isFinance ? (
+          {hasFullAccess ? (
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Button className="w-full sm:w-auto" variant="outline" onClick={openGenerateModal}>
                 Generate IPL
               </Button>
-              {isAdmin || isFinance ? (
+              {hasFullAccess ? (
                 <Button className="w-full sm:w-auto" onClick={openCreateModal}>
                   Create IPL
                 </Button>
@@ -1032,11 +1028,7 @@ export function BillsCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Memuat data...
-                  </TableCell>
-                </TableRow>
+                <ApiTableLoadingRow colSpan={5} message="Memuat data IPL..." />
               ) : filteredRows.length ? (
                 tablePagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -1056,7 +1048,7 @@ export function BillsCrud() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {isFinance ? (
+                        {isFinance && canFinanceVerify(item.status) ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -1149,8 +1141,6 @@ export function BillsCrud() {
         open={verifyOpen}
         onClose={() => setVerifyOpen(false)}
         currentProofUrl={rows.find((row) => row.id === verifyingId)?.payment_proof_url ?? null}
-        proofFile={verifyProofFile}
-        onProofFileChange={setVerifyProofFile}
         value={verifyForm}
         onChange={setVerifyForm}
         onSubmit={verifyBill}
@@ -1222,11 +1212,7 @@ export function BillsCrud() {
             </TableHeader>
             <TableBody>
               {previewLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Memuat detail perubahan status...
-                  </TableCell>
-                </TableRow>
+                <ApiTableLoadingRow colSpan={5} message="Memuat detail perubahan status..." />
               ) : previewTimelineRows.length ? (
                 previewPagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -1274,7 +1260,7 @@ export function BillsCrud() {
         loading={deleting}
       />
 
-      {isAdmin ? (
+      {hasFullAccess ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-heading text-lg">History Perubahan IPL</h3>

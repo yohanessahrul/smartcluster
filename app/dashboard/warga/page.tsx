@@ -8,6 +8,7 @@ import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { formatDateTimeUnified } from "@/lib/date-time";
 
 export default function WargaDashboardPage() {
@@ -90,7 +91,7 @@ export default function WargaDashboardPage() {
                   <p className="font-heading text-3xl">{latestBill?.amount ?? "-"}</p>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {latestBill ? (
-                      <Badge variant={latestBill.status === "Lunas" ? "success" : "warning"}>{latestBill.status}</Badge>
+                      <PaymentStatusBadge status={latestBill.status} />
                     ) : (
                       <Badge variant="outline">Belum Ada Tagihan</Badge>
                     )}

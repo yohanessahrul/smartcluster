@@ -5,6 +5,7 @@ import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Home, ShieldCheck } from "lucide-react";
 
+import { ApiLoadingState } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWargaResolvedData } from "@/lib/auth-client";
@@ -23,6 +24,9 @@ export function WargaAccessGuard({ children }: WargaAccessGuardProps) {
         <CardHeader>
           <CardTitle>Memuat profil warga...</CardTitle>
         </CardHeader>
+        <CardContent>
+          <ApiLoadingState message="Memuat profil warga dari server..." />
+        </CardContent>
       </Card>
     );
   }

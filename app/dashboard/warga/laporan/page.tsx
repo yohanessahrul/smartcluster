@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
+import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SimpleModal } from "@/components/ui/simple-modal";
@@ -187,7 +188,7 @@ export default function WargaLaporanPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between">
               <CardTitle>Laporan Keuangan (Jurnal Umum)</CardTitle>
-              <Badge variant="outline">{loadingTransactions ? "Loading..." : `${journalRows.length} baris jurnal`}</Badge>
+              <Badge variant="outline">{loadingTransactions ? "Memuat..." : `${journalRows.length} baris jurnal`}</Badge>
             </CardHeader>
             <CardContent>
               <Table className="min-w-[820px]">
@@ -202,11 +203,7 @@ export default function WargaLaporanPage() {
                 </TableHeader>
                 <TableBody>
                   {loadingTransactions ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        Memuat data transaksi...
-                      </TableCell>
-                    </TableRow>
+                    <ApiTableLoadingRow colSpan={5} message="Memuat data transaksi..." />
                   ) : journalRows.length ? (
                     <>
                       {journalRows.map((row) => {

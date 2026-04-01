@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, ClipboardList, Home, LogOut, Receipt, ShieldCheck, UserRound } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { BarChart3, ClipboardList, Home, Receipt, ShieldCheck, UserRound } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { logout, useWargaResolvedData } from "@/lib/auth-client";
+import { useWargaResolvedData } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 const overviewMenu = { href: "/dashboard/warga", label: "Overview", icon: Home } as const;
@@ -20,22 +19,15 @@ const protectedMenus = [
 
 export function WargaSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { session, house, loading } = useWargaResolvedData();
+  const { house, loading } = useWargaResolvedData();
   const hasHouse = Boolean(house);
   const menus = hasHouse ? protectedMenus : [overviewMenu];
-
-  async function onLogout() {
-    await logout();
-    router.push("/login");
-  }
 
   return (
     <aside className="rounded-2xl border border-border bg-[hsl(var(--menu-bg))] p-4 text-[hsl(var(--menu-fg))]">
       <div className="mb-6 rounded-lg bg-[hsl(var(--menu-note))] p-3">
         <p className="font-heading text-sm">Portal Warga</p>
         <p className="text-xs text-[hsl(var(--menu-muted))]">Akses tagihan dan transparansi dana</p>
-        {session?.email ? <p className="mt-1 text-xs text-[hsl(var(--menu-muted))]">{session.email}</p> : null}
         {!loading && !hasHouse ? (
           <p className="mt-2 rounded-md border border-[hsl(var(--menu-border))] bg-white/70 px-2 py-1 text-[11px] leading-relaxed text-[hsl(var(--menu-muted))]">
             Akun masih dalam proses verifikasi data rumah. Untuk sementara, menu yang tersedia hanya Overview.
@@ -68,11 +60,6 @@ export function WargaSidebar() {
         <ShieldCheck className="h-3.5 w-3.5" />
         Data pembayaran dapat dipantau warga secara real-time.
       </p>
-
-      <Button type="button" variant="outline" size="sm" className="mt-3 w-full border-[hsl(var(--menu-border))] bg-transparent" onClick={onLogout}>
-        <LogOut className="mr-1 h-4 w-4" />
-        Logout
-      </Button>
     </aside>
   );
 }

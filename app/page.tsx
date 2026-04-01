@@ -13,6 +13,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -78,9 +79,7 @@ const futureFeature = [
 ] as const;
 
 function statusBadge(status: string) {
-  if (status === "Lunas") return <Badge variant="success">{status}</Badge>;
-  if (status === "Belum Bayar") return <Badge variant="warning">{status}</Badge>;
-  return <Badge variant="secondary">{status}</Badge>;
+  return <PaymentStatusBadge status={status} />;
 }
 
 export default function Page() {
@@ -95,7 +94,7 @@ export default function Page() {
               SP
             </div>
             <div>
-              <p className="font-heading text-base font-semibold">Smart Perumahan</p>
+              <p className="font-heading text-base font-semibold">Smart Cluster</p>
               <p className="text-sm text-muted-foreground">Sistem Manajemen Transaksi & IPL</p>
             </div>
           </div>
@@ -366,7 +365,7 @@ export default function Page() {
 
         <footer className="mt-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <CalendarClock className="h-4 w-4" />
-          <span>Prototype UI Smart Perumahan - shadcn styling dengan palet asli.</span>
+          <span>Prototype UI Smart Cluster - shadcn styling dengan palet asli.</span>
           <Building2 className="ml-2 h-4 w-4" />
           <CreditCard className="h-4 w-4" />
         </footer>

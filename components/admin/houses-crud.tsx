@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
+import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -358,7 +359,7 @@ export function HousesCrud() {
   }, []);
 
   useEffect(() => {
-    if (session?.role === "admin") {
+    if (session?.role === "admin" || session?.role === "finance") {
       loadHistory();
       return;
     }
@@ -366,7 +367,7 @@ export function HousesCrud() {
     setHistoryLoading(false);
   }, [session?.role]);
 
-  const isAdmin = session?.role === "admin";
+  const hasFullAccess = session?.role === "admin" || session?.role === "finance";
 
   async function loadInitialData() {
     try {
@@ -423,7 +424,7 @@ export function HousesCrud() {
         { actorEmail }
       );
       await loadInitialData();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setCreateForm(emptyForm);
       setCreateOpen(false);
@@ -486,7 +487,7 @@ export function HousesCrud() {
         secondary_email: editForm.secondary_email.trim().toLowerCase(),
       }, { actorEmail });
       await loadInitialData();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setEditingId(null);
       setEditForm(emptyForm);
@@ -504,7 +505,7 @@ export function HousesCrud() {
     try {
       await apiClient.deleteHouse(id, { actorEmail });
       await loadInitialData();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       if (editingId === id) {
         setEditingId(null);
@@ -662,11 +663,7 @@ export function HousesCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Memuat data...
-                  </TableCell>
-                </TableRow>
+                <ApiTableLoadingRow colSpan={5} message="Memuat data house..." />
               ) : filteredRows.length ? (
                 pagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -819,7 +816,7 @@ export function HousesCrud() {
         loading={deleting}
       />
 
-      {isAdmin ? (
+      {hasFullAccess ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-heading text-lg">History Perubahan House</h3>

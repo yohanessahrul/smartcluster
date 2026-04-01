@@ -2,15 +2,16 @@ import type { Metadata, Viewport } from "next";
 
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
+import { DeveloperErrorModal } from "@/components/ui/developer-error-modal";
 
 export const metadata: Metadata = {
-  title: "Smart Perumahan - UI Prototype",
-  description: "Shadcn-styled Smart Perumahan dashboard for admin and warga flow.",
+  title: "Smart Cluster - UI Prototype",
+  description: "Shadcn-styled Smart Cluster dashboard for admin and warga flow.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Smart Perumahan",
+    title: "Smart Cluster",
   },
 };
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="id" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
+        <DeveloperErrorModal />
         <PwaRegister />
       </body>
     </html>

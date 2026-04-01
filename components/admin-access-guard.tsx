@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
+import { ApiLoadingState } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthSession } from "@/lib/auth-client";
@@ -13,6 +15,7 @@ type AdminAccessGuardProps = {
 
 export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
   const { loading, session } = useAuthSession();
+  const pathname = usePathname();
 
   if (loading) {
     return (
@@ -20,6 +23,9 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
         <CardHeader>
           <CardTitle>Memuat sesi admin...</CardTitle>
         </CardHeader>
+        <CardContent>
+          <ApiLoadingState message="Memuat sesi admin dari server..." />
+        </CardContent>
       </Card>
     );
   }
@@ -53,6 +59,27 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
         </CardContent>
       </Card>
     );
+  }
+
+  if (session.role === "finance") {
+    const financeAllowedPaths = new Set(["/dashboard/admin", "/dashboard/admin/bills", "/dashboard/admin/transactions"]);
+    if (!financeAllowedPaths.has(pathname)) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Akses finance dibatasi</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Role finance hanya bisa mengakses menu Overview, IPL, dan Transactions.
+            </p>
+            <Button asChild>
+              <Link href="/dashboard/admin">Buka Overview</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      );
+    }
   }
 
   return <>{children}</>;

@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
+import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -144,10 +146,7 @@ function buildStatusTimeline(rows: AuditLogRow[]): StatusTimelineRow[] {
 }
 
 function transactionStatusBadge(status: TransactionRow["status"]) {
-  if (status === "Lunas") return <Badge variant="success">Lunas</Badge>;
-  if (status === "Belum bayar") return <Badge variant="warning">Belum bayar</Badge>;
-  if (status === "Pending") return <Badge variant="warning">Pending</Badge>;
-  return <Badge variant="secondary">Verifikasi</Badge>;
+  return <PaymentStatusBadge status={status} />;
 }
 
 function transactionTypeBadge(type: TransactionRow["transaction_type"]) {
@@ -382,7 +381,7 @@ export function TransactionsCrud() {
   }, []);
 
   useEffect(() => {
-    if (session?.role === "admin") {
+    if (session?.role === "admin" || session?.role === "finance") {
       loadHistory();
       return;
     }
@@ -390,6 +389,7 @@ export function TransactionsCrud() {
     setHistoryLoading(false);
   }, [session?.role]);
 
+  const hasFullAccess = session?.role === "admin" || session?.role === "finance";
   const isAdmin = session?.role === "admin";
 
   const filteredRows = useMemo(() => {
@@ -467,7 +467,7 @@ export function TransactionsCrud() {
         status: createForm.status as TransactionRow["status"],
       }, { actorEmail });
       await loadTransactions();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setCreateForm(emptyForm);
       setCreateOpen(false);
@@ -533,7 +533,7 @@ export function TransactionsCrud() {
         status: editForm.status as TransactionRow["status"],
       }, { actorEmail });
       await loadTransactions();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setEditingId(null);
       setEditForm(emptyForm);
@@ -551,7 +551,7 @@ export function TransactionsCrud() {
     try {
       await apiClient.deleteTransaction(id, { actorEmail });
       await loadTransactions();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       if (editingId === id) {
         setEditingId(null);
@@ -696,11 +696,7 @@ export function TransactionsCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    Memuat data...
-                  </TableCell>
-                </TableRow>
+                <ApiTableLoadingRow colSpan={6} message="Memuat data transaction..." />
               ) : filteredRows.length ? (
                 tablePagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -729,26 +725,30 @@ export function TransactionsCrud() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          aria-label="Edit transaction"
-                          title="Edit transaction"
-                          onClick={() => openEditModal(item)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
-                          aria-label="Delete transaction"
-                          title="Delete transaction"
-                          onClick={() => openDeleteModal(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {isAdmin ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            aria-label="Edit transaction"
+                            title="Edit transaction"
+                            onClick={() => openEditModal(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                        {isAdmin ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
+                            aria-label="Delete transaction"
+                            title="Delete transaction"
+                            onClick={() => openDeleteModal(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -836,11 +836,7 @@ export function TransactionsCrud() {
             </TableHeader>
             <TableBody>
               {previewLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    Memuat detail perubahan status...
-                  </TableCell>
-                </TableRow>
+                <ApiTableLoadingRow colSpan={6} message="Memuat detail perubahan status..." />
               ) : previewTimelineRows.length ? (
                 previewPagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -889,7 +885,7 @@ export function TransactionsCrud() {
         loading={deleting}
       />
 
-      {isAdmin ? (
+      {hasFullAccess ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-heading text-lg">History Perubahan Transaction</h3>

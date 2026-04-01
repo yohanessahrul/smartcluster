@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Building2, Home, House, LogOut, ReceiptText, Users, WalletCards } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Building2, Home, House, ReceiptText, Users, WalletCards } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { logout, useAuthSession } from "@/lib/auth-client";
+import { useAuthSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 const menus = [
@@ -18,18 +17,17 @@ const menus = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { session } = useAuthSession();
   const visibleMenus =
     session?.role === "finance"
-      ? menus.filter((menu) => menu.href === "/dashboard/admin" || menu.href === "/dashboard/admin/bills")
+      ? menus.filter(
+          (menu) =>
+            menu.href === "/dashboard/admin" ||
+            menu.href === "/dashboard/admin/bills" ||
+            menu.href === "/dashboard/admin/transactions"
+        )
       : menus;
   const panelLabel = session?.role === "finance" ? "Finance Panel" : "Admin Panel";
-
-  async function onLogout() {
-    await logout();
-    router.push("/login");
-  }
 
   return (
     <aside className="rounded-2xl border border-border bg-[hsl(var(--menu-bg))] p-4 text-[hsl(var(--menu-fg))]">
@@ -38,9 +36,8 @@ export function AdminSidebar() {
           <Building2 className="h-4 w-4" />
         </div>
         <div>
-          <p className="font-heading text-sm">Smart Perumahan</p>
+          <p className="font-heading text-base">Smart Cluster</p>
           <p className="text-xs text-[hsl(var(--menu-muted))]">{panelLabel}</p>
-          {session?.email ? <p className="text-xs text-[hsl(var(--menu-muted))]">{session.email}</p> : null}
         </div>
       </div>
 
@@ -64,15 +61,6 @@ export function AdminSidebar() {
           );
         })}
       </nav>
-
-      <p className="mt-6 rounded-lg bg-[hsl(var(--menu-note))] px-3 py-2 text-xs text-[hsl(var(--menu-muted))]">
-        IPL Bulanan Rp150.000 • Jatuh tempo setiap tanggal 10
-      </p>
-
-      <Button type="button" variant="outline" size="sm" className="mt-3 w-full border-[hsl(var(--menu-border))] bg-transparent" onClick={onLogout}>
-        <LogOut className="mr-1 h-4 w-4" />
-        Logout
-      </Button>
     </aside>
   );
 }

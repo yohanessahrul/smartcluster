@@ -5,7 +5,9 @@ import { AlertCircle, Home, NotebookText, Users, Wallet } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { Badge } from "@/components/ui/badge";
+import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuthSession } from "@/lib/auth-client";
@@ -92,7 +94,6 @@ export default function AdminDashboardPage() {
   }, [transactions]);
   const financeNeedActionPagination = useTablePagination(financeBillsNeedAction);
   const financeIncomePagination = useTablePagination(financeLatestIncome);
-  const adminTransactionPagination = useTablePagination(transactions);
 
   function unitLabel(houseId: string) {
     const house = houseById.get(houseId);
@@ -145,7 +146,7 @@ export default function AdminDashboardPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-3">
               <CardTitle>IPL Perlu Tindakan</CardTitle>
-              <Badge variant="outline">{loading ? "Loading..." : `${financeBillsNeedAction.length} data`}</Badge>
+              <Badge variant="outline">{loading ? "Memuat..." : `${financeBillsNeedAction.length} data`}</Badge>
             </CardHeader>
             <CardContent>
               <Table className="min-w-[620px]">
@@ -159,13 +160,17 @@ export default function AdminDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {financeBillsNeedAction.length ? (
+                  {loading ? (
+                    <ApiTableLoadingRow colSpan={5} message="Memuat data IPL..." />
+                  ) : financeBillsNeedAction.length ? (
                     financeNeedActionPagination.pagedRows.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>{unitLabel(item.house_id)}</TableCell>
                         <TableCell>{item.periode}</TableCell>
                         <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
-                        <TableCell>{item.status}</TableCell>
+                        <TableCell>
+                          <PaymentStatusBadge status={item.status} />
+                        </TableCell>
                         <TableCell>{formatDateTimeUnified(item.status_date)}</TableCell>
                       </TableRow>
                     ))
@@ -196,7 +201,7 @@ export default function AdminDashboardPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-3">
               <CardTitle>Pemasukan IPL Terbaru</CardTitle>
-              <Badge variant="outline">{loading ? "Loading..." : "Realtime API"}</Badge>
+              <Badge variant="outline">{loading ? "Memuat..." : "Realtime API"}</Badge>
             </CardHeader>
             <CardContent>
               <Table className="min-w-[620px]">
@@ -211,14 +216,18 @@ export default function AdminDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {financeLatestIncome.length ? (
+                  {loading ? (
+                    <ApiTableLoadingRow colSpan={6} message="Memuat data pemasukan..." />
+                  ) : financeLatestIncome.length ? (
                     financeIncomePagination.pagedRows.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>{item.id}</TableCell>
                         <TableCell>{item.bill_id ?? "-"}</TableCell>
                         <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
                         <TableCell>{item.payment_method}</TableCell>
-                        <TableCell>{item.status}</TableCell>
+                        <TableCell>
+                          <PaymentStatusBadge status={item.status} />
+                        </TableCell>
                         <TableCell>{formatDateTimeUnified(item.date)}</TableCell>
                       </TableRow>
                     ))
@@ -254,7 +263,7 @@ export default function AdminDashboardPage() {
     <div>
       <DashboardHeader
         title="Dashboard Admin"
-        description="Ringkasan operasional IPL: rumah, warga, tagihan, dan transaksi terbaru."
+        description="Ringkasan operasional IPL: rumah, warga, dan status tagihan."
       />
       {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
@@ -296,65 +305,6 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </section>
-
-      <Card>
-        <CardHeader className="flex-row items-center justify-between pb-3">
-          <CardTitle>Transaksi Terbaru</CardTitle>
-          <Badge variant="outline">{loading ? "Loading..." : "Realtime API"}</Badge>
-        </CardHeader>
-        <CardContent>
-          <Table className="min-w-[760px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>IPL ID</TableHead>
-                <TableHead>Transaction Type</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Payment Method</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Status Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.length ? (
-                adminTransactionPagination.pagedRows.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.id}</TableCell>
-                    <TableCell>{item.bill_id ?? "-"}</TableCell>
-                    <TableCell>{item.transaction_type}</TableCell>
-                    <TableCell>{item.category}</TableCell>
-                    <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
-                    <TableCell>{formatDateTimeUnified(item.date)}</TableCell>
-                    <TableCell>{item.payment_method}</TableCell>
-                    <TableCell>{item.status}</TableCell>
-                    <TableCell>{formatDateTimeUnified(item.status_date)}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    No record available
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          {!loading ? (
-            <TablePagination
-              page={adminTransactionPagination.page}
-              pageSize={adminTransactionPagination.pageSize}
-              totalItems={adminTransactionPagination.totalItems}
-              totalPages={adminTransactionPagination.totalPages}
-              from={adminTransactionPagination.from}
-              to={adminTransactionPagination.to}
-              onPageChange={adminTransactionPagination.setPage}
-              onPageSizeChange={adminTransactionPagination.setPageSize}
-            />
-          ) : null}
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
+import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -174,7 +175,7 @@ export function UsersCrud() {
   }, []);
 
   useEffect(() => {
-    if (session?.role === "admin") {
+    if (session?.role === "admin" || session?.role === "finance") {
       loadHistory();
       return;
     }
@@ -182,7 +183,7 @@ export function UsersCrud() {
     setHistoryLoading(false);
   }, [session?.role]);
 
-  const isAdmin = session?.role === "admin";
+  const hasFullAccess = session?.role === "admin" || session?.role === "finance";
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -226,7 +227,7 @@ export function UsersCrud() {
     try {
       await apiClient.createUser(createForm, { actorEmail });
       await loadUsers();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setCreateForm(emptyForm);
       setCreateOpen(false);
@@ -277,7 +278,7 @@ export function UsersCrud() {
         role: editForm.role,
       }, { actorEmail });
       await loadUsers();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setEditingId(null);
       setEditForm(emptyForm);
@@ -295,7 +296,7 @@ export function UsersCrud() {
     try {
       await apiClient.deleteUser(id, { actorEmail });
       await loadUsers();
-      if (isAdmin) await loadHistory();
+      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       if (editingId === id) {
         setEditingId(null);
@@ -395,11 +396,7 @@ export function UsersCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    Memuat data...
-                  </TableCell>
-                </TableRow>
+                <ApiTableLoadingRow colSpan={4} message="Memuat data user..." />
               ) : filteredRows.length ? (
                 pagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -532,7 +529,7 @@ export function UsersCrud() {
         loading={deleting}
       />
 
-      {isAdmin ? (
+      {hasFullAccess ? (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-heading text-lg">History Perubahan User</h3>

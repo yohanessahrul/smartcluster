@@ -1,51 +1,32 @@
+import { Building2 } from "lucide-react";
+
 import { LoginForm } from "@/components/login-form";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { users } from "@/lib/mock-data";
 
 export default function LoginPage() {
-  const demoAdmin = users.find((item) => item.role === "admin");
-  const demoFinance = users.find((item) => item.role === "finance");
-  const demoWarga = users.filter((item) => item.role === "warga").slice(0, 3);
-
   return (
     <div className="container py-10">
-      <div className="mx-auto grid max-w-4xl gap-4 lg:grid-cols-[1fr_1fr]">
+      <div className="mx-auto max-w-md">
         <Card>
-          <CardHeader>
-            <CardTitle>Login Smart Perumahan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <LoginForm />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Akun Demo</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              Gunakan email pada daftar ini. Password ditentukan saat login pertama (minimal 8 karakter).
-            </p>
-            <p className="text-xs text-muted-foreground">Jika lupa password, gunakan tombol `Lupa Password? Reset` di form login.</p>
-            <div className="rounded-lg border border-border p-3">
-              <p className="text-xs text-muted-foreground">Admin</p>
-              <p className="font-medium">{demoAdmin?.email}</p>
-            </div>
-            <div className="rounded-lg border border-border p-3">
-              <p className="text-xs text-muted-foreground">Finance</p>
-              <p className="font-medium">{demoFinance?.email}</p>
-            </div>
-            {demoWarga.map((item) => (
-              <div key={item.id} className="rounded-lg border border-border p-3">
-                <div className="mb-1 flex items-center gap-2">
-                  <p className="font-medium">{item.name}</p>
-                  <Badge variant="outline">warga</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{item.email}</p>
+          <CardHeader className="space-y-4">
+            <div className="rounded-lg border border-[hsl(var(--menu-border))] bg-gradient-to-br from-[hsl(var(--menu-bg))] to-[hsl(var(--menu-note))] p-4 text-[hsl(var(--menu-fg))]">
+              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--menu-active))] text-white">
+                <Building2 className="h-5 w-5" />
               </div>
-            ))}
+              <p className="font-heading text-lg">Smart Cluster</p>
+              <p className="mt-1 text-xs leading-relaxed text-[hsl(var(--menu-muted))]">
+                Sistem manajemen transaksi dan IPL perumahan yang transparan, rapi, dan mudah dipantau.
+              </p>
+            </div>
+            <div>
+              <CardTitle>Masuk ke Dashboard</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Login menggunakan Google, lalu sistem akan verifikasi akses berdasarkan tabel user.
+              </p>
+            </div>
+          </CardHeader>
+          <CardContent className="pb-6">
+            <LoginForm />
           </CardContent>
         </Card>
       </div>

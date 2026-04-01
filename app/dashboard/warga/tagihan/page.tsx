@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
+import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination } from "@/components/ui/table-pagination";
@@ -23,6 +24,8 @@ const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 export default function WargaTagihanPage() {
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<BillRow | null>(null);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewBill, setPreviewBill] = useState<BillRow | null>(null);
   const [payError, setPayError] = useState("");
   const [successToast, setSuccessToast] = useState("");
   const [localBills, setLocalBills] = useState<BillRow[]>([]);
@@ -56,6 +59,16 @@ export default function WargaTagihanPage() {
     setPayModalOpen(true);
     setPayProofFile(null);
     setPayError("");
+  }
+
+  function openPreviewModal(bill: BillRow) {
+    setPreviewBill(bill);
+    setPreviewModalOpen(true);
+  }
+
+  function isImageProof(url: string) {
+    const safeUrl = url.split("?")[0].toLowerCase();
+    return [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".svg"].some((ext) => safeUrl.endsWith(ext));
   }
 
   async function submitBillPayment(actorEmail?: string) {
@@ -197,15 +210,7 @@ export default function WargaTagihanPage() {
                           <TableCell>{item.periode}</TableCell>
                           <TableCell>{item.amount}</TableCell>
                           <TableCell>
-                            {item.status === "Lunas" ? (
-                              <Badge variant="success">Lunas</Badge>
-                            ) : item.status === "Belum bayar" ? (
-                              <Badge variant="warning">Belum bayar</Badge>
-                            ) : item.status === "Pending" ? (
-                              <Badge variant="warning">Pending</Badge>
-                            ) : (
-                              <Badge variant="secondary">Verifikasi</Badge>
-                            )}
+                            <PaymentStatusBadge status={item.status} />
                           </TableCell>
                           <TableCell>{formatDateTimeUnified(item.status_date)}</TableCell>
                           <TableCell className="min-w-[84px]">
@@ -218,6 +223,17 @@ export default function WargaTagihanPage() {
                                 onClick={() => openPayModal(item)}
                               >
                                 Bayar
+                              </Button>
+                            ) : item.status === "Pending" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-3"
+                                aria-label="Lihat detail IPL"
+                                title="Lihat detail IPL"
+                                onClick={() => openPreviewModal(item)}
+                              >
+                                Lihat
                               </Button>
                             ) : (
                               <span className="text-xs text-muted-foreground">-</span>
@@ -287,6 +303,57 @@ export default function WargaTagihanPage() {
                 <Button className="w-full" onClick={() => submitBillPayment(data.session?.email)} disabled={paySubmitting}>
                   {paySubmitting ? "Menyimpan..." : "Kirim Pembayaran"}
                 </Button>
+              </div>
+            </SimpleModal>
+
+            <SimpleModal open={previewModalOpen} onClose={() => setPreviewModalOpen(false)} title="Preview Detail IPL" className="w-[96vw] max-w-2xl">
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border p-3 text-sm">
+                  <p>
+                    <span className="text-muted-foreground">IPL:</span> {previewBill?.id ?? "-"}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Unit:</span> {houseDisplay}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Periode:</span> {previewBill?.periode ?? "-"}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Nominal:</span> {previewBill?.amount ?? "-"}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Status:</span> {previewBill?.status ?? "-"}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Status Date:</span> {formatDateTimeUnified(previewBill?.status_date)}
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Bukti Transaksi</p>
+                  {previewBill?.payment_proof_url ? (
+                    isImageProof(previewBill.payment_proof_url) ? (
+                      <div className="overflow-hidden rounded-lg border border-border bg-muted/20">
+                        <img
+                          src={previewBill.payment_proof_url}
+                          alt={`Bukti transaksi ${previewBill.id}`}
+                          className="h-auto max-h-[420px] w-full object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <a
+                        href={previewBill.payment_proof_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-sm text-primary underline underline-offset-2"
+                      >
+                        Lihat Bukti Transaksi
+                      </a>
+                    )
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Bukti transaksi belum tersedia.</p>
+                  )}
+                </div>
               </div>
             </SimpleModal>
           </div>

@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Users } from "lucide-react";
 
+import { ApiLoadingState } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthSession } from "@/lib/auth-client";
@@ -15,7 +16,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (loading || !session) return;
-    if (session.role === "admin" || session.role === "finance") {
+    if (session.role === "finance") {
+      router.replace("/dashboard/admin");
+      return;
+    }
+    if (session.role === "admin") {
       router.replace("/dashboard/admin");
       return;
     }
@@ -25,7 +30,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-4xl py-6">
-        <h1 className="font-heading text-2xl tracking-tight md:text-3xl">Memuat dashboard...</h1>
+        <ApiLoadingState message="Memuat dashboard..." />
       </div>
     );
   }

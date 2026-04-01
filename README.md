@@ -1,6 +1,6 @@
-# Smart Perumahan - Next.js + shadcn/ui
+# Smart Cluster - Next.js + shadcn/ui
 
-Prototype frontend berbasis PRD Smart Perumahan menggunakan:
+Prototype frontend berbasis PRD Smart Cluster menggunakan:
 
 - Next.js App Router
 - Next.js Route Handlers API (`app/api/*`)
@@ -10,7 +10,7 @@ Prototype frontend berbasis PRD Smart Perumahan menggunakan:
 - shadcn/ui components
 - Palette warna custom (tetap memakai tone hijau-teal + amber)
 - PWA ready (manifest + service worker + offline page)
-- Better Auth (email/password session)
+- Google OAuth + session cookie internal
 
 ## Menjalankan
 
@@ -44,6 +44,24 @@ psql "$DATABASE_URL" -f backend/schema.sql
 Catatan:
 - Upload bukti pembayaran IPL sudah otomatis ke Supabase Storage lewat endpoint `POST /api/storage/payment-proof`.
 - Bucket akan dicoba dibuat otomatis saat upload pertama jika belum ada.
+
+## Auto Redeploy Vercel (master)
+
+Workflow CI/CD otomatis tersedia di:
+
+- `.github/workflows/vercel-redeploy-master.yml`
+- `scripts/redeploy-vercel.sh`
+
+Trigger:
+
+- setiap `push` ke branch `master`
+- manual via `workflow_dispatch`
+
+GitHub repository secrets yang wajib diset:
+
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
 
 Service:
 
@@ -81,10 +99,12 @@ Route dashboard:
 - `components/admin-access-guard.tsx` - guard role admin
 - `components/warga-access-guard.tsx` - guard login + relasi house untuk warga
 - `components/pwa-register.tsx` - registrasi service worker
-- `components/login-form.tsx` - form login email + password (modal bootstrap Better Auth)
-- `lib/auth.ts` - konfigurasi server Better Auth
-- `lib/auth-client.ts` - Better Auth client + resolver role dan house by email
-- `app/api/dev/reset-token/route.ts` - endpoint dev untuk flow reset password tanpa email gateway
+- `components/login-form.tsx` - form login Google OAuth
+- `app/api/auth/google/start/route.ts` - memulai OAuth Google
+- `app/api/auth/google/callback/route.ts` - callback OAuth + validasi user table
+- `app/api/auth/session/route.ts` - endpoint baca sesi login aktif
+- `app/api/auth/logout/route.ts` - endpoint logout
+- `lib/auth-client.ts` - auth client session + resolver role dan house by email
 - `lib/api-client.ts` - client fetch ke backend Next.js API
 - `lib/server/db.ts` - koneksi PostgreSQL untuk Next.js API
 - `lib/server/smart-api.ts` - business logic backend (migrasi dari Express)

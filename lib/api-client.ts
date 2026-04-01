@@ -1,4 +1,5 @@
 import { BillRow, HouseRow, TransactionRow, UserRow } from "@/lib/mock-data";
+import { emitDeveloperError } from "@/lib/developer-error";
 
 const API_BASE_URL = "";
 
@@ -62,20 +63,47 @@ export type AuditLogRow = {
 };
 
 async function request<T>(path: string, init?: RequestInit & MutationOptions): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.actorEmail ? { "x-actor-email": init.actorEmail } : {}),
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
+  const method = (init?.method ?? "GET").toUpperCase();
+  const isNonFormRequest = method === "GET" || method === "HEAD";
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.actorEmail ? { "x-actor-email": init.actorEmail } : {}),
+        ...(init?.headers ?? {}),
+      },
+      ...init,
+    });
+  } catch (error) {
+    if (isNonFormRequest) {
+      emitDeveloperError({
+        title: "Network Request Failed",
+        message: error instanceof Error ? error.message : "Fetch failed.",
+        detail: `Request: ${method} ${path}`,
+        source: "api-client/request",
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
+    throw error;
+  }
 
   if (!response.ok) {
     const errorBody = (await response.json().catch(() => null)) as JsonRecord | null;
     const baseMessage = typeof errorBody?.message === "string" ? errorBody.message : "API request gagal.";
     const detail = typeof errorBody?.detail === "string" ? errorBody.detail : "";
     const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
+
+    if (isNonFormRequest) {
+      emitDeveloperError({
+        title: "API Request Error",
+        message,
+        detail: `Request: ${method} ${path}\nHTTP: ${response.status} ${response.statusText}`,
+        source: "api-client/request",
+      });
+    }
+
     throw new Error(message);
   }
 
