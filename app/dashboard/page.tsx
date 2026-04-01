@@ -1,10 +1,35 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ShieldCheck, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuthSession } from "@/lib/auth-client";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { loading, session } = useAuthSession();
+
+  useEffect(() => {
+    if (loading || !session) return;
+    if (session.role === "admin" || session.role === "finance") {
+      router.replace("/dashboard/admin");
+      return;
+    }
+    router.replace("/dashboard/warga");
+  }, [loading, router, session]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-4xl py-6">
+        <h1 className="font-heading text-2xl tracking-tight md:text-3xl">Memuat dashboard...</h1>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl py-6">
       <h1 className="font-heading text-3xl tracking-tight md:text-4xl">Pilih Dashboard Sesuai Role</h1>

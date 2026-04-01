@@ -7,6 +7,7 @@ import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { apiClient, emitDataChanged } from "@/lib/api-client";
@@ -51,7 +52,6 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
   const [updateOpen, setUpdateOpen] = useState(false);
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
   const [successToast, setSuccessToast] = useState("");
 
   useEffect(() => {
@@ -65,7 +65,6 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
     if (!data.session || !data.house) return;
     if (!isPrimaryUser) {
       setFormError("Hanya Primary yang bisa mengubah data Secondary.");
-      setMessage("Hanya Primary yang bisa mengubah data Secondary.");
       return;
     }
 
@@ -75,19 +74,16 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
 
     if (!name || !email || !phone) {
       setFormError("Nama, email, dan nomor telepon wajib diisi.");
-      setMessage("Nama, email, dan nomor telepon wajib diisi.");
       return;
     }
     if (email === primaryEmail) {
       setFormError("Email Secondary tidak boleh sama dengan Primary.");
-      setMessage("Email Secondary tidak boleh sama dengan Primary.");
       return;
     }
 
     try {
       setSubmitting(true);
       setFormError("");
-      setMessage("");
 
       const users = await apiClient.getUsers();
       const emailOwner = users.find((item) => item.email.toLowerCase() === email);
@@ -95,7 +91,6 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
       if (secondaryUser) {
         if (emailOwner && emailOwner.id !== secondaryUser.id) {
           setFormError("Email sudah digunakan user lain. Gunakan email lain.");
-          setMessage("Email sudah digunakan user lain. Gunakan email lain.");
           setSubmitting(false);
           return;
         }
@@ -112,7 +107,6 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
       } else {
         if (emailOwner) {
           setFormError("Email sudah digunakan user lain. Gunakan email lain.");
-          setMessage("Email sudah digunakan user lain. Gunakan email lain.");
           setSubmitting(false);
           return;
         }
@@ -146,12 +140,10 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
       await data.refresh();
       setUpdateOpen(false);
       setFormError("");
-      setMessage("");
       setSuccessToast("Data Secondary berhasil disimpan.");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal menyimpan data Secondary.";
       setFormError(errorMessage);
-      setMessage(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -168,45 +160,21 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
-              <span className="text-muted-foreground">House ID:</span> {data.house?.id}
+              <span className="text-muted-foreground">ID:</span> {data.house?.id}
             </p>
             <p>
-              <span className="text-muted-foreground">Blok:</span> {data.house?.blok}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Nomor:</span> {data.house?.nomor}
+              <span className="text-muted-foreground">Unit:</span> {data.house ? `${data.house.blok}-${data.house.nomor}` : "-"}
             </p>
             <p>
               <span className="text-muted-foreground">Email Login:</span> {data.session?.email}
             </p>
-            <p>
-              <span className="text-muted-foreground">Primary:</span> {primaryEmail || "-"}
-            </p>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p>
-                <span className="text-muted-foreground">Secondary:</span> {secondaryEmail || "-"}
-              </p>
-              {isPrimaryUser ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setFormError("");
-                    setUpdateOpen(true);
-                  }}
-                >
-                  Update
-                </Button>
-              ) : null}
-            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-3">
             <CardTitle>Akun Terhubung ke House</CardTitle>
-            {isPrimaryUser && !hasSecondaryEmail ? (
+            {isPrimaryUser && hasSecondaryEmail ? (
               <Button
                 type="button"
                 onClick={() => {
@@ -214,7 +182,7 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
                   setUpdateOpen(true);
                 }}
               >
-                Tambah Account
+                Update
               </Button>
             ) : null}
           </CardHeader>
@@ -235,11 +203,11 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
         </Card>
       </section>
 
-      {message ? <p className="mt-4 text-sm text-muted-foreground">{message}</p> : null}
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
 
       <SimpleModal open={updateOpen} onClose={() => setUpdateOpen(false)} title="Update Secondary">
         <form className="space-y-3" onSubmit={upsertSecondaryUser}>
+          <FormErrorAlert message={formError} />
           <div>
             <label className={labelClass}>Nama</label>
             <input
@@ -271,7 +239,6 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
               required
             />
           </div>
-          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
           <Button type="submit" disabled={submitting}>
             {submitting ? "Menyimpan..." : "Update"}
           </Button>

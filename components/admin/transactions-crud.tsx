@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
+import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -144,6 +145,7 @@ function buildStatusTimeline(rows: AuditLogRow[]): StatusTimelineRow[] {
 
 function transactionStatusBadge(status: TransactionRow["status"]) {
   if (status === "Lunas") return <Badge variant="success">Lunas</Badge>;
+  if (status === "Belum bayar") return <Badge variant="warning">Belum bayar</Badge>;
   if (status === "Pending") return <Badge variant="warning">Pending</Badge>;
   return <Badge variant="secondary">Verifikasi</Badge>;
 }
@@ -178,6 +180,7 @@ function TransactionForm({
 }: TransactionFormProps) {
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
+      <FormErrorAlert message={errorMessage} />
       <div>
         <label className={labelClass}>ID</label>
         <input
@@ -292,12 +295,12 @@ function TransactionForm({
           onChange={(event) => onChange({ ...value, status: event.target.value as TransactionFormStatus })}
         >
           {allowEmptyStatus ? <option value="">Pilih status</option> : null}
+          <option value="Belum bayar">Belum bayar</option>
           <option value="Pending">Pending</option>
           <option value="Verifikasi">Verifikasi</option>
           <option value="Lunas">Lunas</option>
         </select>
       </div>
-      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
       <Button type="submit">{submitLabel}</Button>
     </form>
   );
@@ -309,9 +312,10 @@ type CreateTransactionModalProps = {
   value: TransactionFormValue;
   onChange: (value: TransactionFormValue) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  errorMessage?: string;
 };
 
-function CreateTransactionModal({ open, onClose, value, onChange, onSubmit }: CreateTransactionModalProps) {
+function CreateTransactionModal({ open, onClose, value, onChange, onSubmit, errorMessage }: CreateTransactionModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Create Transaction">
       <TransactionForm
@@ -323,6 +327,7 @@ function CreateTransactionModal({ open, onClose, value, onChange, onSubmit }: Cr
         showBillId={false}
         showDateField={false}
         allowEmptyStatus
+        errorMessage={errorMessage}
       />
     </SimpleModal>
   );
@@ -368,6 +373,7 @@ export function TransactionsCrud() {
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
   const [successToast, setSuccessToast] = useState("");
+  const [createError, setCreateError] = useState("");
   const [updateError, setUpdateError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -433,6 +439,8 @@ export function TransactionsCrud() {
       setHistoryLoading(true);
       const rows = await apiClient.getAuditLogs("transactions", 40);
       setHistoryRows(rows);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Gagal memuat history transactions.");
     } finally {
       setHistoryLoading(false);
     }
@@ -440,8 +448,9 @@ export function TransactionsCrud() {
 
   async function createTransaction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setCreateError("");
     if (!createForm.status) {
-      setMessage("Pilih status transaction terlebih dahulu.");
+      setCreateError("Pilih status transaction terlebih dahulu.");
       return;
     }
     const transactionDate = new Date().toISOString();
@@ -463,9 +472,10 @@ export function TransactionsCrud() {
       setCreateForm(emptyForm);
       setCreateOpen(false);
       setMessage("");
+      setCreateError("");
       setSuccessToast("Transaction berhasil ditambahkan.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal menambah transaction.");
+      setCreateError(error instanceof Error ? error.message : "Gagal menambah transaction.");
     }
   }
 
@@ -484,6 +494,7 @@ export function TransactionsCrud() {
       status_date: now,
     });
     setCreateOpen(true);
+    setCreateError("");
     setMessage("");
   }
 
@@ -502,14 +513,12 @@ export function TransactionsCrud() {
     if (!editForm.status) {
       const errorMessage = "Status transaction wajib dipilih.";
       setUpdateError(errorMessage);
-      setMessage(errorMessage);
       return;
     }
     const transactionDate = toIsoFromDateTimeLocal(editForm.date);
     if (!transactionDate) {
       const errorMessage = "Format tanggal transaksi tidak valid.";
       setUpdateError(errorMessage);
-      setMessage(errorMessage);
       return;
     }
     try {
@@ -535,7 +544,6 @@ export function TransactionsCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui transaction.";
       setUpdateError(errorMessage);
-      setMessage(errorMessage);
     }
   }
 
@@ -592,7 +600,7 @@ export function TransactionsCrud() {
 
   function renderStatusCell(status: string | null) {
     if (!status) return <span className="text-xs text-muted-foreground">-</span>;
-    if (status === "Lunas" || status === "Pending" || status === "Verifikasi") {
+    if (status === "Lunas" || status === "Belum bayar" || status === "Pending" || status === "Verifikasi") {
       return transactionStatusBadge(status);
     }
     return <span className="text-xs">{status}</span>;
@@ -700,7 +708,6 @@ export function TransactionsCrud() {
                       <div className="space-y-2">
                         <p className="text-sm">{item.transaction_name}</p>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline">{item.id}</Badge>
                           {transactionTypeBadge(item.transaction_type)}
                           <Badge variant="secondary">{item.category}</Badge>
                         </div>
@@ -779,6 +786,7 @@ export function TransactionsCrud() {
         value={createForm}
         onChange={setCreateForm}
         onSubmit={createTransaction}
+        errorMessage={createError}
       />
       <UpdateTransactionModal
         open={updateOpen}

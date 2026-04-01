@@ -73,7 +73,9 @@ async function request<T>(path: string, init?: RequestInit & MutationOptions): P
 
   if (!response.ok) {
     const errorBody = (await response.json().catch(() => null)) as JsonRecord | null;
-    const message = typeof errorBody?.message === "string" ? errorBody.message : "API request gagal.";
+    const baseMessage = typeof errorBody?.message === "string" ? errorBody.message : "API request gagal.";
+    const detail = typeof errorBody?.detail === "string" ? errorBody.detail : "";
+    const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
     throw new Error(message);
   }
 
@@ -95,7 +97,9 @@ async function uploadRequest<T>(path: string, formData: FormData, options?: Muta
 
   if (!response.ok) {
     const errorBody = (await response.json().catch(() => null)) as JsonRecord | null;
-    const message = typeof errorBody?.message === "string" ? errorBody.message : "Upload gagal.";
+    const baseMessage = typeof errorBody?.message === "string" ? errorBody.message : "Upload gagal.";
+    const detail = typeof errorBody?.detail === "string" ? errorBody.detail : "";
+    const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
     throw new Error(message);
   }
 
@@ -155,6 +159,15 @@ export const apiClient = {
     request<{ status: boolean; billId: string; newBillStatus: BillRow["status"] }>("/api/warga/pay-qris", {
       method: "POST",
       body: JSON.stringify({ billId }),
+      ...options,
+    }),
+  payBill: (
+    payload: { billId: string; payment_method?: BillRow["payment_method"]; payment_proof_url: string },
+    options?: MutationOptions
+  ) =>
+    request<{ status: boolean; billId: string; newBillStatus: BillRow["status"] }>("/api/warga/pay-qris", {
+      method: "POST",
+      body: JSON.stringify(payload),
       ...options,
     }),
   uploadBillPaymentProof: async (billId: string, file: File, options?: MutationOptions) => {

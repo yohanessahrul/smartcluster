@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
+import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -33,7 +34,7 @@ const emptyForm: BillRow = {
   periode: "",
   amount: "",
   payment_method: "Transfer Bank",
-  status: "Belum Dibayar",
+  status: "Belum bayar",
   status_date: "",
   payment_proof_url: null,
   paid_to_developer: false,
@@ -97,7 +98,8 @@ function makeBillId(numberValue: number) {
 
 function statusBadge(status: BillRow["status"]) {
   if (status === "Lunas") return <Badge variant="success">Lunas</Badge>;
-  if (status === "Belum Dibayar") return <Badge variant="warning">Belum Dibayar</Badge>;
+  if (status === "Belum bayar") return <Badge variant="warning">Belum bayar</Badge>;
+  if (status === "Pending") return <Badge variant="warning">Pending</Badge>;
   return <Badge variant="secondary">Verifikasi</Badge>;
 }
 
@@ -185,6 +187,7 @@ function BillForm({
 
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
+      <FormErrorAlert message={errorMessage} />
       <div>
         <label className={labelClass}>ID</label>
         <input className={inputClass} value={value.id} readOnly={readOnlyId} disabled={readOnlyId} />
@@ -234,7 +237,8 @@ function BillForm({
           value={value.status}
           onChange={(event) => onChange({ ...value, status: event.target.value as BillRow["status"] })}
         >
-          <option value="Belum Dibayar">Belum Dibayar</option>
+          <option value="Belum bayar">Belum bayar</option>
+          <option value="Pending">Pending</option>
           <option value="Verifikasi">Verifikasi</option>
           <option value="Lunas">Lunas</option>
         </select>
@@ -307,7 +311,6 @@ function BillForm({
           </div>
         </>
       ) : null}
-      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
       <Button type="submit">{submitLabel}</Button>
     </form>
   );
@@ -322,9 +325,10 @@ type CreateBillModalProps = {
   onProofFileChange: (file: File | null) => void;
   onChange: (value: BillRow) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  errorMessage?: string;
 };
 
-function CreateBillModal({ open, onClose, value, houses, proofFile, onProofFileChange, onChange, onSubmit }: CreateBillModalProps) {
+function CreateBillModal({ open, onClose, value, houses, proofFile, onProofFileChange, onChange, onSubmit, errorMessage }: CreateBillModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Create IPL">
       <BillForm
@@ -337,6 +341,7 @@ function CreateBillModal({ open, onClose, value, houses, proofFile, onProofFileC
         onSubmit={onSubmit}
         readOnlyId
         showDeveloperFields={false}
+        errorMessage={errorMessage}
       />
     </SimpleModal>
   );
@@ -414,6 +419,7 @@ function FinanceVerifyModal({
   return (
     <SimpleModal open={open} onClose={onClose} title="Verifikasi IPL">
       <form className="space-y-3" onSubmit={onSubmit}>
+        <FormErrorAlert message={errorMessage} />
         <div>
           <label className={labelClass}>Status</label>
           <select
@@ -421,7 +427,8 @@ function FinanceVerifyModal({
             value={value.status}
             onChange={(event) => onChange({ ...value, status: event.target.value as BillRow["status"] })}
           >
-            <option value="Belum Dibayar">Belum Dibayar</option>
+            <option value="Belum bayar">Belum bayar</option>
+            <option value="Pending">Pending</option>
             <option value="Verifikasi">Verifikasi</option>
             <option value="Lunas">Lunas</option>
           </select>
@@ -454,7 +461,6 @@ function FinanceVerifyModal({
             </a>
           ) : null}
         </div>
-        {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
         <Button type="submit">Simpan Verifikasi</Button>
       </form>
     </SimpleModal>
@@ -467,12 +473,14 @@ type GenerateBillModalProps = {
   value: GenerateForm;
   onChange: (value: GenerateForm) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  errorMessage?: string;
 };
 
-function GenerateBillModal({ open, onClose, value, onChange, onSubmit }: GenerateBillModalProps) {
+function GenerateBillModal({ open, onClose, value, onChange, onSubmit, errorMessage }: GenerateBillModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Generate IPL">
       <form className="space-y-3" onSubmit={onSubmit}>
+        <FormErrorAlert message={errorMessage} />
         <div>
           <label className={labelClass}>Periode Bulan</label>
           <input
@@ -537,8 +545,10 @@ export function BillsCrud() {
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
   const [successToast, setSuccessToast] = useState("");
+  const [createError, setCreateError] = useState("");
   const [updateError, setUpdateError] = useState("");
   const [verifyError, setVerifyError] = useState("");
+  const [generateError, setGenerateError] = useState("");
   const [verifyForm, setVerifyForm] = useState<FinanceVerifyForm>({
     status: "Verifikasi",
     payment_method: "Transfer Bank",
@@ -644,6 +654,8 @@ export function BillsCrud() {
       setHistoryLoading(true);
       const rows = await apiClient.getAuditLogs("bills", 40);
       setHistoryRows(rows);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Gagal memuat history IPL.");
     } finally {
       setHistoryLoading(false);
     }
@@ -659,31 +671,33 @@ export function BillsCrud() {
       periode: toPeriode(getDefaultMonth()),
       amount: "Rp150.000",
       payment_method: "Transfer Bank",
-      status: "Belum Dibayar",
+      status: "Belum bayar",
       status_date: getNowDateTimeLocalInput(),
       payment_proof_url: null,
       paid_to_developer: false,
       date_paid_period_to_developer: null,
     });
     setCreateOpen(true);
+    setCreateError("");
     setMessage("");
   }
 
   async function createBill(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setCreateError("");
     if (!createForm.house_id) {
-      setMessage("Pilih house terlebih dulu.");
+      setCreateError("Pilih house terlebih dulu.");
       return;
     }
 
     if (rows.some((item) => item.id === createForm.id)) {
-      setMessage("ID IPL sudah digunakan.");
+      setCreateError("ID IPL sudah digunakan.");
       return;
     }
 
     const existedPeriode = rows.some((item) => item.house_id === createForm.house_id && item.periode === createForm.periode);
     if (existedPeriode) {
-      setMessage("House ini sudah punya IPL di periode tersebut.");
+      setCreateError("House ini sudah punya IPL di periode tersebut.");
       return;
     }
 
@@ -700,9 +714,10 @@ export function BillsCrud() {
       setCreateOpen(false);
       setCreateProofFile(null);
       setMessage("");
+      setCreateError("");
       setSuccessToast("IPL berhasil ditambahkan.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal menambah IPL.");
+      setCreateError(error instanceof Error ? error.message : "Gagal menambah IPL.");
     }
   }
 
@@ -745,7 +760,6 @@ export function BillsCrud() {
     if (existedPeriode) {
       const errorMessage = "Kombinasi house dan periode sudah digunakan IPL lain.";
       setUpdateError(errorMessage);
-      setMessage(errorMessage);
       return;
     }
 
@@ -778,7 +792,6 @@ export function BillsCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui IPL.";
       setUpdateError(errorMessage);
-      setMessage(errorMessage);
     }
   }
 
@@ -791,7 +804,6 @@ export function BillsCrud() {
     if (!current) {
       const errorMessage = "Data IPL tidak ditemukan.";
       setVerifyError(errorMessage);
-      setMessage(errorMessage);
       return;
     }
 
@@ -828,7 +840,6 @@ export function BillsCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memverifikasi IPL.";
       setVerifyError(errorMessage);
-      setMessage(errorMessage);
     }
   }
 
@@ -866,6 +877,7 @@ export function BillsCrud() {
 
   async function generateBillForAllHouses(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setGenerateError("");
     try {
       const result = await apiClient.generateBills({
         month: generateForm.month,
@@ -879,8 +891,13 @@ export function BillsCrud() {
         `Generate ${result.periode} selesai: dibuat ${result.created}, diperbarui ${result.updated}, skip lunas ${result.skipPaid}, skip existing ${result.skipExisting}.`
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal generate IPL.");
+      setGenerateError(error instanceof Error ? error.message : "Gagal generate IPL.");
     }
+  }
+
+  function openGenerateModal() {
+    setGenerateError("");
+    setGenerateOpen(true);
   }
 
   async function loadPreviewHistory(recordId: string) {
@@ -904,7 +921,7 @@ export function BillsCrud() {
 
   function renderStatusCell(status: string | null) {
     if (!status) return <span className="text-xs text-muted-foreground">-</span>;
-    if (status === "Lunas" || status === "Belum Dibayar" || status === "Verifikasi") {
+    if (status === "Lunas" || status === "Belum bayar" || status === "Pending" || status === "Verifikasi") {
       return statusBadge(status);
     }
     return <span className="text-xs">{status}</span>;
@@ -931,7 +948,7 @@ export function BillsCrud() {
           <CardTitle>Data IPL</CardTitle>
           {isAdmin || isFinance ? (
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Button className="w-full sm:w-auto" variant="outline" onClick={() => setGenerateOpen(true)}>
+              <Button className="w-full sm:w-auto" variant="outline" onClick={openGenerateModal}>
                 Generate IPL
               </Button>
               {isAdmin || isFinance ? (
@@ -961,7 +978,8 @@ export function BillsCrud() {
                 onChange={(event) => setStatusFilter(event.target.value as "all" | BillRow["status"])}
               >
                 <option value="all">Semua status</option>
-                <option value="Belum Dibayar">Belum Dibayar</option>
+                <option value="Belum bayar">Belum bayar</option>
+                <option value="Pending">Pending</option>
                 <option value="Verifikasi">Verifikasi</option>
                 <option value="Lunas">Lunas</option>
               </select>
@@ -1114,6 +1132,7 @@ export function BillsCrud() {
         onProofFileChange={setCreateProofFile}
         onChange={setCreateForm}
         onSubmit={createBill}
+        errorMessage={createError}
       />
       <UpdateBillModal
         open={updateOpen}
@@ -1143,6 +1162,7 @@ export function BillsCrud() {
         value={generateForm}
         onChange={setGenerateForm}
         onSubmit={generateBillForAllHouses}
+        errorMessage={generateError}
       />
       <SimpleModal
         open={previewOpen}

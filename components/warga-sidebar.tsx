@@ -5,10 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, ClipboardList, Home, LogOut, Receipt, ShieldCheck, UserRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { logout, useAuthSession } from "@/lib/auth-client";
+import { logout, useWargaResolvedData } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
-const menus = [
+const overviewMenu = { href: "/dashboard/warga", label: "Overview", icon: Home } as const;
+
+const protectedMenus = [
   { href: "/dashboard/warga", label: "Overview", icon: Home },
   { href: "/dashboard/warga/profile", label: "Profil", icon: UserRound },
   { href: "/dashboard/warga/tagihan", label: "IPL", icon: Receipt },
@@ -19,7 +21,9 @@ const menus = [
 export function WargaSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { session } = useAuthSession();
+  const { session, house, loading } = useWargaResolvedData();
+  const hasHouse = Boolean(house);
+  const menus = hasHouse ? protectedMenus : [overviewMenu];
 
   async function onLogout() {
     await logout();
@@ -32,6 +36,11 @@ export function WargaSidebar() {
         <p className="font-heading text-sm">Portal Warga</p>
         <p className="text-xs text-[hsl(var(--menu-muted))]">Akses tagihan dan transparansi dana</p>
         {session?.email ? <p className="mt-1 text-xs text-[hsl(var(--menu-muted))]">{session.email}</p> : null}
+        {!loading && !hasHouse ? (
+          <p className="mt-2 rounded-md border border-[hsl(var(--menu-border))] bg-white/70 px-2 py-1 text-[11px] leading-relaxed text-[hsl(var(--menu-muted))]">
+            Akun masih dalam proses verifikasi data rumah. Untuk sementara, menu yang tersedia hanya Overview.
+          </p>
+        ) : null}
       </div>
 
       <nav className="space-y-1">

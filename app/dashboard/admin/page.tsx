@@ -21,9 +21,10 @@ export default function AdminDashboardPage() {
   const [bills, setBills] = useState<BillRow[]>([]);
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    loadDashboardData();
+    void loadDashboardData();
     window.addEventListener("smart-perumahan-data-changed", loadDashboardData);
     return () => window.removeEventListener("smart-perumahan-data-changed", loadDashboardData);
   }, []);
@@ -31,6 +32,7 @@ export default function AdminDashboardPage() {
   async function loadDashboardData() {
     try {
       setLoading(true);
+      setLoadError("");
       const [usersData, housesData, billsData, transactionsData] = await Promise.all([
         apiClient.getUsers(),
         apiClient.getHouses(),
@@ -41,6 +43,12 @@ export default function AdminDashboardPage() {
       setHouses(housesData);
       setBills(billsData);
       setTransactions(transactionsData);
+    } catch (error) {
+      setUsers([]);
+      setHouses([]);
+      setBills([]);
+      setTransactions([]);
+      setLoadError(error instanceof Error ? error.message : "Gagal memuat dashboard.");
     } finally {
       setLoading(false);
     }
@@ -52,7 +60,7 @@ export default function AdminDashboardPage() {
 
   const adminMetrics = useMemo(() => {
     const paid = bills.filter((item) => item.status === "Lunas").length;
-    const unpaid = bills.filter((item) => item.status === "Belum Dibayar").length;
+    const unpaid = bills.filter((item) => item.status !== "Lunas").length;
     return { paid, unpaid };
   }, [bills]);
 
@@ -99,6 +107,7 @@ export default function AdminDashboardPage() {
           title="Dashboard Finance"
           description="Ringkasan data verifikasi IPL, arus pemasukan, dan daftar unit yang perlu ditindak."
         />
+        {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
         <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <Card>
@@ -247,6 +256,7 @@ export default function AdminDashboardPage() {
         title="Dashboard Admin"
         description="Ringkasan operasional IPL: rumah, warga, tagihan, dan transaksi terbaru."
       />
+      {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
       <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card>

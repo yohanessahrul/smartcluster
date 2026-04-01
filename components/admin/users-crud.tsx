@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
+import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -54,6 +55,7 @@ type UserFormProps = {
 function UserForm({ value, onChange, disableId, errorMessage, submitLabel, onSubmit }: UserFormProps) {
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
+      <FormErrorAlert message={errorMessage} />
       <div>
         <label className={labelClass}>ID</label>
         <input
@@ -104,7 +106,6 @@ function UserForm({ value, onChange, disableId, errorMessage, submitLabel, onSub
           <option value="finance">Finance</option>
         </select>
       </div>
-      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
       <Button type="submit">{submitLabel}</Button>
     </form>
   );
@@ -116,12 +117,13 @@ type CreateUserModalProps = {
   value: UserRow;
   onChange: (value: UserRow) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  errorMessage?: string;
 };
 
-function CreateUserModal({ open, onClose, value, onChange, onSubmit }: CreateUserModalProps) {
+function CreateUserModal({ open, onClose, value, onChange, onSubmit, errorMessage }: CreateUserModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Create User">
-      <UserForm value={value} onChange={onChange} submitLabel="Create" onSubmit={onSubmit} disableId />
+      <UserForm value={value} onChange={onChange} submitLabel="Create" onSubmit={onSubmit} disableId errorMessage={errorMessage} />
     </SimpleModal>
   );
 }
@@ -163,6 +165,7 @@ export function UsersCrud() {
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
   const [successToast, setSuccessToast] = useState("");
+  const [createError, setCreateError] = useState("");
   const [updateError, setUpdateError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -210,6 +213,8 @@ export function UsersCrud() {
       setHistoryLoading(true);
       const rows = await apiClient.getAuditLogs("users", 40);
       setHistoryRows(rows);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Gagal memuat history users.");
     } finally {
       setHistoryLoading(false);
     }
@@ -217,6 +222,7 @@ export function UsersCrud() {
 
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setCreateError("");
     try {
       await apiClient.createUser(createForm, { actorEmail });
       await loadUsers();
@@ -225,9 +231,10 @@ export function UsersCrud() {
       setCreateForm(emptyForm);
       setCreateOpen(false);
       setMessage("");
+      setCreateError("");
       setSuccessToast("User berhasil ditambahkan.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal menambah user.");
+      setCreateError(error instanceof Error ? error.message : "Gagal menambah user.");
     }
   }
 
@@ -240,6 +247,7 @@ export function UsersCrud() {
       role: "warga",
     });
     setCreateOpen(true);
+    setCreateError("");
     setMessage("");
   }
 
@@ -280,7 +288,6 @@ export function UsersCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui user.";
       setUpdateError(errorMessage);
-      setMessage(errorMessage);
     }
   }
 
@@ -473,7 +480,14 @@ export function UsersCrud() {
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
 
-      <CreateUserModal open={createOpen} onClose={() => setCreateOpen(false)} value={createForm} onChange={setCreateForm} onSubmit={createUser} />
+      <CreateUserModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        value={createForm}
+        onChange={setCreateForm}
+        onSubmit={createUser}
+        errorMessage={createError}
+      />
       <UpdateUserModal
         open={updateOpen}
         onClose={() => setUpdateOpen(false)}

@@ -50,9 +50,6 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
           <p className="text-sm text-muted-foreground">
             Email {session.email} terdaftar sebagai warga. Gunakan akun admin atau finance untuk panel ini.
           </p>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/warga">Buka Dashboard Warga</Link>
-          </Button>
         </CardContent>
       </Card>
     );

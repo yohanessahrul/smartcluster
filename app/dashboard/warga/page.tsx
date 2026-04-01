@@ -1,30 +1,84 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarClock, Wallet } from "lucide-react";
+import { CalendarClock, RefreshCw, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { formatDateTimeUnified } from "@/lib/date-time";
 
 export default function WargaDashboardPage() {
   return (
     <WargaAccessGuard>
       {(data) => {
+        if (!data.house) {
+          return (
+            <div>
+              <DashboardHeader
+                title="Dashboard Warga"
+                description="Akun kamu sedang menunggu proses sinkronisasi dengan data unit rumah."
+              />
+
+              <section className="mb-4 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+                <Card className="border-[hsl(var(--warning-border))] bg-gradient-to-br from-[hsl(var(--warning-bg))] to-card">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-[hsl(var(--warning-ink))]" />
+                      Akun Sedang Diverifikasi
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                      Akun kamu masih belum terhubung dengan data rumah, admin sedang mengevaluasi dulu. Reload
+                      berkala atau segera hubungi admin agar prosesnya lebih cepat.
+                    </p>
+                    <div className="space-y-2 rounded-lg border border-[hsl(var(--warning-border))] bg-white/70 p-3 text-sm">
+                      <p className="flex items-start gap-2">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 text-[hsl(var(--warning-ink))]" />
+                        Selama verifikasi berlangsung, akses menu dibatasi hanya ke Overview.
+                      </p>
+                      <p className="flex items-start gap-2">
+                        <RefreshCw className="mt-0.5 h-4 w-4 text-[hsl(var(--warning-ink))]" />
+                        Lakukan refresh status secara berkala untuk cek apakah data unit sudah terhubung.
+                      </p>
+                    </div>
+                    <div>
+                      <Button type="button" onClick={() => void data.refresh()}>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Reload Status
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Yang Akan Aktif Setelah Terhubung</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-muted-foreground">
+                    <p>Tagihan IPL per periode beserta status pembayarannya.</p>
+                    <p>Riwayat transaksi pembayaran untuk unit rumah kamu.</p>
+                    <p>Laporan dana lingkungan agar penggunaan kas lebih transparan.</p>
+                  </CardContent>
+                </Card>
+              </section>
+            </div>
+          );
+        }
+
         const latestBill = [...data.houseBills].sort((a, b) => b.id.localeCompare(a.id))[0];
 
         return (
           <div>
             <DashboardHeader
               title="Dashboard Warga"
-              description={`Profil rumah ${data.house?.id} - Blok ${data.house?.blok} No ${data.house?.nomor}`}
+              description={`Profil rumah ${data.house.id} - Blok ${data.house.blok} No ${data.house.nomor}`}
             />
 
-            <section className="mb-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <section className="mb-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Tagihan Aktif</CardTitle>
@@ -49,42 +103,6 @@ export default function WargaDashboardPage() {
                     <Button asChild className="rounded-full">
                       <Link href="/dashboard/warga/tagihan">Lihat Tagihan</Link>
                     </Button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Transparansi Dana</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span>Kebersihan Lingkungan</span>
-                      <span>40%</span>
-                    </div>
-                    <Progress value={40} />
-                  </div>
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span>Keamanan</span>
-                      <span>30%</span>
-                    </div>
-                    <Progress value={30} />
-                  </div>
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span>Perbaikan Fasilitas</span>
-                      <span>20%</span>
-                    </div>
-                    <Progress value={20} />
-                  </div>
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span>Dana Cadangan</span>
-                      <span>10%</span>
-                    </div>
-                    <Progress value={10} />
                   </div>
                 </CardContent>
               </Card>

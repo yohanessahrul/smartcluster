@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileSpreadsheet, QrCode } from "lucide-react";
+import { FileSpreadsheet } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination } from "@/components/ui/table-pagination";
@@ -22,13 +23,15 @@ const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 export default function WargaTagihanPage() {
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<BillRow | null>(null);
-  const [message, setMessage] = useState("");
+  const [payError, setPayError] = useState("");
   const [successToast, setSuccessToast] = useState("");
   const [localBills, setLocalBills] = useState<BillRow[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | BillRow["status"]>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [payProofFile, setPayProofFile] = useState<File | null>(null);
+  const [paySubmitting, setPaySubmitting] = useState(false);
 
   useEffect(() => {
     const sync = async () => {
@@ -48,24 +51,42 @@ export default function WargaTagihanPage() {
     setPage(1);
   }, [search, statusFilter]);
 
-  function openQrisModal(bill: BillRow) {
+  function openPayModal(bill: BillRow) {
     setSelectedBill(bill);
     setPayModalOpen(true);
-    setMessage("");
+    setPayProofFile(null);
+    setPayError("");
   }
 
-  async function confirmQrisPayment(actorEmail?: string) {
+  async function submitBillPayment(actorEmail?: string) {
     if (!selectedBill) return;
+    if (!payProofFile) {
+      setPayError("Bukti transaksi wajib diupload.");
+      return;
+    }
     try {
-      await apiClient.payBillWithQris(selectedBill.id, { actorEmail });
+      setPaySubmitting(true);
+      setPayError("");
+      const uploaded = await apiClient.uploadBillPaymentProof(selectedBill.id, payProofFile, { actorEmail });
+      await apiClient.payBill(
+        {
+          billId: selectedBill.id,
+          payment_method: selectedBill.payment_method ?? "Transfer Bank",
+          payment_proof_url: uploaded.public_url,
+        },
+        { actorEmail }
+      );
       const rows = await apiClient.getBills();
       setLocalBills(rows);
       emitDataChanged();
       setPayModalOpen(false);
-      setMessage("");
-      setSuccessToast(`Pembayaran QRIS untuk ${selectedBill.id} berhasil dikirim. Status menjadi Verifikasi.`);
+      setPayProofFile(null);
+      setPayError("");
+      setSuccessToast(`Pembayaran untuk ${selectedBill.id} berhasil dikirim. Status menjadi Pending.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal memproses pembayaran QRIS.");
+      setPayError(error instanceof Error ? error.message : "Gagal memproses pembayaran.");
+    } finally {
+      setPaySubmitting(false);
     }
   }
 
@@ -137,7 +158,8 @@ export default function WargaTagihanPage() {
                       onChange={(event) => setStatusFilter(event.target.value as "all" | BillRow["status"])}
                     >
                       <option value="all">Semua status</option>
-                      <option value="Belum Dibayar">Belum Dibayar</option>
+                      <option value="Belum bayar">Belum bayar</option>
+                      <option value="Pending">Pending</option>
                       <option value="Verifikasi">Verifikasi</option>
                       <option value="Lunas">Lunas</option>
                     </select>
@@ -177,23 +199,25 @@ export default function WargaTagihanPage() {
                           <TableCell>
                             {item.status === "Lunas" ? (
                               <Badge variant="success">Lunas</Badge>
-                            ) : item.status === "Belum Dibayar" ? (
-                              <Badge variant="warning">Belum Dibayar</Badge>
+                            ) : item.status === "Belum bayar" ? (
+                              <Badge variant="warning">Belum bayar</Badge>
+                            ) : item.status === "Pending" ? (
+                              <Badge variant="warning">Pending</Badge>
                             ) : (
                               <Badge variant="secondary">Verifikasi</Badge>
                             )}
                           </TableCell>
                           <TableCell>{formatDateTimeUnified(item.status_date)}</TableCell>
                           <TableCell className="min-w-[84px]">
-                            {item.status === "Belum Dibayar" ? (
+                            {item.status === "Belum bayar" ? (
                               <Button
                                 size="sm"
-                                className="h-8 w-8 p-0"
-                                aria-label="Bayar QRIS"
-                                title="Bayar QRIS"
-                                onClick={() => openQrisModal(item)}
+                                className="h-8 px-3"
+                                aria-label="Bayar"
+                                title="Bayar"
+                                onClick={() => openPayModal(item)}
                               >
-                                <QrCode className="h-4 w-4" />
+                                Bayar
                               </Button>
                             ) : (
                               <span className="text-xs text-muted-foreground">-</span>
@@ -226,14 +250,17 @@ export default function WargaTagihanPage() {
               </CardContent>
             </Card>
 
-            {message ? <p className="mt-3 text-sm text-muted-foreground">{message}</p> : null}
             <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
 
-            <SimpleModal open={payModalOpen} onClose={() => setPayModalOpen(false)} title="Pembayaran QRIS (Dummy)">
+            <SimpleModal open={payModalOpen} onClose={() => setPayModalOpen(false)} title="Bayar Tagihan IPL">
               <div className="space-y-4">
+                <FormErrorAlert message={payError} />
                 <div className="rounded-lg border border-border p-3 text-sm">
                   <p>
                     <span className="text-muted-foreground">IPL:</span> {selectedBill?.id}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Unit:</span> {houseDisplay}
                   </p>
                   <p>
                     <span className="text-muted-foreground">Periode:</span> {selectedBill?.periode}
@@ -241,17 +268,24 @@ export default function WargaTagihanPage() {
                   <p>
                     <span className="text-muted-foreground">Nominal:</span> {selectedBill?.amount}
                   </p>
-                </div>
-
-                <div className="rounded-2xl border border-border bg-card p-4">
-                  <img src="/dummy-qris.svg" alt="Dummy QRIS Smart Perumahan" className="mx-auto w-full max-w-[280px]" />
-                  <p className="mt-2 text-center text-xs text-muted-foreground">
-                    QRIS dummy untuk prototipe. Ref pembayaran: SP-{selectedBill?.id}
+                  <p>
+                    <span className="text-muted-foreground">Payment Method:</span> {selectedBill?.payment_method ?? "Transfer Bank"}
                   </p>
                 </div>
 
-                <Button className="w-full" onClick={() => confirmQrisPayment(data.session?.email)}>
-                  Saya Sudah Bayar
+                <div>
+                  <label className={filterLabelClass}>Upload Bukti Transaksi</label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    className="h-10 w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    onChange={(event) => setPayProofFile(event.target.files?.[0] ?? null)}
+                  />
+                  {payProofFile ? <p className="mt-1 text-xs text-muted-foreground">File dipilih: {payProofFile.name}</p> : null}
+                </div>
+
+                <Button className="w-full" onClick={() => submitBillPayment(data.session?.email)} disabled={paySubmitting}>
+                  {paySubmitting ? "Menyimpan..." : "Kirim Pembayaran"}
                 </Button>
               </div>
             </SimpleModal>

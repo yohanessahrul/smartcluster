@@ -9,10 +9,6 @@ import {
   HouseRow,
   TransactionRow,
   UserRow,
-  bills as defaultBills,
-  houses as defaultHouses,
-  transactions as defaultTransactions,
-  users as defaultUsers,
 } from "@/lib/mock-data";
 
 export const authClient = createAuthClient({
@@ -84,7 +80,7 @@ export function useAuthSession() {
       const rows = await apiClient.getUsers();
       setUsersData(rows);
     } catch {
-      setUsersData(defaultUsers);
+      setUsersData([]);
     } finally {
       setUsersLoading(false);
     }
@@ -99,8 +95,8 @@ export function useAuthSession() {
   const session = useMemo<SessionData | null>(() => {
     const authUser = sessionQuery.data?.user;
     if (!authUser?.email) return null;
-
-    const matchedUser = usersData.find((item) => item.email.toLowerCase() === authUser.email.toLowerCase());
+    const normalizedEmail = authUser.email.toLowerCase();
+    const matchedUser = usersData.find((item) => item.email.toLowerCase() === normalizedEmail);
     if (!matchedUser) return null;
 
     return {
@@ -139,21 +135,41 @@ export function useWargaResolvedData() {
   const loadAllData = useCallback(async () => {
     try {
       setDataLoading(true);
-      const [usersRows, housesRows, billsRows, transactionRows] = await Promise.all([
+      const [usersRows, housesRows, billsRows, transactionRows] = await Promise.allSettled([
         apiClient.getUsers(),
         apiClient.getHouses(),
         apiClient.getBills(),
         apiClient.getTransactions(),
       ]);
-      setUsersData(usersRows);
-      setHousesData(housesRows);
-      setBillsData(billsRows);
-      setTransactionsData(transactionRows);
+
+      if (usersRows.status === "fulfilled") {
+        setUsersData(usersRows.value);
+      } else {
+        setUsersData((prev) => (prev.length ? prev : []));
+      }
+
+      if (housesRows.status === "fulfilled") {
+        setHousesData(housesRows.value);
+      } else {
+        setHousesData((prev) => (prev.length ? prev : []));
+      }
+
+      if (billsRows.status === "fulfilled") {
+        setBillsData(billsRows.value);
+      } else {
+        setBillsData((prev) => (prev.length ? prev : []));
+      }
+
+      if (transactionRows.status === "fulfilled") {
+        setTransactionsData(transactionRows.value);
+      } else {
+        setTransactionsData((prev) => (prev.length ? prev : []));
+      }
     } catch {
-      setUsersData(defaultUsers);
-      setHousesData(defaultHouses);
-      setBillsData(defaultBills);
-      setTransactionsData(defaultTransactions);
+      setUsersData((prev) => (prev.length ? prev : []));
+      setHousesData((prev) => (prev.length ? prev : []));
+      setBillsData((prev) => (prev.length ? prev : []));
+      setTransactionsData((prev) => (prev.length ? prev : []));
     } finally {
       setDataLoading(false);
     }

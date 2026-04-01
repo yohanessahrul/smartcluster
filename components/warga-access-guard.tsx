@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import { Home, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +15,7 @@ type WargaAccessGuardProps = {
 
 export function WargaAccessGuard({ children }: WargaAccessGuardProps) {
   const data = useWargaResolvedData();
+  const pathname = usePathname();
 
   if (data.loading) {
     return (
@@ -56,18 +59,29 @@ export function WargaAccessGuard({ children }: WargaAccessGuardProps) {
     );
   }
 
-  if (!data.house) {
+  const houseNotLinked = !data.house;
+  const isOverviewPage = pathname === "/dashboard/warga" || pathname === "/dashboard/warga/";
+
+  if (houseNotLinked && !isOverviewPage) {
     return (
-      <Card>
+      <Card className="border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]">
         <CardHeader>
-          <CardTitle>House profile tidak ditemukan</CardTitle>
+          <CardTitle>Akun Belum Terhubung ke Data Rumah</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Email {data.session.email} belum terhubung ke house mana pun. Hubungkan dulu dari menu Admin Houses.
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Akun kamu masih belum terhubung dengan data rumah. Admin sedang melakukan evaluasi data agar akses menu
+            warga tetap aman dan tepat sasaran.
           </p>
-          <Button asChild variant="outline">
-            <Link href="/dashboard/admin/houses">Buka Houses Admin</Link>
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Sementara ini hanya menu Overview yang tersedia. Reload berkala atau segera hubungi admin.
+          </p>
+          <Button asChild>
+            <Link href="/dashboard/warga">
+              <Home className="mr-1 h-4 w-4" />
+              Kembali ke Overview
+            </Link>
           </Button>
         </CardContent>
       </Card>

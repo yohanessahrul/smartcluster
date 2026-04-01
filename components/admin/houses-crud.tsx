@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
+import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -107,6 +108,7 @@ function HouseForm({
 
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
+      <FormErrorAlert message={errorMessage} />
       <div>
         <label className={labelClass}>ID</label>
         <input
@@ -248,7 +250,6 @@ function HouseForm({
           </select>
         )}
       </div>
-      {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
       <Button type="submit">{submitLabel}</Button>
     </form>
   );
@@ -261,9 +262,10 @@ type CreateHouseModalProps = {
   emailOptions: Array<{ email: string; label: string }>;
   onChange: (value: HouseFormState) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  errorMessage?: string;
 };
 
-function CreateHouseModal({ open, onClose, value, emailOptions, onChange, onSubmit }: CreateHouseModalProps) {
+function CreateHouseModal({ open, onClose, value, emailOptions, onChange, onSubmit, errorMessage }: CreateHouseModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Create House">
       <HouseForm
@@ -274,6 +276,7 @@ function CreateHouseModal({ open, onClose, value, emailOptions, onChange, onSubm
         disableId
         emailOptions={emailOptions}
         emailFieldMode="combobox"
+        errorMessage={errorMessage}
       />
     </SimpleModal>
   );
@@ -328,6 +331,7 @@ export function HousesCrud() {
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
   const [successToast, setSuccessToast] = useState("");
+  const [createError, setCreateError] = useState("");
   const [updateError, setUpdateError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -382,6 +386,8 @@ export function HousesCrud() {
       setHistoryLoading(true);
       const rows = await apiClient.getAuditLogs("houses", 40);
       setHistoryRows(rows);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Gagal memuat history houses.");
     } finally {
       setHistoryLoading(false);
     }
@@ -399,9 +405,10 @@ export function HousesCrud() {
 
   async function createHouse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setCreateError("");
     const validate = validateLinkedEmails(createForm);
     if (validate) {
-      setMessage(validate);
+      setCreateError(validate);
       return;
     }
     try {
@@ -421,9 +428,10 @@ export function HousesCrud() {
       setCreateForm(emptyForm);
       setCreateOpen(false);
       setMessage("");
+      setCreateError("");
       setSuccessToast("House berhasil ditambahkan.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal menambah house.");
+      setCreateError(error instanceof Error ? error.message : "Gagal menambah house.");
     }
   }
 
@@ -438,6 +446,7 @@ export function HousesCrud() {
       secondary_email: "",
     });
     setCreateOpen(true);
+    setCreateError("");
     setMessage("");
   }
 
@@ -462,7 +471,6 @@ export function HousesCrud() {
     const validate = validateLinkedEmails(editForm);
     if (validate) {
       setUpdateError(validate);
-      setMessage(validate);
       return;
     }
     const nextRow = mapToHouseRow(editForm);
@@ -489,7 +497,6 @@ export function HousesCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui house.";
       setUpdateError(errorMessage);
-      setMessage(errorMessage);
     }
   }
 
@@ -748,6 +755,7 @@ export function HousesCrud() {
         emailOptions={userEmailOptions}
         onChange={setCreateForm}
         onSubmit={createHouse}
+        errorMessage={createError}
       />
       <UpdateHouseModal
         open={updateOpen}

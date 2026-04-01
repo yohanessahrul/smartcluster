@@ -7,14 +7,68 @@ type GlobalSupabaseState = typeof globalThis & {
 
 const globalSupabaseState = globalThis as GlobalSupabaseState;
 
+function deriveSupabaseUrlFromProjectRef(projectRef: string | null | undefined) {
+  const ref = projectRef?.trim().toLowerCase();
+  if (!ref) return null;
+  if (!/^[a-z0-9-]+$/.test(ref)) return null;
+  return `https://${ref}.supabase.co`;
+}
+
+function deriveSupabaseUrlFromDatabaseUrl(connectionString: string | undefined) {
+  if (!connectionString) return null;
+  try {
+    const parsed = new URL(connectionString);
+    const host = parsed.hostname.toLowerCase();
+    const match = /^db\.([a-z0-9-]+)\.supabase\.co$/.exec(host);
+    if (!match) return null;
+    return `https://${match[1]}.supabase.co`;
+  } catch {
+    return null;
+  }
+}
+
+function deriveProjectRefFromSupabaseJwt(token: string | undefined) {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8")) as { ref?: unknown };
+    if (typeof payload.ref !== "string") return null;
+    const ref = payload.ref.trim().toLowerCase();
+    if (!/^[a-z0-9-]+$/.test(ref)) return null;
+    return ref;
+  } catch {
+    return null;
+  }
+}
+
 function getSupabaseUrl() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  if (!url) throw new Error("NEXT_PUBLIC_SUPABASE_URL belum diset.");
+  const projectRef =
+    process.env.SUPABASE_PROJECT_REF?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_PROJECT_REF?.trim() ||
+    deriveProjectRefFromSupabaseJwt(process.env.SUPABASE_SERVICE_ROLE_KEY) ||
+    deriveProjectRefFromSupabaseJwt(process.env.SUPABASE_SERVICE_ROLE) ||
+    deriveProjectRefFromSupabaseJwt(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY);
+
+  const url =
+    process.env.SUPABASE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ||
+    deriveSupabaseUrlFromProjectRef(projectRef) ||
+    deriveSupabaseUrlFromDatabaseUrl(process.env.SUPABASE_DB_URL) ||
+    deriveSupabaseUrlFromDatabaseUrl(process.env.DATABASE_URL) ||
+    deriveSupabaseUrlFromDatabaseUrl(process.env.POSTGRES_URL) ||
+    deriveSupabaseUrlFromDatabaseUrl(process.env.POSTGRES_PRISMA_URL) ||
+    deriveSupabaseUrlFromDatabaseUrl(process.env.POSTGRES_URL_NON_POOLING);
+  if (!url) {
+    throw new Error(
+      "SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL belum diset. Set salah satu URL Supabase atau SUPABASE_PROJECT_REF/SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
   return url;
 }
 
 function getSupabaseServiceRoleKey() {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE?.trim();
   if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY belum diset.");
   return key;
 }
