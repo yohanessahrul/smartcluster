@@ -32,6 +32,12 @@ function shouldRequireExplicitDbUrl() {
   return nodeEnv === "production" || vercelEnv === "production";
 }
 
+function asPositiveInt(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.floor(parsed);
+}
+
 if (!globalDbState.smartPerumahanPgPool) {
   const hasExplicitDbUrl = Boolean(
     process.env.DATABASE_URL ||
@@ -56,9 +62,18 @@ if (!globalDbState.smartPerumahanPgPool) {
   const useSsl =
     process.env.DB_SSL === "true" ||
     (process.env.DB_SSL !== "false" && /supabase\.co/i.test(connectionString));
+  const defaultPoolMax = shouldRequireExplicitDbUrl() ? 1 : 10;
+  const max = asPositiveInt(process.env.DB_POOL_MAX, defaultPoolMax);
+  const idleTimeoutMillis = asPositiveInt(process.env.DB_IDLE_TIMEOUT_MS, 10_000);
+  const connectionTimeoutMillis = asPositiveInt(process.env.DB_CONNECTION_TIMEOUT_MS, 5_000);
+
   globalDbState.smartPerumahanPgPool = new Pool({
     connectionString,
     ssl: useSsl ? { rejectUnauthorized: false } : false,
+    max,
+    idleTimeoutMillis,
+    connectionTimeoutMillis,
+    allowExitOnIdle: true,
   });
 }
 
