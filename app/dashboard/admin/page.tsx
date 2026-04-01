@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Home, NotebookText, Users, Wallet } from "lucide-react";
+import { AlertCircle, Home, NotebookText, Server, Users, Wallet } from "lucide-react";
 
+import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { Badge } from "@/components/ui/badge";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -24,6 +26,7 @@ export default function AdminDashboardPage() {
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [showServerStatus, setShowServerStatus] = useState(false);
 
   useEffect(() => {
     void loadDashboardData();
@@ -57,6 +60,7 @@ export default function AdminDashboardPage() {
   }
 
   const isFinance = session?.role === "finance";
+  const isAdmin = session?.role === "admin";
 
   const houseById = useMemo(() => new Map(houses.map((house) => [house.id, house])), [houses]);
 
@@ -264,6 +268,14 @@ export default function AdminDashboardPage() {
       <DashboardHeader
         title="Dashboard Admin"
         description="Ringkasan operasional IPL: rumah, warga, dan status tagihan."
+        actions={
+          isAdmin ? (
+            <Button type="button" variant="outline" className="h-10 rounded-lg px-3" onClick={() => setShowServerStatus(true)}>
+              <Server className="mr-2 h-4 w-4" />
+              Status Server
+            </Button>
+          ) : null
+        }
       />
       {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
@@ -305,6 +317,8 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
       </section>
+
+      <ServerStatusModal open={showServerStatus} onClose={() => setShowServerStatus(false)} />
     </div>
   );
 }

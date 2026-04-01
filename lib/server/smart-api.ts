@@ -1,6 +1,7 @@
 import { PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { pool, query } from "@/lib/server/db";
+import { deletePaymentProofFromSupabase } from "@/lib/server/supabase";
 
 type JsonRecord = Record<string, unknown>;
 type QueryFn = (text: string, params?: unknown[]) => Promise<QueryResult<QueryResultRow>>;
@@ -102,7 +103,7 @@ type GlobalApiState = typeof globalThis & {
   smartPerumahanApiSchemaVersion?: number;
 };
 
-const API_SCHEMA_VERSION = 3;
+const API_SCHEMA_VERSION = 4;
 
 export class ApiHttpError extends Error {
   status: number;
@@ -784,6 +785,17 @@ async function ensureTransactionColumns() {
   `);
 }
 
+async function ensurePerformanceIndexes() {
+  await query("CREATE INDEX IF NOT EXISTS idx_bills_periode ON bills (periode)");
+  await query("CREATE INDEX IF NOT EXISTS idx_bills_status_periode ON bills (status, periode)");
+  await query("CREATE INDEX IF NOT EXISTS idx_transactions_bill_lookup ON transactions (bill_id, transaction_type, category, date DESC, id DESC)");
+  await query("CREATE INDEX IF NOT EXISTS idx_transactions_status_date ON transactions (status, date DESC, id DESC)");
+  await query("CREATE INDEX IF NOT EXISTS idx_audit_logs_updated_desc ON audit_logs (updated_at DESC, id DESC)");
+  await query(
+    "CREATE INDEX IF NOT EXISTS idx_audit_logs_table_record_updated_desc ON audit_logs (table_name, record_id, updated_at DESC, id DESC)",
+  );
+}
+
 async function beginTransaction(client: PoolClient) {
   await client.query("BEGIN");
 }
@@ -809,6 +821,7 @@ export async function ensureBackendReady() {
       await ensureHouseUserOrderColumn();
       await ensureBillColumns();
       await ensureTransactionColumns();
+      await ensurePerformanceIndexes();
       globalState.smartPerumahanApiSchemaVersion = API_SCHEMA_VERSION;
     })().catch((error) => {
       globalState.smartPerumahanApiReadyPromise = undefined;
@@ -1147,11 +1160,16 @@ export async function listBills() {
 
 export async function createBill(payload: JsonRecord, actor: string) {
   const transaction = await pool.connect();
+  let paymentProofToDeleteAfterCommit: string | null = null;
   try {
     const status = normalizeBillStatus(payload.status) ?? "Belum bayar";
     const paymentMethod = normalizePaymentMethod(payload.payment_method, "Transfer Bank");
     const statusDate = nowDateTime();
-    const paymentProofUrl = normalizeOptionalUrl(payload.payment_proof_url);
+    const resolvedPaymentProofUrl = normalizeOptionalUrl(payload.payment_proof_url);
+    const paymentProofUrl = status === "Lunas" ? null : resolvedPaymentProofUrl;
+    if (status === "Lunas" && resolvedPaymentProofUrl) {
+      paymentProofToDeleteAfterCommit = resolvedPaymentProofUrl;
+    }
     const paidToDeveloper = normalizeBoolean(payload.paid_to_developer, false);
     const datePaidPeriodToDeveloper = paidToDeveloper
       ? normalizeOptionalDateOnly(payload.date_paid_period_to_developer)
@@ -1192,6 +1210,15 @@ export async function createBill(payload: JsonRecord, actor: string) {
     });
 
     await commitTransaction(transaction);
+
+    if (paymentProofToDeleteAfterCommit) {
+      try {
+        await deletePaymentProofFromSupabase(paymentProofToDeleteAfterCommit);
+      } catch (error) {
+        console.error("[bills] gagal hapus bukti pembayaran saat create IPL Lunas:", error);
+      }
+    }
+
     return result.rows[0];
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);
@@ -1206,6 +1233,7 @@ export async function createBill(payload: JsonRecord, actor: string) {
 
 export async function updateBill(id: string, payload: UpdateBillPayload, actor: string) {
   const transaction = await pool.connect();
+  let paymentProofToDeleteAfterCommit: string | null = null;
   try {
     const status = normalizeBillStatus(payload.status) ?? "Belum bayar";
     await beginTransaction(transaction);
@@ -1222,9 +1250,13 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
     const previous = before.rows[0] as JsonRecord;
     const paidToDeveloper = normalizeBoolean(payload.paid_to_developer, Boolean(previous.paid_to_developer));
     const paymentMethod = normalizePaymentMethod(payload.payment_method, asString(previous.payment_method) || "Transfer Bank");
-    const paymentProofUrl = payload.payment_proof_url === undefined
+    const resolvedPaymentProofUrl = payload.payment_proof_url === undefined
       ? normalizeOptionalUrl(previous.payment_proof_url)
       : normalizeOptionalUrl(payload.payment_proof_url);
+    const paymentProofUrl = status === "Lunas" ? null : resolvedPaymentProofUrl;
+    if (status === "Lunas" && resolvedPaymentProofUrl) {
+      paymentProofToDeleteAfterCommit = resolvedPaymentProofUrl;
+    }
     const datePaidPeriodToDeveloper = !paidToDeveloper
       ? null
       : payload.date_paid_period_to_developer === undefined
@@ -1273,6 +1305,15 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
     }
 
     await commitTransaction(transaction);
+
+    if (paymentProofToDeleteAfterCommit) {
+      try {
+        await deletePaymentProofFromSupabase(paymentProofToDeleteAfterCommit);
+      } catch (error) {
+        console.error("[bills] gagal hapus bukti pembayaran saat status Lunas:", error);
+      }
+    }
+
     return result.rows[0];
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);

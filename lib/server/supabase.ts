@@ -89,6 +89,44 @@ export function getSupabaseAdminClient() {
   return globalSupabaseState.smartPerumahanSupabaseAdminClient;
 }
 
+function extractPublicObjectPath(publicUrl: string, bucket: string) {
+  try {
+    const parsed = new URL(publicUrl);
+    const directPrefix = `/storage/v1/object/public/${bucket}/`;
+    if (parsed.pathname.startsWith(directPrefix)) {
+      return decodeURIComponent(parsed.pathname.slice(directPrefix.length));
+    }
+    const encodedPrefix = `/storage/v1/object/public/${encodeURIComponent(bucket)}/`;
+    if (parsed.pathname.startsWith(encodedPrefix)) {
+      return decodeURIComponent(parsed.pathname.slice(encodedPrefix.length));
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deletePaymentProofFromSupabase(publicUrl: string | null | undefined) {
+  const normalizedUrl = typeof publicUrl === "string" ? publicUrl.trim() : "";
+  if (!normalizedUrl) return { deleted: false as const, reason: "empty-url" };
+
+  const bucket = getSupabaseStorageBucket();
+  const objectPath = extractPublicObjectPath(normalizedUrl, bucket);
+  if (!objectPath) return { deleted: false as const, reason: "invalid-public-url" };
+
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase.storage.from(bucket).remove([objectPath]);
+  if (error) {
+    const message = (error.message || "").toLowerCase();
+    if (message.includes("not found") || message.includes("not exist")) {
+      return { deleted: false as const, reason: "not-found" };
+    }
+    throw new Error(`Gagal hapus bukti pembayaran di storage: ${error.message}`);
+  }
+
+  return { deleted: true as const, reason: "ok" };
+}
+
 export async function uploadPaymentProofToSupabase(params: { billId: string; file: File }) {
   const { billId, file } = params;
   const supabase = getSupabaseAdminClient();

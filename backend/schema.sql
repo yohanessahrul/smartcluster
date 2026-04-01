@@ -59,3 +59,10 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   before_value JSONB,
   after_value JSONB
 );
+
+CREATE INDEX IF NOT EXISTS idx_bills_periode ON bills (periode);
+CREATE INDEX IF NOT EXISTS idx_bills_status_periode ON bills (status, periode);
+CREATE INDEX IF NOT EXISTS idx_transactions_bill_lookup ON transactions (bill_id, transaction_type, category, date DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_status_date ON transactions (status, date DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_updated_desc ON audit_logs (updated_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_table_record_updated_desc ON audit_logs (table_name, record_id, updated_at DESC, id DESC);

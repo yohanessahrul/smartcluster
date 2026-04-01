@@ -62,6 +62,26 @@ export type AuditLogRow = {
   after_value: JsonRecord | null;
 };
 
+export type ServerStatusRow = {
+  plan_limit_mb: number;
+  max_bytes: number;
+  used_bytes: number;
+  remaining_bytes: number;
+  over_limit: boolean;
+  generated_at: string;
+  storage_bucket: string;
+  storage_max_bytes: number;
+  storage_used_bytes: number;
+  storage_remaining_bytes: number;
+  storage_over_limit: boolean;
+  storage_object_count: number;
+  table_sizes: Array<{
+    table_name: string;
+    size_bytes: number;
+    row_estimate: number;
+  }>;
+};
+
 async function request<T>(path: string, init?: RequestInit & MutationOptions): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const isNonFormRequest = method === "GET" || method === "HEAD";
@@ -211,6 +231,7 @@ export const apiClient = {
     if (recordId) params.set("record_id", recordId);
     return request<AuditLogRow[]>(`/api/audit-logs?${params.toString()}`);
   },
+  getServerStatus: () => request<ServerStatusRow>("/api/server-status"),
 };
 
 export function emitDataChanged() {
