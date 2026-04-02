@@ -34,6 +34,7 @@ export function AdminSidebar() {
   const panelLabel = session?.role === "finance" ? "Finance Panel" : "Admin Panel";
   const displayName = session?.name?.trim() || "User";
   const displayRole = session?.role?.trim() || "-";
+  const serverStatusHref = pathname === "/dashboard/admin" ? "/dashboard/admin" : "/dashboard/admin?statusServer=1";
 
   async function onLogout() {
     await logout();
@@ -87,7 +88,14 @@ export function AdminSidebar() {
       <nav className="space-y-1">
         {session?.role === "admin" ? (
           <Link
-            href="/dashboard/admin?statusServer=1"
+            href={serverStatusHref}
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              window.dispatchEvent(new Event("smart-close-mobile-menu"));
+              if (pathname === "/dashboard/admin") {
+                window.dispatchEvent(new Event("smart-open-server-status"));
+              }
+            }}
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[hsl(var(--menu-fg))] transition-colors hover:bg-[hsl(var(--menu-note))] lg:hidden"
           >
             <Server className="h-4 w-4" />

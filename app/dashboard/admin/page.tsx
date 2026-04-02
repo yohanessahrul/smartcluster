@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Home, NotebookText, Server, Users, Wallet } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
@@ -21,7 +21,7 @@ import { BillRow, HouseRow, TransactionRow, UserRow } from "@/lib/mock-data";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { session } = useAuthSession();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [houses, setHouses] = useState<HouseRow[]>([]);
@@ -30,6 +30,7 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [showServerStatus, setShowServerStatus] = useState(false);
+  const [openedFromQuery, setOpenedFromQuery] = useState(false);
 
   useEffect(() => {
     void loadDashboardData();
@@ -64,7 +65,6 @@ export default function AdminDashboardPage() {
 
   const isFinance = session?.role === "finance";
   const isAdmin = session?.role === "admin";
-  const shouldOpenServerStatus = searchParams.get("statusServer") === "1";
 
   const houseById = useMemo(() => new Map(houses.map((house) => [house.id, house])), [houses]);
 
@@ -105,14 +105,33 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!isAdmin) return;
-    if (!shouldOpenServerStatus) return;
-    setShowServerStatus(true);
-  }, [isAdmin, shouldOpenServerStatus]);
+    const params = new URLSearchParams(window.location.search);
+    const shouldOpen = params.get("statusServer") === "1";
+    if (shouldOpen) {
+      setShowServerStatus(true);
+      setOpenedFromQuery(true);
+    } else {
+      setOpenedFromQuery(false);
+    }
+  }, [isAdmin, pathname]);
+
+  useEffect(() => {
+    function onOpenServerStatus() {
+      setShowServerStatus(true);
+    }
+
+    window.addEventListener("smart-open-server-status", onOpenServerStatus);
+    return () => {
+      window.removeEventListener("smart-open-server-status", onOpenServerStatus);
+    };
+  }, []);
 
   function closeServerStatusModal() {
     setShowServerStatus(false);
-    if (!shouldOpenServerStatus) return;
-    router.replace("/dashboard/admin");
+    if (openedFromQuery) {
+      setOpenedFromQuery(false);
+      router.replace("/dashboard/admin");
+    }
   }
 
   function unitLabel(houseId: string) {
