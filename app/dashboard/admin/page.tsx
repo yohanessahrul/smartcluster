@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Home, NotebookText, Server, Users, Wallet } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
@@ -19,6 +20,8 @@ import { formatDateTimeUnified } from "@/lib/date-time";
 import { BillRow, HouseRow, TransactionRow, UserRow } from "@/lib/mock-data";
 
 export default function AdminDashboardPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { session } = useAuthSession();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [houses, setHouses] = useState<HouseRow[]>([]);
@@ -61,6 +64,7 @@ export default function AdminDashboardPage() {
 
   const isFinance = session?.role === "finance";
   const isAdmin = session?.role === "admin";
+  const shouldOpenServerStatus = searchParams.get("statusServer") === "1";
 
   const houseById = useMemo(() => new Map(houses.map((house) => [house.id, house])), [houses]);
 
@@ -98,6 +102,18 @@ export default function AdminDashboardPage() {
   }, [transactions]);
   const financeNeedActionPagination = useTablePagination(financeBillsNeedAction);
   const financeIncomePagination = useTablePagination(financeLatestIncome);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (!shouldOpenServerStatus) return;
+    setShowServerStatus(true);
+  }, [isAdmin, shouldOpenServerStatus]);
+
+  function closeServerStatusModal() {
+    setShowServerStatus(false);
+    if (!shouldOpenServerStatus) return;
+    router.replace("/dashboard/admin");
+  }
 
   function unitLabel(houseId: string) {
     const house = houseById.get(houseId);
@@ -318,7 +334,7 @@ export default function AdminDashboardPage() {
         </Card>
       </section>
 
-      <ServerStatusModal open={showServerStatus} onClose={() => setShowServerStatus(false)} />
+      <ServerStatusModal open={showServerStatus} onClose={closeServerStatusModal} />
     </div>
   );
 }

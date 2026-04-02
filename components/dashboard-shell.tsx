@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 
@@ -14,11 +14,13 @@ type DashboardShellProps = {
 
 export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchKey = searchParams.toString();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     setOpen(false);
-  }, [pathname]);
+  }, [pathname, searchKey]);
 
   return (
     <>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, ChevronDown, Home, House, LogOut, ReceiptText, Users, WalletCards } from "lucide-react";
+import { Building2, ChevronDown, Home, House, LogOut, ReceiptText, Server, Users, WalletCards } from "lucide-react";
 import { useState } from "react";
 
 import { logout, useAuthSession } from "@/lib/auth-client";
@@ -85,6 +85,15 @@ export function AdminSidebar() {
       ) : null}
 
       <nav className="space-y-1">
+        {session?.role === "admin" ? (
+          <Link
+            href="/dashboard/admin?statusServer=1"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[hsl(var(--menu-fg))] transition-colors hover:bg-[hsl(var(--menu-note))] lg:hidden"
+          >
+            <Server className="h-4 w-4" />
+            <span>Status Server</span>
+          </Link>
+        ) : null}
         {visibleMenus.map((menu) => {
           const active = pathname === menu.href;
           return (
