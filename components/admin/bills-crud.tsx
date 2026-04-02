@@ -102,7 +102,8 @@ function statusBadge(status: string) {
 }
 
 function canFinanceVerify(status: BillRow["status"]) {
-  return status.trim().toLowerCase() !== "belum bayar";
+  const normalized = status.trim().toLowerCase();
+  return normalized !== "belum bayar" && normalized !== "lunas";
 }
 
 function isImageProof(url: string) {
@@ -390,7 +391,6 @@ function UpdateBillModal({
 }
 
 type FinanceVerifyForm = {
-  status: BillRow["status"];
   payment_method: BillRow["payment_method"];
 };
 
@@ -417,19 +417,6 @@ function FinanceVerifyModal({
     <SimpleModal open={open} onClose={onClose} title="Verifikasi IPL">
       <form className="space-y-3" onSubmit={onSubmit}>
         <FormErrorAlert message={errorMessage} />
-        <div>
-          <label className={labelClass}>Status</label>
-          <select
-            className={inputClass}
-            value={value.status}
-            onChange={(event) => onChange({ ...value, status: event.target.value as BillRow["status"] })}
-          >
-            <option value="Belum bayar">Belum bayar</option>
-            <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
-            <option value="Verifikasi">Verifikasi</option>
-            <option value="Lunas">Lunas</option>
-          </select>
-        </div>
         <div>
           <label className={labelClass}>Payment Method</label>
           <select
@@ -459,7 +446,12 @@ function FinanceVerifyModal({
             <p className="text-sm text-muted-foreground">Bukti pembayaran belum tersedia.</p>
           )}
         </div>
-        <Button type="submit">Simpan Verifikasi</Button>
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit">Terverifikasi Bayar</Button>
+        </div>
       </form>
     </SimpleModal>
   );
@@ -549,7 +541,6 @@ export function BillsCrud() {
   const [verifyError, setVerifyError] = useState("");
   const [generateError, setGenerateError] = useState("");
   const [verifyForm, setVerifyForm] = useState<FinanceVerifyForm>({
-    status: "Verifikasi",
     payment_method: "Transfer Bank",
   });
   const [loading, setLoading] = useState(true);
@@ -769,7 +760,6 @@ export function BillsCrud() {
   function openVerifyModal(row: BillRow) {
     setVerifyingId(row.id);
     setVerifyForm({
-      status: row.status,
       payment_method: row.payment_method ?? "Transfer Bank",
     });
     setVerifyError("");
@@ -842,7 +832,7 @@ export function BillsCrud() {
           periode: current.periode,
           amount: current.amount,
           payment_method: verifyForm.payment_method,
-          status: verifyForm.status,
+          status: "Verifikasi",
           payment_proof_url: current.payment_proof_url ?? null,
           paid_to_developer: current.paid_to_developer,
           date_paid_period_to_developer: current.date_paid_period_to_developer,

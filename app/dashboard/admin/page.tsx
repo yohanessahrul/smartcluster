@@ -216,50 +216,78 @@ export default function AdminDashboardPage() {
               <Badge variant="outline">{loading ? "Memuat..." : `${financeBillsNeedAction.length} data`}</Badge>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Unit</TableHead>
-                    <TableHead className="hidden md:table-cell">Periode</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden lg:table-cell">Status Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <ApiTableLoadingRow colSpan={5} message="Memuat data IPL..." />
-                  ) : financeBillsNeedAction.length ? (
-                    financeBillsNeedAction.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="whitespace-normal">
-                          <div className="space-y-1">
-                            <p>{unitLabel(item.house_id)}</p>
-                            <p className="text-xs text-muted-foreground md:hidden">Periode: {item.periode}</p>
-                            <p className="text-xs text-muted-foreground lg:hidden">
-                              Status Date: <DateTimeText value={item.status_date} />
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">{item.periode}</TableCell>
-                        <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
-                        <TableCell>
-                          <PaymentStatusBadge status={item.status} />
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <DateTimeText value={item.status_date} />
+              <div className="space-y-3 md:hidden">
+                {loading ? (
+                  <div className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">Memuat data IPL...</div>
+                ) : financeBillsNeedAction.length ? (
+                  financeBillsNeedAction.map((item) => (
+                    <div key={item.id} className="rounded-lg border border-border bg-background p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-medium">{unitLabel(item.house_id)}</p>
+                        <PaymentStatusBadge status={item.status} />
+                      </div>
+                      <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                        <p>Periode: {item.periode}</p>
+                        <p>Amount: {formatRupiahFromAny(item.amount)}</p>
+                        <p>
+                          Status Date: <DateTimeText value={item.status_date} />
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-border bg-background p-4 text-center text-sm text-muted-foreground">
+                    No record available
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Unit</TableHead>
+                      <TableHead className="hidden md:table-cell">Periode</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden lg:table-cell">Status Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <ApiTableLoadingRow colSpan={5} message="Memuat data IPL..." />
+                    ) : financeBillsNeedAction.length ? (
+                      financeBillsNeedAction.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="whitespace-normal">
+                            <div className="space-y-1">
+                              <p>{unitLabel(item.house_id)}</p>
+                              <p className="text-xs text-muted-foreground md:hidden">Periode: {item.periode}</p>
+                              <p className="text-xs text-muted-foreground lg:hidden">
+                                Status Date: <DateTimeText value={item.status_date} />
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{item.periode}</TableCell>
+                          <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
+                          <TableCell>
+                            <PaymentStatusBadge status={item.status} />
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <DateTimeText value={item.status_date} />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                          No record available
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
-                        No record available
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
 
@@ -269,57 +297,92 @@ export default function AdminDashboardPage() {
               <Badge variant="outline">{loading ? "Memuat..." : `${financeLatestTransactions.length} data`}</Badge>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="hidden md:table-cell">ID</TableHead>
-                    <TableHead>Transaction Detail</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead className="hidden lg:table-cell">Payment Method</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden lg:table-cell">Status Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <ApiTableLoadingRow colSpan={6} message="Memuat data transaksi..." />
-                  ) : financeLatestTransactions.length ? (
-                    financeLatestTransactions.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="hidden md:table-cell">{item.id}</TableCell>
-                        <TableCell className="align-top whitespace-normal">
-                          <div className="space-y-1">
-                            <p className="text-sm">{item.transaction_name}</p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>{item.transaction_type}</Badge>
-                              <Badge variant="secondary">{item.category}</Badge>
+              <div className="space-y-3 md:hidden">
+                {loading ? (
+                  <div className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">
+                    Memuat data transaksi...
+                  </div>
+                ) : financeLatestTransactions.length ? (
+                  financeLatestTransactions.map((item) => (
+                    <div key={item.id} className="rounded-lg border border-border bg-background p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-sm font-medium">{item.transaction_name}</p>
+                        <PaymentStatusBadge status={item.status} />
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>{item.transaction_type}</Badge>
+                        <Badge variant="secondary">{item.category}</Badge>
+                      </div>
+                      <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
+                        <p>ID: {item.id}</p>
+                        <p>Amount: {formatRupiahFromAny(item.amount)}</p>
+                        <p>Metode: {item.payment_method}</p>
+                        <p>
+                          Status Date: <DateTimeText value={item.status_date} />
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-border bg-background p-4 text-center text-sm text-muted-foreground">
+                    No record available
+                  </div>
+                )}
+              </div>
+
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="hidden md:table-cell">ID</TableHead>
+                      <TableHead>Transaction Detail</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead className="hidden lg:table-cell">Payment Method</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden lg:table-cell">Status Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <ApiTableLoadingRow colSpan={6} message="Memuat data transaksi..." />
+                    ) : financeLatestTransactions.length ? (
+                      financeLatestTransactions.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="hidden md:table-cell">{item.id}</TableCell>
+                          <TableCell className="align-top whitespace-normal">
+                            <div className="space-y-1">
+                              <p className="text-sm">{item.transaction_name}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>{item.transaction_type}</Badge>
+                                <Badge variant="secondary">{item.category}</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground md:hidden">ID: {item.id}</p>
+                              <p className="text-xs text-muted-foreground lg:hidden">Metode: {item.payment_method}</p>
+                              <p className="text-xs text-muted-foreground lg:hidden">
+                                Status Date: <DateTimeText value={item.status_date} />
+                              </p>
                             </div>
-                            <p className="text-xs text-muted-foreground md:hidden">ID: {item.id}</p>
-                            <p className="text-xs text-muted-foreground lg:hidden">Metode: {item.payment_method}</p>
-                            <p className="text-xs text-muted-foreground lg:hidden">
-                              Status Date: <DateTimeText value={item.status_date} />
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
-                        <TableCell className="hidden lg:table-cell">{item.payment_method}</TableCell>
-                        <TableCell>
-                          <PaymentStatusBadge status={item.status} />
-                        </TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <DateTimeText value={item.status_date} />
+                          </TableCell>
+                          <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
+                          <TableCell className="hidden lg:table-cell">{item.payment_method}</TableCell>
+                          <TableCell>
+                            <PaymentStatusBadge status={item.status} />
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <DateTimeText value={item.status_date} />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
+                          No record available
                         </TableCell>
                       </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        No record available
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </div>
