@@ -389,7 +389,7 @@ async function ensureUserRoleConstraint() {
           AND c.contype = 'c'
           AND pg_get_constraintdef(c.oid) ILIKE '%role%'
       LOOP
-        EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', constraint_row.conname);
+        EXECUTE format('ALTER TABLE users DROP CONSTRAINT IF EXISTS %I', constraint_row.conname);
       END LOOP;
     END $$;
   `);

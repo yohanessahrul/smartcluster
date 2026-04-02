@@ -87,6 +87,7 @@ type HouseFormProps = {
   emailOptions?: Array<{ email: string; label: string }>;
   errorMessage?: string;
   submitLabel: string;
+  submitting?: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
@@ -98,6 +99,7 @@ function HouseForm({
   emailOptions,
   errorMessage,
   submitLabel,
+  submitting = false,
   onSubmit,
 }: HouseFormProps) {
   const availableOptions = emailOptions ?? [];
@@ -247,7 +249,9 @@ function HouseForm({
           </select>
         )}
       </div>
-      <Button type="submit">{submitLabel}</Button>
+      <Button type="submit" loading={submitting} loadingText="Menyimpan..." disabled={submitting}>
+        {submitLabel}
+      </Button>
     </form>
   );
 }
@@ -259,16 +263,18 @@ type CreateHouseModalProps = {
   emailOptions: Array<{ email: string; label: string }>;
   onChange: (value: HouseFormState) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
-function CreateHouseModal({ open, onClose, value, emailOptions, onChange, onSubmit, errorMessage }: CreateHouseModalProps) {
+function CreateHouseModal({ open, onClose, value, emailOptions, onChange, onSubmit, submitting, errorMessage }: CreateHouseModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Create House">
       <HouseForm
         value={value}
         onChange={onChange}
         submitLabel="Create"
+        submitting={submitting}
         onSubmit={onSubmit}
         disableId
         emailOptions={emailOptions}
@@ -286,16 +292,18 @@ type UpdateHouseModalProps = {
   onChange: (value: HouseFormState) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   emailOptions: Array<{ email: string; label: string }>;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
-function UpdateHouseModal({ open, onClose, value, onChange, onSubmit, emailOptions, errorMessage }: UpdateHouseModalProps) {
+function UpdateHouseModal({ open, onClose, value, onChange, onSubmit, emailOptions, submitting, errorMessage }: UpdateHouseModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Update House">
       <HouseForm
         value={value}
         onChange={onChange}
         submitLabel="Update"
+        submitting={submitting}
         onSubmit={onSubmit}
         disableId
         emailOptions={emailOptions}
@@ -329,6 +337,8 @@ export function HousesCrud() {
   const [successToast, setSuccessToast] = useState("");
   const [createError, setCreateError] = useState("");
   const [updateError, setUpdateError] = useState("");
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const userByEmail = useMemo(() => {
@@ -406,6 +416,7 @@ export function HousesCrud() {
       setCreateError(validate);
       return;
     }
+    setCreateSubmitting(true);
     try {
       const nextRow = mapToHouseRow(createForm);
       await apiClient.createHouse(
@@ -427,6 +438,8 @@ export function HousesCrud() {
       setSuccessToast("House berhasil ditambahkan.");
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "Gagal menambah house.");
+    } finally {
+      setCreateSubmitting(false);
     }
   }
 
@@ -469,6 +482,7 @@ export function HousesCrud() {
       return;
     }
     const nextRow = mapToHouseRow(editForm);
+    setUpdateSubmitting(true);
     try {
       await apiClient.updateHouse(editingId, {
         blok: nextRow.blok,
@@ -492,6 +506,8 @@ export function HousesCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui house.";
       setUpdateError(errorMessage);
+    } finally {
+      setUpdateSubmitting(false);
     }
   }
 
@@ -734,6 +750,7 @@ export function HousesCrud() {
         emailOptions={userEmailOptions}
         onChange={setCreateForm}
         onSubmit={createHouse}
+        submitting={createSubmitting}
         errorMessage={createError}
       />
       <UpdateHouseModal
@@ -743,6 +760,7 @@ export function HousesCrud() {
         onChange={setEditForm}
         onSubmit={updateHouse}
         emailOptions={userEmailOptions}
+        submitting={updateSubmitting}
         errorMessage={updateError}
       />
       <SimpleModal

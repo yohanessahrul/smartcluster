@@ -162,6 +162,7 @@ type TransactionFormProps = {
   allowEmptyStatus?: boolean;
   errorMessage?: string;
   submitLabel: string;
+  submitting?: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
@@ -174,6 +175,7 @@ function TransactionForm({
   allowEmptyStatus = false,
   errorMessage,
   submitLabel,
+  submitting = false,
   onSubmit,
 }: TransactionFormProps) {
   return (
@@ -299,7 +301,9 @@ function TransactionForm({
           <option value="Lunas">Lunas</option>
         </select>
       </div>
-      <Button type="submit">{submitLabel}</Button>
+      <Button type="submit" loading={submitting} loadingText="Menyimpan..." disabled={submitting}>
+        {submitLabel}
+      </Button>
     </form>
   );
 }
@@ -310,16 +314,18 @@ type CreateTransactionModalProps = {
   value: TransactionFormValue;
   onChange: (value: TransactionFormValue) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
-function CreateTransactionModal({ open, onClose, value, onChange, onSubmit, errorMessage }: CreateTransactionModalProps) {
+function CreateTransactionModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: CreateTransactionModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Create Transaction">
       <TransactionForm
         value={value}
         onChange={onChange}
         submitLabel="Create"
+        submitting={submitting}
         onSubmit={onSubmit}
         disableId
         showBillId={false}
@@ -337,13 +343,22 @@ type UpdateTransactionModalProps = {
   value: TransactionFormValue;
   onChange: (value: TransactionFormValue) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
-function UpdateTransactionModal({ open, onClose, value, onChange, onSubmit, errorMessage }: UpdateTransactionModalProps) {
+function UpdateTransactionModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: UpdateTransactionModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Update Transaction">
-      <TransactionForm value={value} onChange={onChange} submitLabel="Update" onSubmit={onSubmit} disableId errorMessage={errorMessage} />
+      <TransactionForm
+        value={value}
+        onChange={onChange}
+        submitLabel="Update"
+        submitting={submitting}
+        onSubmit={onSubmit}
+        disableId
+        errorMessage={errorMessage}
+      />
     </SimpleModal>
   );
 }
@@ -372,6 +387,8 @@ export function TransactionsCrud() {
   const [successToast, setSuccessToast] = useState("");
   const [createError, setCreateError] = useState("");
   const [updateError, setUpdateError] = useState("");
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -450,6 +467,7 @@ export function TransactionsCrud() {
       return;
     }
     const transactionDate = new Date().toISOString();
+    setCreateSubmitting(true);
     try {
       await apiClient.createTransaction({
         id: createForm.id,
@@ -472,6 +490,8 @@ export function TransactionsCrud() {
       setSuccessToast("Transaction berhasil ditambahkan.");
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "Gagal menambah transaction.");
+    } finally {
+      setCreateSubmitting(false);
     }
   }
 
@@ -517,6 +537,7 @@ export function TransactionsCrud() {
       setUpdateError(errorMessage);
       return;
     }
+    setUpdateSubmitting(true);
     try {
       await apiClient.updateTransaction(editingId, {
         bill_id: editForm.bill_id,
@@ -540,6 +561,8 @@ export function TransactionsCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui transaction.";
       setUpdateError(errorMessage);
+    } finally {
+      setUpdateSubmitting(false);
     }
   }
 
@@ -781,6 +804,7 @@ export function TransactionsCrud() {
         value={createForm}
         onChange={setCreateForm}
         onSubmit={createTransaction}
+        submitting={createSubmitting}
         errorMessage={createError}
       />
       <UpdateTransactionModal
@@ -789,6 +813,7 @@ export function TransactionsCrud() {
         value={editForm}
         onChange={setEditForm}
         onSubmit={updateTransaction}
+        submitting={updateSubmitting}
         errorMessage={updateError}
       />
       <SimpleModal

@@ -519,7 +519,7 @@ async function ensureUserRoleConstraint() {
           AND c.contype = 'c'
           AND pg_get_constraintdef(c.oid) ILIKE '%role%'
       LOOP
-        EXECUTE format('ALTER TABLE users DROP CONSTRAINT %I', constraint_row.conname);
+        EXECUTE format('ALTER TABLE users DROP CONSTRAINT IF EXISTS %I', constraint_row.conname);
       END LOOP;
     END $$;
   `);
@@ -576,7 +576,7 @@ async function ensureBillColumns() {
           AND c.contype = 'c'
           AND pg_get_constraintdef(c.oid) ILIKE '%status%'
       LOOP
-        EXECUTE format('ALTER TABLE bills DROP CONSTRAINT %I', constraint_row.conname);
+        EXECUTE format('ALTER TABLE bills DROP CONSTRAINT IF EXISTS %I', constraint_row.conname);
       END LOOP;
     END $$;
   `);
@@ -682,7 +682,7 @@ async function ensureTransactionColumns() {
           AND c.contype = 'c'
           AND pg_get_constraintdef(c.oid) ILIKE '%status%'
       LOOP
-        EXECUTE format('ALTER TABLE transactions DROP CONSTRAINT %I', constraint_row.conname);
+        EXECUTE format('ALTER TABLE transactions DROP CONSTRAINT IF EXISTS %I', constraint_row.conname);
       END LOOP;
     END $$;
   `);
@@ -789,7 +789,7 @@ async function ensureTransactionColumns() {
           AND c.contype = 'c'
           AND pg_get_constraintdef(c.oid) ILIKE '%status%'
       LOOP
-        EXECUTE format('ALTER TABLE transactions DROP CONSTRAINT %I', constraint_row.conname);
+        EXECUTE format('ALTER TABLE transactions DROP CONSTRAINT IF EXISTS %I', constraint_row.conname);
       END LOOP;
     END $$;
   `);

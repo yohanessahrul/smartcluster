@@ -166,6 +166,7 @@ type BillFormProps = {
   proofFile: File | null;
   onProofFileChange: (file: File | null) => void;
   submitLabel: string;
+  submitting?: boolean;
   onChange: (value: BillRow) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   readOnlyId?: boolean;
@@ -179,6 +180,7 @@ function BillForm({
   proofFile,
   onProofFileChange,
   submitLabel,
+  submitting = false,
   onChange,
   onSubmit,
   readOnlyId,
@@ -313,7 +315,9 @@ function BillForm({
           </div>
         </>
       ) : null}
-      <Button type="submit">{submitLabel}</Button>
+      <Button type="submit" loading={submitting} loadingText="Menyimpan..." disabled={submitting}>
+        {submitLabel}
+      </Button>
     </form>
   );
 }
@@ -327,10 +331,22 @@ type CreateBillModalProps = {
   onProofFileChange: (file: File | null) => void;
   onChange: (value: BillRow) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
-function CreateBillModal({ open, onClose, value, houses, proofFile, onProofFileChange, onChange, onSubmit, errorMessage }: CreateBillModalProps) {
+function CreateBillModal({
+  open,
+  onClose,
+  value,
+  houses,
+  proofFile,
+  onProofFileChange,
+  onChange,
+  onSubmit,
+  submitting,
+  errorMessage,
+}: CreateBillModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Create IPL">
       <BillForm
@@ -340,6 +356,7 @@ function CreateBillModal({ open, onClose, value, houses, proofFile, onProofFileC
         onProofFileChange={onProofFileChange}
         onChange={onChange}
         submitLabel="Create"
+        submitting={submitting}
         onSubmit={onSubmit}
         readOnlyId
         showDeveloperFields={false}
@@ -358,6 +375,7 @@ type UpdateBillModalProps = {
   onProofFileChange: (file: File | null) => void;
   onChange: (value: BillRow) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
@@ -370,6 +388,7 @@ function UpdateBillModal({
   onProofFileChange,
   onChange,
   onSubmit,
+  submitting,
   errorMessage,
 }: UpdateBillModalProps) {
   return (
@@ -381,6 +400,7 @@ function UpdateBillModal({
         onProofFileChange={onProofFileChange}
         onChange={onChange}
         submitLabel="Update"
+        submitting={submitting}
         onSubmit={onSubmit}
         readOnlyId
         showDeveloperFields={false}
@@ -401,6 +421,7 @@ type FinanceVerifyModalProps = {
   value: FinanceVerifyForm;
   onChange: (value: FinanceVerifyForm) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
@@ -411,6 +432,7 @@ function FinanceVerifyModal({
   value,
   onChange,
   onSubmit,
+  submitting,
   errorMessage,
 }: FinanceVerifyModalProps) {
   return (
@@ -434,8 +456,8 @@ function FinanceVerifyModal({
           <label className={labelClass}>Preview Bukti Pembayaran</label>
           {currentProofUrl ? (
             isImageProof(currentProofUrl) ? (
-              <div className="overflow-hidden rounded-lg border border-border bg-muted/20">
-                <img src={currentProofUrl} alt="Bukti pembayaran warga" className="h-auto max-h-[360px] w-full object-contain" />
+              <div className="h-[360px] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-muted/20">
+                <img src={currentProofUrl} alt="Bukti pembayaran warga" className="h-auto w-full" />
               </div>
             ) : (
               <a href={currentProofUrl} target="_blank" rel="noreferrer" className="inline-block text-sm text-primary underline underline-offset-2">
@@ -447,10 +469,12 @@ function FinanceVerifyModal({
           )}
         </div>
         <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
-          <Button type="submit">Terverifikasi Bayar</Button>
+          <Button type="submit" loading={submitting} loadingText="Memproses..." disabled={submitting}>
+            Terverifikasi Bayar
+          </Button>
         </div>
       </form>
     </SimpleModal>
@@ -463,10 +487,11 @@ type GenerateBillModalProps = {
   value: GenerateForm;
   onChange: (value: GenerateForm) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
-function GenerateBillModal({ open, onClose, value, onChange, onSubmit, errorMessage }: GenerateBillModalProps) {
+function GenerateBillModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: GenerateBillModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Generate IPL">
       <form className="space-y-3" onSubmit={onSubmit}>
@@ -494,7 +519,9 @@ function GenerateBillModal({ open, onClose, value, onChange, onSubmit, errorMess
         <p className="text-xs text-muted-foreground">
           Action ini akan membuat tagihan IPL dari setiap rumah, akan men-skip rumah yang sudah bayar di bulan sebelumnya.
         </p>
-        <Button type="submit">Generate IPL</Button>
+        <Button type="submit" loading={submitting} loadingText="Generate..." disabled={submitting}>
+          Generate IPL
+        </Button>
       </form>
     </SimpleModal>
   );
@@ -540,6 +567,10 @@ export function BillsCrud() {
   const [updateError, setUpdateError] = useState("");
   const [verifyError, setVerifyError] = useState("");
   const [generateError, setGenerateError] = useState("");
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [updateSubmitting, setUpdateSubmitting] = useState(false);
+  const [verifySubmitting, setVerifySubmitting] = useState(false);
+  const [generateSubmitting, setGenerateSubmitting] = useState(false);
   const [verifyForm, setVerifyForm] = useState<FinanceVerifyForm>({
     payment_method: "Transfer Bank",
   });
@@ -722,6 +753,7 @@ export function BillsCrud() {
     }
 
     try {
+      setCreateSubmitting(true);
       let paymentProofUrl = createForm.payment_proof_url ?? null;
       if (createProofFile) {
         const uploaded = await apiClient.uploadBillPaymentProof(createForm.id, createProofFile, { actorEmail });
@@ -738,6 +770,8 @@ export function BillsCrud() {
       setSuccessToast("IPL berhasil ditambahkan.");
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "Gagal menambah IPL.");
+    } finally {
+      setCreateSubmitting(false);
     }
   }
 
@@ -782,6 +816,7 @@ export function BillsCrud() {
     }
 
     try {
+      setUpdateSubmitting(true);
       let paymentProofUrl = editForm.payment_proof_url ?? null;
       if (editProofFile) {
         const uploaded = await apiClient.uploadBillPaymentProof(editingId, editProofFile, { actorEmail });
@@ -810,6 +845,8 @@ export function BillsCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui IPL.";
       setUpdateError(errorMessage);
+    } finally {
+      setUpdateSubmitting(false);
     }
   }
 
@@ -825,6 +862,7 @@ export function BillsCrud() {
     }
 
     try {
+      setVerifySubmitting(true);
       await apiClient.updateBill(
         verifyingId,
         {
@@ -832,7 +870,7 @@ export function BillsCrud() {
           periode: current.periode,
           amount: current.amount,
           payment_method: verifyForm.payment_method,
-          status: "Verifikasi",
+          status: "Lunas",
           payment_proof_url: current.payment_proof_url ?? null,
           paid_to_developer: current.paid_to_developer,
           date_paid_period_to_developer: current.date_paid_period_to_developer,
@@ -850,6 +888,8 @@ export function BillsCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memverifikasi IPL.";
       setVerifyError(errorMessage);
+    } finally {
+      setVerifySubmitting(false);
     }
   }
 
@@ -889,6 +929,7 @@ export function BillsCrud() {
     event.preventDefault();
     setGenerateError("");
     try {
+      setGenerateSubmitting(true);
       const result = await apiClient.generateBills({
         month: generateForm.month,
         amount: generateForm.amount,
@@ -902,6 +943,8 @@ export function BillsCrud() {
       );
     } catch (error) {
       setGenerateError(error instanceof Error ? error.message : "Gagal generate IPL.");
+    } finally {
+      setGenerateSubmitting(false);
     }
   }
 
@@ -1140,6 +1183,7 @@ export function BillsCrud() {
         onProofFileChange={setCreateProofFile}
         onChange={setCreateForm}
         onSubmit={createBill}
+        submitting={createSubmitting}
         errorMessage={createError}
       />
       <UpdateBillModal
@@ -1151,6 +1195,7 @@ export function BillsCrud() {
         onProofFileChange={setEditProofFile}
         onChange={setEditForm}
         onSubmit={updateBill}
+        submitting={updateSubmitting}
         errorMessage={updateError}
       />
       <FinanceVerifyModal
@@ -1160,6 +1205,7 @@ export function BillsCrud() {
         value={verifyForm}
         onChange={setVerifyForm}
         onSubmit={verifyBill}
+        submitting={verifySubmitting}
         errorMessage={verifyError}
       />
       <GenerateBillModal
@@ -1168,6 +1214,7 @@ export function BillsCrud() {
         value={generateForm}
         onChange={setGenerateForm}
         onSubmit={generateBillForAllHouses}
+        submitting={generateSubmitting}
         errorMessage={generateError}
       />
       <SimpleModal

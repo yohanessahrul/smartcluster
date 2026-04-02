@@ -239,8 +239,8 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
               required
             />
           </div>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "Menyimpan..." : "Update"}
+          <Button type="submit" loading={submitting} loadingText="Menyimpan..." disabled={submitting}>
+            Update
           </Button>
         </form>
       </SimpleModal>

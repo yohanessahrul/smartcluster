@@ -20,7 +20,7 @@ const protectedMenus = [
 
 export function WargaSidebar() {
   const pathname = usePathname();
-  const { session, house, loading } = useWargaResolvedData();
+  const { session, house } = useWargaResolvedData();
   const hasHouse = Boolean(house);
   const menus = hasHouse ? protectedMenus : [overviewMenu];
   const displayName = session?.name?.trim() || "User";
@@ -31,11 +31,6 @@ export function WargaSidebar() {
       <div className="mb-6 rounded-lg bg-[hsl(var(--menu-note))] p-3">
         <p className="font-heading text-sm">Portal Warga</p>
         <p className="text-xs text-[hsl(var(--menu-muted))]">Akses tagihan dan transparansi dana</p>
-        {!loading && !hasHouse ? (
-          <p className="mt-2 rounded-md border border-[hsl(var(--menu-border))] bg-white/70 px-2 py-1 text-[11px] leading-relaxed text-[hsl(var(--menu-muted))]">
-            Akun masih dalam proses verifikasi data rumah. Untuk sementara, menu yang tersedia hanya Overview.
-          </p>
-        ) : null}
       </div>
 
       {session ? (

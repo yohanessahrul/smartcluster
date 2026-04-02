@@ -50,10 +50,11 @@ type UserFormProps = {
   disableId?: boolean;
   errorMessage?: string;
   submitLabel: string;
+  submitting?: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 };
 
-function UserForm({ value, onChange, disableId, errorMessage, submitLabel, onSubmit }: UserFormProps) {
+function UserForm({ value, onChange, disableId, errorMessage, submitLabel, submitting = false, onSubmit }: UserFormProps) {
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <FormErrorAlert message={errorMessage} />
@@ -107,7 +108,9 @@ function UserForm({ value, onChange, disableId, errorMessage, submitLabel, onSub
           <option value="finance">Finance</option>
         </select>
       </div>
-      <Button type="submit">{submitLabel}</Button>
+      <Button type="submit" loading={submitting} loadingText="Menyimpan..." disabled={submitting}>
+        {submitLabel}
+      </Button>
     </form>
   );
 }
@@ -118,13 +121,22 @@ type CreateUserModalProps = {
   value: UserRow;
   onChange: (value: UserRow) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
-function CreateUserModal({ open, onClose, value, onChange, onSubmit, errorMessage }: CreateUserModalProps) {
+function CreateUserModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: CreateUserModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Create User">
-      <UserForm value={value} onChange={onChange} submitLabel="Create" onSubmit={onSubmit} disableId errorMessage={errorMessage} />
+      <UserForm
+        value={value}
+        onChange={onChange}
+        submitLabel="Create"
+        submitting={submitting}
+        onSubmit={onSubmit}
+        disableId
+        errorMessage={errorMessage}
+      />
     </SimpleModal>
   );
 }
@@ -135,13 +147,22 @@ type UpdateUserModalProps = {
   value: UserRow;
   onChange: (value: UserRow) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  submitting?: boolean;
   errorMessage?: string;
 };
 
-function UpdateUserModal({ open, onClose, value, onChange, onSubmit, errorMessage }: UpdateUserModalProps) {
+function UpdateUserModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: UpdateUserModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Update User">
-      <UserForm value={value} onChange={onChange} submitLabel="Update" onSubmit={onSubmit} disableId errorMessage={errorMessage} />
+      <UserForm
+        value={value}
+        onChange={onChange}
+        submitLabel="Update"
+        submitting={submitting}
+        onSubmit={onSubmit}
+        disableId
+        errorMessage={errorMessage}
+      />
     </SimpleModal>
   );
 }
@@ -168,6 +189,8 @@ export function UsersCrud() {
   const [successToast, setSuccessToast] = useState("");
   const [createError, setCreateError] = useState("");
   const [updateError, setUpdateError] = useState("");
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+  const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -239,6 +262,7 @@ export function UsersCrud() {
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError("");
+    setCreateSubmitting(true);
     try {
       await apiClient.createUser(createForm, { actorEmail });
       await loadUsers();
@@ -251,6 +275,8 @@ export function UsersCrud() {
       setSuccessToast("User berhasil ditambahkan.");
     } catch (error) {
       setCreateError(error instanceof Error ? error.message : "Gagal menambah user.");
+    } finally {
+      setCreateSubmitting(false);
     }
   }
 
@@ -285,6 +311,7 @@ export function UsersCrud() {
     event.preventDefault();
     if (!editingId) return;
     setUpdateError("");
+    setUpdateSubmitting(true);
     try {
       await apiClient.updateUser(editingId, {
         name: editForm.name,
@@ -304,6 +331,8 @@ export function UsersCrud() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui user.";
       setUpdateError(errorMessage);
+    } finally {
+      setUpdateSubmitting(false);
     }
   }
 
@@ -498,6 +527,7 @@ export function UsersCrud() {
         value={createForm}
         onChange={setCreateForm}
         onSubmit={createUser}
+        submitting={createSubmitting}
         errorMessage={createError}
       />
       <UpdateUserModal
@@ -506,6 +536,7 @@ export function UsersCrud() {
         value={editForm}
         onChange={setEditForm}
         onSubmit={updateUser}
+        submitting={updateSubmitting}
         errorMessage={updateError}
       />
       <SimpleModal
