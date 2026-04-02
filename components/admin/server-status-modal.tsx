@@ -78,6 +78,19 @@ export function ServerStatusModal({ open, onClose }: ServerStatusModalProps) {
     return (Math.max(0, data.used_bytes) / data.max_bytes) * 100;
   }, [data]);
 
+  const storageChartData = useMemo<ChartSlice[]>(() => {
+    const maxBytes = data?.storage_max_bytes ?? 1024 * MB;
+    const usedBytesRaw = data?.storage_used_bytes ?? 0;
+    const usedBytes = Math.max(0, usedBytesRaw);
+    const usedForChart = Math.min(usedBytes, maxBytes);
+    const remainingBytes = Math.max(0, maxBytes - usedForChart);
+
+    return [
+      { name: "Terpakai", value: usedForChart, color: "#dc2626" },
+      { name: "Sisa (Kuota 1GB)", value: remainingBytes, color: "#16a34a" },
+    ];
+  }, [data]);
+
   const storageUsagePercent = useMemo(() => {
     if (!data?.storage_max_bytes) return 0;
     return (Math.max(0, data.storage_used_bytes) / data.storage_max_bytes) * 100;
@@ -173,47 +186,69 @@ export function ServerStatusModal({ open, onClose }: ServerStatusModalProps) {
                     Status Bucket Storage
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Bucket:</span> <span className="font-medium">{data.storage_bucket}</span>
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Terpakai:</span>{" "}
-                    <span className="font-medium text-red-600">{formatMb(data.storage_used_bytes)}</span>
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Maksimal:</span>{" "}
-                    <span className="font-medium text-green-600">{formatMb(data.storage_max_bytes)}</span>
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Sisa:</span>{" "}
-                    <span className="font-medium">{formatMb(data.storage_remaining_bytes)}</span>
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Total Objects:</span>{" "}
-                    <span className="font-medium">{formatNumber(data.storage_object_count)}</span>
-                  </p>
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">Usage:</span>{" "}
-                    <span className="font-medium">{`${Math.min(storageUsagePercent, 999).toFixed(2)}%`}</span>
-                  </p>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded bg-muted">
-                    <div
-                      className={`h-full ${data.storage_over_limit ? "bg-destructive" : "bg-primary"}`}
-                      style={{ width: `${Math.min(storageUsagePercent, 100)}%` }}
-                    />
+                <CardContent className="grid gap-3 lg:grid-cols-[1fr_1fr]">
+                  <div className="h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={storageChartData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={82} paddingAngle={2}>
+                          {storageChartData.map((item) => (
+                            <Cell key={item.name} fill={item.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value) => formatMb(typeof value === "number" ? value : Number(value))}
+                          contentStyle={{ borderRadius: 8 }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
-                  {data.storage_over_limit ? (
-                    <p className="mt-2 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
-                      Storage bucket melewati limit 1GB.
+
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <span className="text-muted-foreground">Bucket:</span> <span className="font-medium">{data.storage_bucket}</span>
                     </p>
-                  ) : null}
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Last update: {formatDateTimeUnified(data.generated_at)}
-                  </p>
+                    <p>
+                      <span className="text-muted-foreground">Terpakai:</span>{" "}
+                      <span className="font-medium text-red-600">{formatMb(data.storage_used_bytes)}</span>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Maksimal:</span>{" "}
+                      <span className="font-medium text-green-600">{formatMb(data.storage_max_bytes)}</span>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Sisa:</span>{" "}
+                      <span className="font-medium">{formatMb(data.storage_remaining_bytes)}</span>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Total Objects:</span>{" "}
+                      <span className="font-medium">{formatNumber(data.storage_object_count)}</span>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Usage:</span>{" "}
+                      <span className="font-medium">{`${Math.min(storageUsagePercent, 999).toFixed(2)}%`}</span>
+                    </p>
+                    {data.storage_over_limit ? (
+                      <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                        Storage bucket melewati limit 1GB.
+                      </p>
+                    ) : null}
+                    <div className="space-y-1 pt-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-block h-2 w-2 rounded-full bg-red-600" />
+                        <span>Terpakai</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-block h-2 w-2 rounded-full bg-green-600" />
+                        <span>Sisa dari total 1GB</span>
+                      </div>
+                    </div>
+                  </div>
+
                 </CardContent>
               </Card>
             </div>
+
+            <p className="text-xs text-muted-foreground">Last update: {formatDateTimeUnified(data.generated_at)}</p>
 
             <Card>
               <CardHeader className="pb-2">
