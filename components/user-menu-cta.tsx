@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, LayoutDashboard, LogOut } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { SessionRole, logout } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -87,7 +87,7 @@ export function UserMenuCta({
             <p className="truncate text-xs text-muted-foreground">{email}</p>
             {showRoleBadge && roleLabel ? (
               <div className="mt-1">
-                <Badge className="border-transparent bg-black text-white">{roleLabel}</Badge>
+                <RoleBadge role={roleLabel} />
               </div>
             ) : null}
           </div>

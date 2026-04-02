@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
   }
 
   const isFinance = session?.role === "finance";
-  const isAdmin = session?.role === "admin";
+  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
   const houseById = useMemo(() => new Map(houses.map((house) => [house.id, house])), [houses]);
 

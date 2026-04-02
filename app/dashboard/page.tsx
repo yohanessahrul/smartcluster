@@ -20,7 +20,7 @@ export default function DashboardPage() {
       router.replace("/dashboard/admin");
       return;
     }
-    if (session.role === "admin") {
+    if (session.role === "admin" || session.role === "superadmin") {
       router.replace("/dashboard/admin");
       return;
     }

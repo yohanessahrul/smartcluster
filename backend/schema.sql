@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   phone TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'warga', 'finance'))
+  role TEXT NOT NULL CHECK (role IN ('admin', 'superadmin', 'warga', 'finance'))
 );
 
 CREATE TABLE IF NOT EXISTS houses (

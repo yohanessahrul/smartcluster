@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-type SessionRole = "admin" | "warga" | "finance";
+type SessionRole = "admin" | "superadmin" | "warga" | "finance";
 
 export type AppSession = {
   userId: string;
@@ -71,7 +71,7 @@ export function readSessionFromToken(token: string | null | undefined): AppSessi
     const parsed = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as SessionTokenPayload;
     if (!parsed.exp || parsed.exp <= Math.floor(Date.now() / 1000)) return null;
     if (!parsed.email || !parsed.userId || !parsed.name) return null;
-    if (parsed.role !== "admin" && parsed.role !== "warga" && parsed.role !== "finance") return null;
+    if (parsed.role !== "admin" && parsed.role !== "superadmin" && parsed.role !== "warga" && parsed.role !== "finance") return null;
 
     return {
       userId: parsed.userId,

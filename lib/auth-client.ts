@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiClient } from "@/lib/api-client";
 import { BillRow, HouseRow, TransactionRow, UserRow } from "@/lib/mock-data";
 
-export type SessionRole = "admin" | "warga" | "finance";
+export type SessionRole = "admin" | "superadmin" | "warga" | "finance";
 
 export type SessionData = {
   email: string;

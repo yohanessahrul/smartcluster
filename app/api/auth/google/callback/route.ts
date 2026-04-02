@@ -22,7 +22,7 @@ type UserRow = {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "warga" | "finance";
+  role: "admin" | "superadmin" | "warga" | "finance";
 };
 
 export const runtime = "nodejs";
@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    if (matchedUser.role !== "admin" && matchedUser.role !== "warga" && matchedUser.role !== "finance") {
+    if (matchedUser.role !== "admin" && matchedUser.role !== "superadmin" && matchedUser.role !== "warga" && matchedUser.role !== "finance") {
       await revokeGoogleToken(accessToken);
       await revokeGoogleToken(refreshToken);
       const response = loginErrorRedirect(request, "google_oauth_failed");
@@ -151,7 +151,10 @@ export async function GET(request: NextRequest) {
       name: matchedUser.name || userInfo?.name || matchedUser.email,
     });
 
-    const redirectPath = matchedUser.role === "admin" || matchedUser.role === "finance" ? "/dashboard/admin" : "/dashboard/warga";
+    const redirectPath =
+      matchedUser.role === "admin" || matchedUser.role === "superadmin" || matchedUser.role === "finance"
+        ? "/dashboard/admin"
+        : "/dashboard/warga";
     const response = NextResponse.redirect(new URL(redirectPath, request.url));
     applySessionCookie(response, token);
     clearGoogleStateCookie(response);

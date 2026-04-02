@@ -3,7 +3,7 @@ export type UserRow = {
   name: string;
   email: string;
   phone: string;
-  role: "admin" | "warga" | "finance";
+  role: "admin" | "superadmin" | "warga" | "finance";
 };
 
 export type HouseRow = {

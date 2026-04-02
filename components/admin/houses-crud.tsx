@@ -331,6 +331,9 @@ export function HousesCrud() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewRow, setPreviewRow] = useState<HouseRow | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<"" | "delete">("");
   const [deleting, setDeleting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
@@ -364,7 +367,7 @@ export function HousesCrud() {
   }, []);
 
   useEffect(() => {
-    if (session?.role === "admin" || session?.role === "finance") {
+    if (session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance") {
       loadHistory();
       return;
     }
@@ -372,7 +375,7 @@ export function HousesCrud() {
     setHistoryLoading(false);
   }, [session?.role]);
 
-  const hasFullAccess = session?.role === "admin" || session?.role === "finance";
+  const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
 
   async function loadInitialData() {
     try {
@@ -530,6 +533,30 @@ export function HousesCrud() {
     }
   }
 
+  async function deleteHousesByIds(ids: string[]) {
+    const uniqueIds = Array.from(new Set(ids));
+    const failedIds: string[] = [];
+
+    for (const id of uniqueIds) {
+      try {
+        await apiClient.deleteHouse(id, { actorEmail });
+        if (editingId === id) {
+          setEditingId(null);
+          setUpdateOpen(false);
+          setEditForm(emptyForm);
+        }
+      } catch {
+        failedIds.push(id);
+      }
+    }
+
+    await loadInitialData();
+    if (hasFullAccess) await loadHistory();
+    emitDataChanged();
+
+    return { failedIds, total: uniqueIds.length };
+  }
+
   function openDeleteModal(id: string) {
     setDeleteId(id);
     setMessage("");
@@ -541,6 +568,53 @@ export function HousesCrud() {
     const success = await deleteHouse(deleteId);
     setDeleting(false);
     if (success) setDeleteId(null);
+  }
+
+  async function confirmBulkDeleteHouses() {
+    if (!selectedIds.length) return;
+    setDeleting(true);
+    try {
+      const result = await deleteHousesByIds(selectedIds);
+      if (!result.failedIds.length) {
+        setSuccessToast(`${result.total} house berhasil dihapus.`);
+      } else {
+        setMessage(`Sebagian data gagal dihapus: ${result.failedIds.join(", ")}`);
+      }
+    } finally {
+      setDeleting(false);
+      setBulkDeleteOpen(false);
+      setSelectedIds([]);
+      setBulkAction("");
+    }
+  }
+
+  function toggleRowSelection(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter((item) => item !== id);
+    });
+  }
+
+  function togglePageSelection(checked: boolean) {
+    const pageIds = pagination.pagedRows.map((row) => row.id);
+    setSelectedIds((prev) => {
+      if (checked) return Array.from(new Set([...prev, ...pageIds]));
+      return prev.filter((id) => !pageIds.includes(id));
+    });
+  }
+
+  function applyBulkAction() {
+    if (!bulkAction) {
+      setMessage("Pilih multi action terlebih dahulu.");
+      return;
+    }
+    if (!selectedIds.length) {
+      setMessage("Pilih minimal 1 data untuk multi action.");
+      return;
+    }
+    if (bulkAction === "delete") {
+      setBulkDeleteOpen(true);
+    }
   }
 
   function linkedUsersList(row: HouseRow, showEmail = true) {
@@ -577,6 +651,8 @@ export function HousesCrud() {
     });
   }, [rows, blokFilter, occupiedFilter, statusFilter]);
   const pagination = useTablePagination(filteredRows);
+  const pageIds = pagination.pagedRows.map((row) => row.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
   useEffect(() => {
     console.log("[Table][Admin Houses] rows:", rows);
@@ -588,6 +664,16 @@ export function HousesCrud() {
     if (!hasFullAccess) return;
     console.log("[Table][Admin Houses] historyRows:", historyRows);
   }, [hasFullAccess, historyRows]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
+  }, [rows]);
+
+  useEffect(() => {
+    if (!selectedIds.length && bulkAction) {
+      setBulkAction("");
+    }
+  }, [selectedIds.length, bulkAction]);
 
   return (
     <div className="space-y-4">
@@ -635,6 +721,22 @@ export function HousesCrud() {
                 <option value="Contract">Contract</option>
               </select>
             </div>
+            {selectedIds.length ? (
+              <>
+                <div className="w-full sm:w-[180px]">
+                  <label className={labelClass}>Multi Action</label>
+                  <select className={filterSelectClass} value={bulkAction} onChange={(event) => setBulkAction(event.target.value as "" | "delete")}>
+                    <option value="">Pilih action</option>
+                    <option value="delete">Delete Terpilih</option>
+                  </select>
+                </div>
+                <div className="w-full sm:w-auto">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={applyBulkAction} disabled={!selectedIds.length}>
+                    Apply ({selectedIds.length})
+                  </Button>
+                </div>
+              </>
+            ) : null}
             <div className="ml-auto flex items-end">
               <Button
                 type="button"
@@ -652,6 +754,14 @@ export function HousesCrud() {
           <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[44px]">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={(event) => togglePageSelection(event.target.checked)}
+                    aria-label="Pilih semua data house pada halaman"
+                  />
+                </TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Kepemilikan</TableHead>
                 <TableHead>Dihuni</TableHead>
@@ -661,10 +771,18 @@ export function HousesCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={5} message="Memuat data house..." />
+                <ApiTableLoadingRow colSpan={6} message="Memuat data house..." />
               ) : filteredRows.length ? (
                 pagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item.id)}
+                        onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
+                        aria-label={`Pilih house ${item.id}`}
+                      />
+                    </TableCell>
                     <TableCell>{`${item.blok}-${item.nomor}`}</TableCell>
                     <TableCell>{item.residential_status || "-"}</TableCell>
                     <TableCell>
@@ -718,7 +836,7 @@ export function HousesCrud() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>
@@ -813,6 +931,17 @@ export function HousesCrud() {
         onConfirm={confirmDeleteHouse}
         title="Delete House"
         description="Data house akan dihapus permanen."
+        loading={deleting}
+      />
+      <DeleteConfirmModal
+        open={bulkDeleteOpen}
+        onClose={() => {
+          if (deleting) return;
+          setBulkDeleteOpen(false);
+        }}
+        onConfirm={confirmBulkDeleteHouses}
+        title="Delete Multi House"
+        description={`${selectedIds.length} data house terpilih akan dihapus permanen.`}
         loading={deleting}
       />
 

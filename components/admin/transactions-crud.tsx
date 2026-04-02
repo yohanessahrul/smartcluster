@@ -381,6 +381,9 @@ export function TransactionsCrud() {
   const [previewRow, setPreviewRow] = useState<TransactionRow | null>(null);
   const [previewHistoryRows, setPreviewHistoryRows] = useState<AuditLogRow[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<"" | "delete">("");
   const [deleting, setDeleting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
@@ -396,7 +399,7 @@ export function TransactionsCrud() {
   }, []);
 
   useEffect(() => {
-    if (session?.role === "admin" || session?.role === "finance") {
+    if (session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance") {
       loadHistory();
       return;
     }
@@ -404,8 +407,8 @@ export function TransactionsCrud() {
     setHistoryLoading(false);
   }, [session?.role]);
 
-  const hasFullAccess = session?.role === "admin" || session?.role === "finance";
-  const isAdmin = session?.role === "admin";
+  const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
+  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -415,6 +418,9 @@ export function TransactionsCrud() {
     });
   }, [methodFilter, rows, typeFilter]);
   const tablePagination = useTablePagination(filteredRows);
+  const pageIds = tablePagination.pagedRows.map((row) => row.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+  const listColSpan = isAdmin ? 7 : 6;
 
   const previewTimelineRows = useMemo(() => buildStatusTimeline(previewHistoryRows), [previewHistoryRows]);
   const previewPagination = useTablePagination(previewTimelineRows);
@@ -429,6 +435,16 @@ export function TransactionsCrud() {
     if (!hasFullAccess) return;
     console.log("[Table][Admin Transactions] historyRows:", historyRows);
   }, [hasFullAccess, historyRows]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
+  }, [rows]);
+
+  useEffect(() => {
+    if (!selectedIds.length && bulkAction) {
+      setBulkAction("");
+    }
+  }, [selectedIds.length, bulkAction]);
 
   useEffect(() => {
     if (!previewOpen) return;
@@ -585,6 +601,30 @@ export function TransactionsCrud() {
     }
   }
 
+  async function deleteTransactionsByIds(ids: string[]) {
+    const uniqueIds = Array.from(new Set(ids));
+    const failedIds: string[] = [];
+
+    for (const id of uniqueIds) {
+      try {
+        await apiClient.deleteTransaction(id, { actorEmail });
+        if (editingId === id) {
+          setEditingId(null);
+          setUpdateOpen(false);
+          setEditForm(emptyForm);
+        }
+      } catch {
+        failedIds.push(id);
+      }
+    }
+
+    await loadTransactions();
+    if (hasFullAccess) await loadHistory();
+    emitDataChanged();
+
+    return { failedIds, total: uniqueIds.length };
+  }
+
   function openDeleteModal(id: string) {
     setDeleteId(id);
     setMessage("");
@@ -596,6 +636,52 @@ export function TransactionsCrud() {
     const success = await deleteTransaction(deleteId);
     setDeleting(false);
     if (success) setDeleteId(null);
+  }
+
+  async function confirmBulkDeleteTransactions() {
+    if (!selectedIds.length) return;
+    setDeleting(true);
+    try {
+      const result = await deleteTransactionsByIds(selectedIds);
+      if (!result.failedIds.length) {
+        setSuccessToast(`${result.total} transaction berhasil dihapus.`);
+      } else {
+        setMessage(`Sebagian data gagal dihapus: ${result.failedIds.join(", ")}`);
+      }
+    } finally {
+      setDeleting(false);
+      setBulkDeleteOpen(false);
+      setSelectedIds([]);
+      setBulkAction("");
+    }
+  }
+
+  function toggleRowSelection(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter((item) => item !== id);
+    });
+  }
+
+  function togglePageSelection(checked: boolean) {
+    setSelectedIds((prev) => {
+      if (checked) return Array.from(new Set([...prev, ...pageIds]));
+      return prev.filter((id) => !pageIds.includes(id));
+    });
+  }
+
+  function applyBulkAction() {
+    if (!bulkAction) {
+      setMessage("Pilih multi action terlebih dahulu.");
+      return;
+    }
+    if (!selectedIds.length) {
+      setMessage("Pilih minimal 1 data untuk multi action.");
+      return;
+    }
+    if (bulkAction === "delete") {
+      setBulkDeleteOpen(true);
+    }
   }
 
   async function loadPreviewHistory(recordId: string) {
@@ -685,6 +771,26 @@ export function TransactionsCrud() {
                 <option value="E-wallet">E-wallet</option>
               </select>
             </div>
+            {isAdmin && selectedIds.length ? (
+              <>
+                <div className="w-full sm:w-[180px]">
+                  <label className={labelClass}>Multi Action</label>
+                  <select
+                    className={filterSelectClass}
+                    value={bulkAction}
+                    onChange={(event) => setBulkAction(event.target.value as "" | "delete")}
+                  >
+                    <option value="">Pilih action</option>
+                    <option value="delete">Delete Terpilih</option>
+                  </select>
+                </div>
+                <div className="w-full sm:w-auto">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={applyBulkAction} disabled={!selectedIds.length}>
+                    Apply ({selectedIds.length})
+                  </Button>
+                </div>
+              </>
+            ) : null}
             <div className="ml-auto flex items-end">
               <Button
                 type="button"
@@ -702,6 +808,16 @@ export function TransactionsCrud() {
           <Table className="min-w-[980px]">
             <TableHeader>
               <TableRow>
+                {isAdmin ? (
+                  <TableHead className="w-[44px]">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      onChange={(event) => togglePageSelection(event.target.checked)}
+                      aria-label="Pilih semua data transaction pada halaman"
+                    />
+                  </TableHead>
+                ) : null}
                 <TableHead>Transaction Detail</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status Date</TableHead>
@@ -712,10 +828,20 @@ export function TransactionsCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={6} message="Memuat data transaction..." />
+                <ApiTableLoadingRow colSpan={listColSpan} message="Memuat data transaction..." />
               ) : filteredRows.length ? (
                 tablePagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
+                    {isAdmin ? (
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.id)}
+                          onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
+                          aria-label={`Pilih transaction ${item.id}`}
+                        />
+                      </TableCell>
+                    ) : null}
                     <TableCell className="align-top">
                       <div className="space-y-2">
                         <p className="text-sm">{item.transaction_name}</p>
@@ -773,7 +899,7 @@ export function TransactionsCrud() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={listColSpan} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>
@@ -896,6 +1022,17 @@ export function TransactionsCrud() {
         onConfirm={confirmDeleteTransaction}
         title="Delete Transaction"
         description="Data transaction akan dihapus permanen."
+        loading={deleting}
+      />
+      <DeleteConfirmModal
+        open={bulkDeleteOpen}
+        onClose={() => {
+          if (deleting) return;
+          setBulkDeleteOpen(false);
+        }}
+        onConfirm={confirmBulkDeleteTransactions}
+        title="Delete Multi Transaction"
+        description={`${selectedIds.length} data transaction terpilih akan dihapus permanen.`}
         loading={deleting}
       />
 

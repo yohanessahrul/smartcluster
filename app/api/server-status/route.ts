@@ -7,7 +7,7 @@ import { ApiHttpError } from "@/lib/server/smart-api";
 import { getSupabaseStorageBucket } from "@/lib/server/supabase";
 
 type RoleRow = {
-  role: "admin" | "warga" | "finance";
+  role: "admin" | "superadmin" | "warga" | "finance";
 };
 
 type DatabaseSizeRow = {
@@ -68,8 +68,8 @@ async function ensureAdminSession(request: NextRequest) {
   if (!user) {
     throw new ApiHttpError(401, "Sesi tidak valid.");
   }
-  if (user.role !== "admin") {
-    throw new ApiHttpError(403, "Hanya admin yang bisa melihat Status Server.");
+  if (user.role !== "admin" && user.role !== "superadmin") {
+    throw new ApiHttpError(403, "Hanya admin/superadmin yang bisa melihat Status Server.");
   }
 }
 

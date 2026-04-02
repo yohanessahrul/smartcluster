@@ -3,13 +3,13 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -104,6 +104,7 @@ function UserForm({ value, onChange, disableId, errorMessage, submitLabel, submi
         <label className={labelClass}>Role</label>
         <select className={inputClass} value={value.role} onChange={(event) => onChange({ ...value, role: event.target.value as UserRow["role"] })}>
           <option value="admin">Admin</option>
+          <option value="superadmin">Superadmin</option>
           <option value="warga">Warga</option>
           <option value="finance">Finance</option>
         </select>
@@ -183,6 +184,9 @@ export function UsersCrud() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewRow, setPreviewRow] = useState<UserRow | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<"" | "delete">("");
   const [deleting, setDeleting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
@@ -198,7 +202,7 @@ export function UsersCrud() {
   }, []);
 
   useEffect(() => {
-    if (session?.role === "admin" || session?.role === "finance") {
+    if (session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance") {
       loadHistory();
       return;
     }
@@ -206,7 +210,7 @@ export function UsersCrud() {
     setHistoryLoading(false);
   }, [session?.role]);
 
-  const hasFullAccess = session?.role === "admin" || session?.role === "finance";
+  const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -223,6 +227,16 @@ export function UsersCrud() {
   useEffect(() => {
     pagination.setPage(1);
   }, [search, roleFilter, pagination.setPage]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
+  }, [rows]);
+
+  useEffect(() => {
+    if (!selectedIds.length && bulkAction) {
+      setBulkAction("");
+    }
+  }, [selectedIds.length, bulkAction]);
 
   useEffect(() => {
     console.log("[Table][Admin Users] rows:", rows);
@@ -355,6 +369,30 @@ export function UsersCrud() {
     }
   }
 
+  async function deleteUsersByIds(ids: string[]) {
+    const uniqueIds = Array.from(new Set(ids));
+    const failedIds: string[] = [];
+
+    for (const id of uniqueIds) {
+      try {
+        await apiClient.deleteUser(id, { actorEmail });
+        if (editingId === id) {
+          setEditingId(null);
+          setUpdateOpen(false);
+          setEditForm(emptyForm);
+        }
+      } catch {
+        failedIds.push(id);
+      }
+    }
+
+    await loadUsers();
+    if (hasFullAccess) await loadHistory();
+    emitDataChanged();
+
+    return { failedIds, total: uniqueIds.length };
+  }
+
   function openDeleteModal(id: string) {
     setDeleteId(id);
     setMessage("");
@@ -367,6 +405,56 @@ export function UsersCrud() {
     setDeleting(false);
     if (success) setDeleteId(null);
   }
+
+  async function confirmBulkDeleteUsers() {
+    if (!selectedIds.length) return;
+    setDeleting(true);
+    try {
+      const result = await deleteUsersByIds(selectedIds);
+      if (!result.failedIds.length) {
+        setSuccessToast(`${result.total} user berhasil dihapus.`);
+      } else {
+        setMessage(`Sebagian data gagal dihapus: ${result.failedIds.join(", ")}`);
+      }
+    } finally {
+      setDeleting(false);
+      setBulkDeleteOpen(false);
+      setSelectedIds([]);
+      setBulkAction("");
+    }
+  }
+
+  function toggleRowSelection(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter((item) => item !== id);
+    });
+  }
+
+  function togglePageSelection(checked: boolean) {
+    const pageIds = pagination.pagedRows.map((row) => row.id);
+    setSelectedIds((prev) => {
+      if (checked) return Array.from(new Set([...prev, ...pageIds]));
+      return prev.filter((id) => !pageIds.includes(id));
+    });
+  }
+
+  function applyBulkAction() {
+    if (!bulkAction) {
+      setMessage("Pilih multi action terlebih dahulu.");
+      return;
+    }
+    if (!selectedIds.length) {
+      setMessage("Pilih minimal 1 data untuk multi action.");
+      return;
+    }
+    if (bulkAction === "delete") {
+      setBulkDeleteOpen(true);
+    }
+  }
+
+  const pageIds = pagination.pagedRows.map((row) => row.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
   function downloadFilteredReport() {
     downloadRowsAsExcel({
@@ -411,10 +499,27 @@ export function UsersCrud() {
               >
                 <option value="all">Semua role</option>
                 <option value="admin">admin</option>
+                <option value="superadmin">superadmin</option>
                 <option value="warga">warga</option>
                 <option value="finance">finance</option>
               </select>
             </div>
+            {selectedIds.length ? (
+              <>
+                <div className="w-full sm:w-[180px]">
+                  <label className={labelClass}>Multi Action</label>
+                  <select className={filterSelectClass} value={bulkAction} onChange={(event) => setBulkAction(event.target.value as "" | "delete")}>
+                    <option value="">Pilih action</option>
+                    <option value="delete">Delete Terpilih</option>
+                  </select>
+                </div>
+                <div className="w-full sm:w-auto">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={applyBulkAction} disabled={!selectedIds.length}>
+                    Apply ({selectedIds.length})
+                  </Button>
+                </div>
+              </>
+            ) : null}
             <div className="ml-auto flex items-end">
               <Button
                 type="button"
@@ -432,6 +537,14 @@ export function UsersCrud() {
           <Table className="min-w-[920px]">
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[44px]">
+                  <input
+                    type="checkbox"
+                    checked={allPageSelected}
+                    onChange={(event) => togglePageSelection(event.target.checked)}
+                    aria-label="Pilih semua data pada halaman"
+                  />
+                </TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Role</TableHead>
@@ -440,23 +553,25 @@ export function UsersCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={4} message="Memuat data user..." />
+                <ApiTableLoadingRow colSpan={5} message="Memuat data user..." />
               ) : filteredRows.length ? (
                 pagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item.id)}
+                        onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
+                        aria-label={`Pilih user ${item.name}`}
+                      />
+                    </TableCell>
                     <TableCell className="align-top">
                       <p className="font-medium">{item.name}</p>
                       <p className="text-xs text-muted-foreground">{item.email}</p>
                     </TableCell>
                     <TableCell>{item.phone}</TableCell>
                     <TableCell>
-                      {item.role === "admin" ? (
-                        <Badge>admin</Badge>
-                      ) : item.role === "finance" ? (
-                        <Badge variant="secondary">finance</Badge>
-                      ) : (
-                        <Badge variant="outline">warga</Badge>
-                      )}
+                      <RoleBadge role={item.role} />
                     </TableCell>
                     <TableCell className="min-w-[132px]">
                       <div className="flex items-center gap-2">
@@ -496,7 +611,7 @@ export function UsersCrud() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>
@@ -572,6 +687,17 @@ export function UsersCrud() {
         onConfirm={confirmDeleteUser}
         title="Delete User"
         description="Data user akan dihapus permanen."
+        loading={deleting}
+      />
+      <DeleteConfirmModal
+        open={bulkDeleteOpen}
+        onClose={() => {
+          if (deleting) return;
+          setBulkDeleteOpen(false);
+        }}
+        onConfirm={confirmBulkDeleteUsers}
+        title="Delete Multi User"
+        description={`${selectedIds.length} data user terpilih akan dihapus permanen.`}
         loading={deleting}
       />
 

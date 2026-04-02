@@ -58,7 +58,7 @@ export function AdminSidebar() {
       ) : null}
 
       <nav className="space-y-1">
-        {session?.role === "admin" ? (
+        {session?.role === "admin" || session?.role === "superadmin" ? (
           <Link
             href={serverStatusHref}
             onClick={() => {

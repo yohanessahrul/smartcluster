@@ -30,7 +30,7 @@ const transactionCategoryValues = ["IPL Warga", "IPL Cluster", "Barang Inventari
 const billStatusValues = ["Lunas", "Belum Dibayar", "Verifikasi"];
 const transactionStatusValues = ["Lunas", "Verifikasi", "Pending"];
 const residentialStatusValues = ["Owner", "Contract"];
-const userRoleValues = ["admin", "warga", "finance"];
+const userRoleValues = ["admin", "superadmin", "warga", "finance"];
 const paymentMethodValues = ["Transfer Bank", "Cash", "QRIS", "E-wallet"];
 
 function nowDateTime() {
@@ -394,9 +394,9 @@ async function ensureUserRoleConstraint() {
     END $$;
   `);
   await query("UPDATE users SET role = 'warga' WHERE role IS NULL OR BTRIM(role) = ''");
-  await query("UPDATE users SET role = 'warga' WHERE role NOT IN ('admin', 'warga', 'finance')");
+  await query("UPDATE users SET role = 'warga' WHERE role NOT IN ('admin', 'superadmin', 'warga', 'finance')");
   await query("ALTER TABLE users ALTER COLUMN role SET NOT NULL");
-  await query("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'warga', 'finance'))");
+  await query("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('admin', 'superadmin', 'warga', 'finance'))");
 }
 
 async function ensureBillColumns() {
@@ -680,7 +680,7 @@ app.post("/api/users", async (req, res) => {
     const { id, name, email, phone, role: rawRole } = req.body;
     const role = normalizeUserRole(rawRole, "");
     if (!role) {
-      return res.status(400).json({ message: "Role tidak valid. Gunakan admin, warga, atau finance." });
+      return res.status(400).json({ message: "Role tidak valid. Gunakan admin, superadmin, warga, atau finance." });
     }
     await ensureUserRoleConstraint();
     const result = await query(
@@ -703,7 +703,7 @@ app.post("/api/users", async (req, res) => {
       return res.status(409).json({ message: "ID atau email sudah digunakan." });
     }
     if (error.code === "23514") {
-      return res.status(400).json({ message: "Role tidak valid. Gunakan admin, warga, atau finance." });
+      return res.status(400).json({ message: "Role tidak valid. Gunakan admin, superadmin, warga, atau finance." });
     }
     handleError(res, error);
   }
@@ -716,7 +716,7 @@ app.put("/api/users/:id", async (req, res) => {
     const { name, email, phone, role: rawRole } = req.body;
     const role = normalizeUserRole(rawRole, "");
     if (!role) {
-      return res.status(400).json({ message: "Role tidak valid. Gunakan admin, warga, atau finance." });
+      return res.status(400).json({ message: "Role tidak valid. Gunakan admin, superadmin, warga, atau finance." });
     }
     await ensureUserRoleConstraint();
     const before = await query("SELECT id, name, email, phone, role FROM users WHERE id=$1", [id]);
@@ -742,7 +742,7 @@ app.put("/api/users/:id", async (req, res) => {
       return res.status(409).json({ message: "Email sudah digunakan user lain." });
     }
     if (error.code === "23514") {
-      return res.status(400).json({ message: "Role tidak valid. Gunakan admin, warga, atau finance." });
+      return res.status(400).json({ message: "Role tidak valid. Gunakan admin, superadmin, warga, atau finance." });
     }
     handleError(res, error);
   }

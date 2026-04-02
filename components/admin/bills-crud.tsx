@@ -559,6 +559,9 @@ export function BillsCrud() {
   const [previewRow, setPreviewRow] = useState<BillRow | null>(null);
   const [previewHistoryRows, setPreviewHistoryRows] = useState<AuditLogRow[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<"" | "delete">("");
   const [deleting, setDeleting] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
@@ -581,7 +584,7 @@ export function BillsCrud() {
   }, []);
 
   useEffect(() => {
-    if (session?.role === "admin" || session?.role === "finance") {
+    if (session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance") {
       loadHistory();
       return;
     }
@@ -589,8 +592,8 @@ export function BillsCrud() {
     setHistoryLoading(false);
   }, [session?.role]);
 
-  const hasFullAccess = session?.role === "admin" || session?.role === "finance";
-  const isAdmin = session?.role === "admin";
+  const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
+  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
   const isFinance = session?.role === "finance";
   const verifyBillId = searchParams.get("verifyBill")?.trim() ?? "";
 
@@ -625,6 +628,9 @@ export function BillsCrud() {
     });
   }, [rows, statusFilter, blokFilter, periodeFilter, houseById]);
   const tablePagination = useTablePagination(filteredRows);
+  const pageIds = tablePagination.pagedRows.map((row) => row.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+  const listColSpan = isAdmin ? 7 : 6;
 
   const previewTimelineRows = useMemo(() => buildStatusTimeline(previewHistoryRows), [previewHistoryRows]);
   const previewPagination = useTablePagination(previewTimelineRows);
@@ -644,6 +650,16 @@ export function BillsCrud() {
     if (!hasFullAccess) return;
     console.log("[Table][Admin IPL] historyRows:", historyRows);
   }, [hasFullAccess, historyRows]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
+  }, [rows]);
+
+  useEffect(() => {
+    if (!selectedIds.length && bulkAction) {
+      setBulkAction("");
+    }
+  }, [selectedIds.length, bulkAction]);
 
   useEffect(() => {
     if (!previewOpen) return;
@@ -912,6 +928,30 @@ export function BillsCrud() {
     }
   }
 
+  async function deleteBillsByIds(ids: string[]) {
+    const uniqueIds = Array.from(new Set(ids));
+    const failedIds: string[] = [];
+
+    for (const id of uniqueIds) {
+      try {
+        await apiClient.deleteBill(id, { actorEmail });
+        if (editingId === id) {
+          setEditingId(null);
+          setUpdateOpen(false);
+          setEditForm(emptyForm);
+        }
+      } catch {
+        failedIds.push(id);
+      }
+    }
+
+    await loadInitialData();
+    if (hasFullAccess) await loadHistory();
+    emitDataChanged();
+
+    return { failedIds, total: uniqueIds.length };
+  }
+
   function openDeleteModal(id: string) {
     setDeleteId(id);
     setMessage("");
@@ -923,6 +963,52 @@ export function BillsCrud() {
     const success = await deleteBill(deleteId);
     setDeleting(false);
     if (success) setDeleteId(null);
+  }
+
+  async function confirmBulkDeleteBills() {
+    if (!selectedIds.length) return;
+    setDeleting(true);
+    try {
+      const result = await deleteBillsByIds(selectedIds);
+      if (!result.failedIds.length) {
+        setSuccessToast(`${result.total} IPL berhasil dihapus.`);
+      } else {
+        setMessage(`Sebagian data gagal dihapus: ${result.failedIds.join(", ")}`);
+      }
+    } finally {
+      setDeleting(false);
+      setBulkDeleteOpen(false);
+      setSelectedIds([]);
+      setBulkAction("");
+    }
+  }
+
+  function toggleRowSelection(id: string, checked: boolean) {
+    setSelectedIds((prev) => {
+      if (checked) return prev.includes(id) ? prev : [...prev, id];
+      return prev.filter((item) => item !== id);
+    });
+  }
+
+  function togglePageSelection(checked: boolean) {
+    setSelectedIds((prev) => {
+      if (checked) return Array.from(new Set([...prev, ...pageIds]));
+      return prev.filter((id) => !pageIds.includes(id));
+    });
+  }
+
+  function applyBulkAction() {
+    if (!bulkAction) {
+      setMessage("Pilih multi action terlebih dahulu.");
+      return;
+    }
+    if (!selectedIds.length) {
+      setMessage("Pilih minimal 1 data untuk multi action.");
+      return;
+    }
+    if (bulkAction === "delete") {
+      setBulkDeleteOpen(true);
+    }
   }
 
   async function generateBillForAllHouses(event: FormEvent<HTMLFormElement>) {
@@ -1057,6 +1143,26 @@ export function BillsCrud() {
                 ))}
               </select>
             </div>
+            {isAdmin && selectedIds.length ? (
+              <>
+                <div className="w-full sm:w-[180px]">
+                  <label className={labelClass}>Multi Action</label>
+                  <select
+                    className={filterSelectClass}
+                    value={bulkAction}
+                    onChange={(event) => setBulkAction(event.target.value as "" | "delete")}
+                  >
+                    <option value="">Pilih action</option>
+                    <option value="delete">Delete Terpilih</option>
+                  </select>
+                </div>
+                <div className="w-full sm:w-auto">
+                  <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={applyBulkAction} disabled={!selectedIds.length}>
+                    Apply ({selectedIds.length})
+                  </Button>
+                </div>
+              </>
+            ) : null}
             <div className="ml-auto flex items-end">
               <Button
                 type="button"
@@ -1074,6 +1180,16 @@ export function BillsCrud() {
           <Table className="min-w-[920px]">
             <TableHeader>
               <TableRow>
+                {isAdmin ? (
+                  <TableHead className="w-[44px]">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      onChange={(event) => togglePageSelection(event.target.checked)}
+                      aria-label="Pilih semua data IPL pada halaman"
+                    />
+                  </TableHead>
+                ) : null}
                 <TableHead>Unit</TableHead>
                 <TableHead>Periode</TableHead>
                 <TableHead>Amount</TableHead>
@@ -1084,10 +1200,20 @@ export function BillsCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={6} message="Memuat data IPL..." />
+                <ApiTableLoadingRow colSpan={listColSpan} message="Memuat data IPL..." />
               ) : filteredRows.length ? (
                 tablePagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
+                    {isAdmin ? (
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.id)}
+                          onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
+                          aria-label={`Pilih IPL ${item.id}`}
+                        />
+                      </TableCell>
+                    ) : null}
                     <TableCell>{houseDisplayValue(item.house_id)}</TableCell>
                     <TableCell>{item.periode}</TableCell>
                     <TableCell>{item.amount}</TableCell>
@@ -1149,7 +1275,7 @@ export function BillsCrud() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={listColSpan} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>
@@ -1320,6 +1446,17 @@ export function BillsCrud() {
         onConfirm={confirmDeleteBill}
         title="Delete IPL"
         description="Data IPL akan dihapus permanen."
+        loading={deleting}
+      />
+      <DeleteConfirmModal
+        open={bulkDeleteOpen}
+        onClose={() => {
+          if (deleting) return;
+          setBulkDeleteOpen(false);
+        }}
+        onConfirm={confirmBulkDeleteBills}
+        title="Delete Multi IPL"
+        description={`${selectedIds.length} data IPL terpilih akan dihapus permanen.`}
         loading={deleting}
       />
 

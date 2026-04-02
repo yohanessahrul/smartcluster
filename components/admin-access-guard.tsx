@@ -46,7 +46,7 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
     );
   }
 
-  if (session.role !== "admin" && session.role !== "finance") {
+  if (session.role !== "admin" && session.role !== "superadmin" && session.role !== "finance") {
     return (
       <Card>
         <CardHeader>
@@ -54,7 +54,7 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Email {session.email} terdaftar sebagai warga. Gunakan akun admin atau finance untuk panel ini.
+            Email {session.email} terdaftar sebagai warga. Gunakan akun admin, superadmin, atau finance untuk panel ini.
           </p>
         </CardContent>
       </Card>

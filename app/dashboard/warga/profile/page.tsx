@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
+import { RoleBadge } from "@/components/ui/role-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { apiClient, emitDataChanged } from "@/lib/api-client";
@@ -18,7 +19,7 @@ const inputClass =
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 
 type WargaProfileData = {
-  session: { email: string; role: "admin" | "warga" | "finance"; name: string; userId: string } | null;
+  session: { email: string; role: "admin" | "superadmin" | "warga" | "finance"; name: string; userId: string } | null;
   house: HouseRow | null;
   linkedUsers: UserRow[];
   refresh: () => Promise<void>;
@@ -191,7 +192,7 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
               <div key={user.id} className="rounded-lg border border-border p-3">
                 <div className="mb-1 flex items-center gap-2">
                   <p className="font-medium">{user.name}</p>
-                  <Badge variant="outline">{user.role}</Badge>
+                  <RoleBadge role={user.role} />
                   {user.email.toLowerCase() === primaryEmail ? <Badge variant="success">Primary</Badge> : null}
                   {user.email.toLowerCase() === secondaryEmail ? <Badge variant="secondary">Secondary</Badge> : null}
                 </div>

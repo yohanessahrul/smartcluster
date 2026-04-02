@@ -95,7 +95,7 @@ const transactionCategoryValues = ["IPL Warga", "IPL Cluster", "Barang Inventari
 const billStatusValues = ["Lunas", "Belum bayar", "Menunggu Verifikasi", "Verifikasi"] as const;
 const transactionStatusValues = ["Lunas", "Belum bayar", "Verifikasi", "Menunggu Verifikasi"] as const;
 const residentialStatusValues = ["Owner", "Contract"] as const;
-const userRoleValues = ["admin", "warga", "finance"] as const;
+const userRoleValues = ["admin", "superadmin", "warga", "finance"] as const;
 const paymentMethodValues = ["Transfer Bank", "Cash", "QRIS", "E-wallet"] as const;
 
 type GlobalApiState = typeof globalThis & {
@@ -524,14 +524,14 @@ async function ensureUserRoleConstraint() {
     END $$;
   `);
   await query("UPDATE users SET role = 'warga' WHERE role IS NULL OR BTRIM(role) = ''");
-  await query("UPDATE users SET role = 'warga' WHERE role NOT IN ('admin', 'warga', 'finance')");
+  await query("UPDATE users SET role = 'warga' WHERE role NOT IN ('admin', 'superadmin', 'warga', 'finance')");
   await query("ALTER TABLE users ALTER COLUMN role SET NOT NULL");
   await query(`
     DO $$
     BEGIN
       ALTER TABLE users
       ADD CONSTRAINT users_role_check
-      CHECK (role IN ('admin', 'warga', 'finance'));
+      CHECK (role IN ('admin', 'superadmin', 'warga', 'finance'));
     EXCEPTION
       WHEN duplicate_object OR duplicate_table THEN NULL;
     END $$;
@@ -926,7 +926,7 @@ export async function createUser(payload: JsonRecord, actor: string) {
   try {
     const role = normalizeUserRole(payload.role, "");
     if (!role) {
-      throw new ApiHttpError(400, "Role tidak valid. Gunakan admin, warga, atau finance.");
+      throw new ApiHttpError(400, "Role tidak valid. Gunakan admin, superadmin, warga, atau finance.");
     }
     await ensureUserRoleConstraint();
 
@@ -957,7 +957,7 @@ export async function createUser(payload: JsonRecord, actor: string) {
       throw new ApiHttpError(409, "ID atau email sudah digunakan.");
     }
     if (code === "23514") {
-      throw new ApiHttpError(400, "Role tidak valid. Gunakan admin, warga, atau finance.");
+      throw new ApiHttpError(400, "Role tidak valid. Gunakan admin, superadmin, warga, atau finance.");
     }
     throwServerError(error);
   }
@@ -967,7 +967,7 @@ export async function updateUser(id: string, payload: JsonRecord, actor: string)
   try {
     const role = normalizeUserRole(payload.role, "");
     if (!role) {
-      throw new ApiHttpError(400, "Role tidak valid. Gunakan admin, warga, atau finance.");
+      throw new ApiHttpError(400, "Role tidak valid. Gunakan admin, superadmin, warga, atau finance.");
     }
     await ensureUserRoleConstraint();
 
@@ -992,7 +992,7 @@ export async function updateUser(id: string, payload: JsonRecord, actor: string)
   } catch (error) {
     const code = getErrorCode(error);
     if (code === "23505") throw new ApiHttpError(409, "Email sudah digunakan user lain.");
-    if (code === "23514") throw new ApiHttpError(400, "Role tidak valid. Gunakan admin, warga, atau finance.");
+    if (code === "23514") throw new ApiHttpError(400, "Role tidak valid. Gunakan admin, superadmin, warga, atau finance.");
     throwServerError(error);
   }
 }

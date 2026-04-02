@@ -7,7 +7,7 @@ type SessionUserRow = {
   id: string;
   name: string;
   email: string;
-  role: "admin" | "warga" | "finance";
+  role: "admin" | "superadmin" | "warga" | "finance";
 };
 
 export const runtime = "nodejs";
