@@ -21,12 +21,12 @@ export function SuccessToast({ message, onClose, durationMs = 3000 }: SuccessToa
 
   return (
     <div
-      className="pointer-events-none fixed bottom-4 right-4 z-[70] w-[calc(100vw-2rem)] max-w-sm rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900 shadow-soft"
+      className="pointer-events-none fixed bottom-4 right-4 z-[70] w-[calc(100vw-2rem)] max-w-sm rounded-lg border border-emerald-700 bg-emerald-600 p-3 text-white shadow-lg"
       role="status"
       aria-live="polite"
     >
-      <p className="text-sm font-semibold">Berhasil</p>
-      <p className="mt-1 text-sm">{message}</p>
+      <p className="text-sm font-semibold text-white">Berhasil</p>
+      <p className="mt-1 text-sm text-emerald-50">{message}</p>
     </div>
   );
 }

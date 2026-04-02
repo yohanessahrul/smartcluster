@@ -8,6 +8,7 @@ import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { formatRupiahFromAny } from "@/lib/currency";
@@ -18,38 +19,19 @@ import { TransactionRow } from "@/lib/mock-data";
 const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 
 export default function WargaRiwayatPage() {
-  const [search, setSearch] = useState("");
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setPage(1);
-  }, [search, methodFilter]);
+  }, [methodFilter]);
 
   return (
     <WargaAccessGuard>
       {(data) => {
-        const keyword = search.trim().toLowerCase();
         const filteredRows = data.houseTransactions.filter((item) => {
-          const methodMatch = methodFilter === "all" ? true : item.payment_method === methodFilter;
-          const textMatch = keyword
-            ? [
-                item.id,
-                item.bill_id ?? "",
-                item.transaction_type,
-                item.category,
-                item.amount,
-                item.date,
-                item.payment_method,
-                item.status,
-                item.status_date,
-              ]
-                .join(" ")
-                .toLowerCase()
-                .includes(keyword)
-            : true;
-          return methodMatch && textMatch;
+          return methodFilter === "all" ? true : item.payment_method === methodFilter;
         });
         const totalItems = filteredRows.length;
         const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -58,6 +40,11 @@ export default function WargaRiwayatPage() {
         const pagedRows = filteredRows.slice(start, start + pageSize);
         const from = totalItems === 0 ? 0 : start + 1;
         const to = totalItems === 0 ? 0 : Math.min(currentPage * pageSize, totalItems);
+
+        console.log("[Table][Warga Riwayat] rows:", data.houseTransactions);
+        console.log("[Table][Warga Riwayat] filteredRows:", filteredRows);
+        console.log("[Table][Warga Riwayat] pagedRows:", pagedRows);
+
         function downloadFilteredReport() {
           downloadRowsAsExcel({
             filenamePrefix: "warga-riwayat-transactions",
@@ -87,17 +74,8 @@ export default function WargaRiwayatPage() {
                 <CardTitle>Data Transaksi Saya</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_220px_44px]">
-                  <div>
-                    <label className={filterLabelClass}>Pencarian</label>
-                    <input
-                      className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                      placeholder="Cari ID, IPL ID, tipe, kategori, amount..."
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                    />
-                  </div>
-                  <div>
+                <div className="mb-3 flex flex-wrap items-end gap-2">
+                  <div className="w-full sm:w-[220px]">
                     <label className={filterLabelClass}>Metode Pembayaran</label>
                     <select
                       className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -111,7 +89,7 @@ export default function WargaRiwayatPage() {
                       <option value="E-wallet">E-wallet</option>
                     </select>
                   </div>
-                  <div className="flex items-end">
+                  <div className="ml-auto flex items-end">
                     <Button
                       type="button"
                       variant="outline"
@@ -153,13 +131,13 @@ export default function WargaRiwayatPage() {
                             <span className="text-muted-foreground">Amount:</span> {formatRupiahFromAny(item.amount)}
                           </p>
                           <p>
-                            <span className="text-muted-foreground">Date:</span> {formatDateTimeUnified(item.date)}
+                            <span className="text-muted-foreground">Date:</span> <DateTimeText value={item.date} />
                           </p>
                           <p>
                             <span className="text-muted-foreground">Payment Method:</span> {item.payment_method}
                           </p>
                           <p className="sm:col-span-2">
-                            <span className="text-muted-foreground">Status Date:</span> {formatDateTimeUnified(item.status_date)}
+                            <span className="text-muted-foreground">Status Date:</span> <DateTimeText value={item.status_date} />
                           </p>
                         </div>
                       </div>

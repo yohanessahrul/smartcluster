@@ -21,7 +21,7 @@ export type BillRow = {
   periode: string;
   amount: string;
   payment_method: "Transfer Bank" | "Cash" | "QRIS" | "E-wallet";
-  status: "Lunas" | "Belum bayar" | "Pending" | "Verifikasi";
+  status: "Lunas" | "Belum bayar" | "Menunggu Verifikasi" | "Verifikasi";
   status_date: string;
   payment_proof_url?: string | null;
   paid_to_developer: boolean;
@@ -37,7 +37,7 @@ export type TransactionRow = {
   amount: string;
   date: string;
   payment_method: "Transfer Bank" | "Cash" | "QRIS" | "E-wallet";
-  status: "Lunas" | "Belum bayar" | "Verifikasi" | "Pending";
+  status: "Lunas" | "Belum bayar" | "Verifikasi" | "Menunggu Verifikasi";
   status_date: string;
 };
 

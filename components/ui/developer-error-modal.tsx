@@ -4,20 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Bug, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { DEV_ERROR_EVENT_NAME, DeveloperErrorPayload, emitDeveloperError, normalizeUnknownError } from "@/lib/developer-error";
-
-function formatDateTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("id-ID", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
 
 export function DeveloperErrorModal() {
   const [currentError, setCurrentError] = useState<DeveloperErrorPayload | null>(null);
@@ -101,7 +89,9 @@ export function DeveloperErrorModal() {
           ) : null}
           <div className="rounded-md border border-rose-200 bg-white px-3 py-2">
             <p className="text-xs text-rose-700">Captured At</p>
-            <p className="text-sm text-rose-900">{formatDateTime(currentError.timestamp)}</p>
+            <p className="text-sm text-rose-900">
+              <DateTimeText value={currentError.timestamp} />
+            </p>
           </div>
           {currentError.stack ? (
             <div className="rounded-md border border-rose-200 bg-white px-3 py-2">

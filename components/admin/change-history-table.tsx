@@ -5,11 +5,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AuditLogRow } from "@/lib/api-client";
-import { formatDateTimeUnified } from "@/lib/date-time";
 
 type ChangeHistoryTableProps = {
   title: string;
@@ -49,7 +49,7 @@ export function ChangeHistoryTable({ title, rows, loading }: ChangeHistoryTableP
                 pagination.pagedRows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="align-top text-sm">
-                      {formatDateTimeUnified(row.updated_at)}
+                      <DateTimeText value={row.updated_at} />
                     </TableCell>
                     <TableCell className="align-top text-sm">{row.author}</TableCell>
                     <TableCell className="align-top text-sm">
@@ -96,7 +96,7 @@ export function ChangeHistoryTable({ title, rows, loading }: ChangeHistoryTableP
         <div className="space-y-3">
           <div className="rounded-lg border border-border p-3 text-sm">
             <p>
-              <span className="text-muted-foreground">Tanggal Update:</span> {formatDateTimeUnified(selectedRow?.updated_at)}
+              <span className="text-muted-foreground">Tanggal Update:</span> <DateTimeText value={selectedRow?.updated_at} />
             </p>
             <p>
               <span className="text-muted-foreground">Author:</span> {selectedRow?.author ?? "-"}

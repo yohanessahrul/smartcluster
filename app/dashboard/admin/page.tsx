@@ -1,22 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Home, NotebookText, Server, Users, Wallet } from "lucide-react";
+import { AlertCircle, Home, NotebookText, Users, Wallet } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { Badge } from "@/components/ui/badge";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
-import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuthSession } from "@/lib/auth-client";
 import { apiClient } from "@/lib/api-client";
 import { formatRupiah, formatRupiahFromAny, parseRupiahToNumber } from "@/lib/currency";
-import { formatDateTimeUnified } from "@/lib/date-time";
 import { BillRow, HouseRow, TransactionRow, UserRow } from "@/lib/mock-data";
 
 export default function AdminDashboardPage() {
@@ -76,32 +74,51 @@ export default function AdminDashboardPage() {
 
   const financeMetrics = useMemo(() => {
     const successPayments = bills.filter((item) => item.status === "Lunas");
-    const pendingPayments = bills.filter((item) => item.status !== "Lunas");
+    const needVerification = bills.filter((item) => item.status === "Menunggu Verifikasi");
+    const needFollowUp = bills.filter((item) => item.status === "Belum bayar");
 
     return {
       successCount: successPayments.length,
       successTotal: successPayments.reduce((sum, item) => sum + parseRupiahToNumber(item.amount), 0),
-      pendingCount: pendingPayments.length,
-      pendingTotal: pendingPayments.reduce((sum, item) => sum + parseRupiahToNumber(item.amount), 0),
-      activeUnitCount: houses.filter((item) => item.isOccupied).length,
+      needVerificationCount: needVerification.length,
+      needVerificationTotal: needVerification.reduce((sum, item) => sum + parseRupiahToNumber(item.amount), 0),
+      needFollowUpCount: needFollowUp.length,
+      needFollowUpTotal: needFollowUp.reduce((sum, item) => sum + parseRupiahToNumber(item.amount), 0),
+      totalUnitCount: houses.length,
+      occupiedUnitCount: houses.filter((item) => item.isOccupied).length,
     };
   }, [bills, houses]);
 
   const financeBillsNeedAction = useMemo(() => {
     return bills
-      .filter((item) => item.status !== "Lunas")
+      .filter((item) => item.status === "Menunggu Verifikasi")
       .sort((a, b) => new Date(b.status_date).getTime() - new Date(a.status_date).getTime())
       .slice(0, 10);
   }, [bills]);
 
-  const financeLatestIncome = useMemo(() => {
+  const financeLatestTransactions = useMemo(() => {
     return transactions
-      .filter((item) => item.transaction_type === "Pemasukan" && item.category === "IPL Warga")
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 10);
+      .slice()
+      .sort((a, b) => {
+        const timeA = new Date(a.status_date || a.date).getTime();
+        const timeB = new Date(b.status_date || b.date).getTime();
+        return timeB - timeA;
+      })
+      .slice(0, 5);
   }, [transactions]);
-  const financeNeedActionPagination = useTablePagination(financeBillsNeedAction);
-  const financeIncomePagination = useTablePagination(financeLatestIncome);
+
+  useEffect(() => {
+    console.log("[Table][Dashboard Admin] users:", users);
+    console.log("[Table][Dashboard Admin] houses:", houses);
+    console.log("[Table][Dashboard Admin] ipl:", bills);
+    console.log("[Table][Dashboard Admin] transactions:", transactions);
+  }, [users, houses, bills, transactions]);
+
+  useEffect(() => {
+    if (!isFinance) return;
+    console.log("[Table][Dashboard Finance] iplNeedAction:", financeBillsNeedAction);
+    console.log("[Table][Dashboard Finance] latestTransactions:", financeLatestTransactions);
+  }, [isFinance, financeBillsNeedAction, financeLatestTransactions]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -149,7 +166,7 @@ export default function AdminDashboardPage() {
         />
         {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
-        <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardContent className="flex items-center justify-between p-4">
               <div>
@@ -160,57 +177,78 @@ export default function AdminDashboardPage() {
               <NotebookText className="h-4 w-4 text-muted-foreground" />
             </CardContent>
           </Card>
+          <Card>
+            <CardContent className="flex items-center justify-between p-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Need Verification</p>
+                <p className="font-heading text-xl">{financeMetrics.needVerificationCount}</p>
+                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.needVerificationTotal)}</p>
+              </div>
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
           <Card className="border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]">
             <CardContent className="flex items-center justify-between p-4">
               <div>
-                <p className="text-xs text-muted-foreground">Pending Payment</p>
-                <p className="font-heading text-xl">{financeMetrics.pendingCount}</p>
-                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.pendingTotal)}</p>
+                <p className="text-xs text-muted-foreground">Need Follow Up</p>
+                <p className="font-heading text-xl">{financeMetrics.needFollowUpCount}</p>
+                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.needFollowUpTotal)}</p>
               </div>
-              <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardContent>
           </Card>
           <Card>
             <CardContent className="flex items-center justify-between p-4">
               <div>
-                <p className="text-xs text-muted-foreground">Unit Active</p>
-                <p className="font-heading text-xl">{`${financeMetrics.activeUnitCount} House`}</p>
+                <p className="text-xs text-muted-foreground">Unit Summary</p>
+                <p className="font-heading text-xl">{`${financeMetrics.totalUnitCount} House`}</p>
+                <p className="text-xs text-muted-foreground">{`${financeMetrics.occupiedUnitCount} Dihuni`}</p>
               </div>
               <Home className="h-4 w-4 text-muted-foreground" />
             </CardContent>
           </Card>
         </section>
 
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="space-y-4">
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-3">
               <CardTitle>IPL Perlu Tindakan</CardTitle>
               <Badge variant="outline">{loading ? "Memuat..." : `${financeBillsNeedAction.length} data`}</Badge>
             </CardHeader>
             <CardContent>
-              <Table className="min-w-[620px]">
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Unit</TableHead>
-                    <TableHead>Periode</TableHead>
+                    <TableHead className="hidden md:table-cell">Periode</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Status Date</TableHead>
+                    <TableHead className="hidden lg:table-cell">Status Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
                     <ApiTableLoadingRow colSpan={5} message="Memuat data IPL..." />
                   ) : financeBillsNeedAction.length ? (
-                    financeNeedActionPagination.pagedRows.map((item) => (
+                    financeBillsNeedAction.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{unitLabel(item.house_id)}</TableCell>
-                        <TableCell>{item.periode}</TableCell>
+                        <TableCell className="whitespace-normal">
+                          <div className="space-y-1">
+                            <p>{unitLabel(item.house_id)}</p>
+                            <p className="text-xs text-muted-foreground md:hidden">Periode: {item.periode}</p>
+                            <p className="text-xs text-muted-foreground lg:hidden">
+                              Status Date: <DateTimeText value={item.status_date} />
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">{item.periode}</TableCell>
                         <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
                         <TableCell>
                           <PaymentStatusBadge status={item.status} />
                         </TableCell>
-                        <TableCell>{formatDateTimeUnified(item.status_date)}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <DateTimeText value={item.status_date} />
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
@@ -222,52 +260,55 @@ export default function AdminDashboardPage() {
                   )}
                 </TableBody>
               </Table>
-              {!loading ? (
-                <TablePagination
-                  page={financeNeedActionPagination.page}
-                  pageSize={financeNeedActionPagination.pageSize}
-                  totalItems={financeNeedActionPagination.totalItems}
-                  totalPages={financeNeedActionPagination.totalPages}
-                  from={financeNeedActionPagination.from}
-                  to={financeNeedActionPagination.to}
-                  onPageChange={financeNeedActionPagination.setPage}
-                  onPageSizeChange={financeNeedActionPagination.setPageSize}
-                />
-              ) : null}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-3">
-              <CardTitle>Pemasukan IPL Terbaru</CardTitle>
-              <Badge variant="outline">{loading ? "Memuat..." : "Realtime API"}</Badge>
+              <CardTitle>5 Transaksi Terakhir</CardTitle>
+              <Badge variant="outline">{loading ? "Memuat..." : `${financeLatestTransactions.length} data`}</Badge>
             </CardHeader>
             <CardContent>
-              <Table className="min-w-[620px]">
+              <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead>IPL ID</TableHead>
+                    <TableHead className="hidden md:table-cell">ID</TableHead>
+                    <TableHead>Transaction Detail</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Payment Method</TableHead>
+                    <TableHead className="hidden lg:table-cell">Payment Method</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead className="hidden lg:table-cell">Status Date</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <ApiTableLoadingRow colSpan={6} message="Memuat data pemasukan..." />
-                  ) : financeLatestIncome.length ? (
-                    financeIncomePagination.pagedRows.map((item) => (
+                    <ApiTableLoadingRow colSpan={6} message="Memuat data transaksi..." />
+                  ) : financeLatestTransactions.length ? (
+                    financeLatestTransactions.map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell>{item.id}</TableCell>
-                        <TableCell>{item.bill_id ?? "-"}</TableCell>
+                        <TableCell className="hidden md:table-cell">{item.id}</TableCell>
+                        <TableCell className="align-top whitespace-normal">
+                          <div className="space-y-1">
+                            <p className="text-sm">{item.transaction_name}</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>{item.transaction_type}</Badge>
+                              <Badge variant="secondary">{item.category}</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground md:hidden">ID: {item.id}</p>
+                            <p className="text-xs text-muted-foreground lg:hidden">Metode: {item.payment_method}</p>
+                            <p className="text-xs text-muted-foreground lg:hidden">
+                              Status Date: <DateTimeText value={item.status_date} />
+                            </p>
+                          </div>
+                        </TableCell>
                         <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
-                        <TableCell>{item.payment_method}</TableCell>
+                        <TableCell className="hidden lg:table-cell">{item.payment_method}</TableCell>
                         <TableCell>
                           <PaymentStatusBadge status={item.status} />
                         </TableCell>
-                        <TableCell>{formatDateTimeUnified(item.date)}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <DateTimeText value={item.status_date} />
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
@@ -279,18 +320,6 @@ export default function AdminDashboardPage() {
                   )}
                 </TableBody>
               </Table>
-              {!loading ? (
-                <TablePagination
-                  page={financeIncomePagination.page}
-                  pageSize={financeIncomePagination.pageSize}
-                  totalItems={financeIncomePagination.totalItems}
-                  totalPages={financeIncomePagination.totalPages}
-                  from={financeIncomePagination.from}
-                  to={financeIncomePagination.to}
-                  onPageChange={financeIncomePagination.setPage}
-                  onPageSizeChange={financeIncomePagination.setPageSize}
-                />
-              ) : null}
             </CardContent>
           </Card>
         </div>
@@ -300,18 +329,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div>
-      <DashboardHeader
-        title="Dashboard Admin"
-        description="Ringkasan operasional IPL: rumah, warga, dan status tagihan."
-        actions={
-          isAdmin ? (
-            <Button type="button" variant="outline" className="h-10 rounded-lg px-3" onClick={() => setShowServerStatus(true)}>
-              <Server className="mr-2 h-4 w-4" />
-              Status Server
-            </Button>
-          ) : null
-        }
-      />
+      <DashboardHeader title="Dashboard Admin" description="Ringkasan operasional IPL: rumah, warga, dan status tagihan." />
       {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
       <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -7,6 +7,7 @@ import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
@@ -27,7 +28,6 @@ export default function WargaTagihanPage() {
   const [payError, setPayError] = useState("");
   const [successToast, setSuccessToast] = useState("");
   const [localBills, setLocalBills] = useState<BillRow[]>([]);
-  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | BillRow["status"]>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -50,7 +50,7 @@ export default function WargaTagihanPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusFilter]);
+  }, [statusFilter]);
 
   function openPayModal(bill: BillRow) {
     setSelectedBill(bill);
@@ -93,7 +93,7 @@ export default function WargaTagihanPage() {
       setPayModalOpen(false);
       setPayProofFile(null);
       setPayError("");
-      setSuccessToast(`Pembayaran untuk ${selectedBill.id} berhasil dikirim. Status menjadi Pending.`);
+      setSuccessToast(`Pembayaran untuk ${selectedBill.id} berhasil dikirim. Status menjadi Menunggu Verifikasi.`);
     } catch (error) {
       setPayError(error instanceof Error ? error.message : "Gagal memproses pembayaran.");
     } finally {
@@ -106,17 +106,9 @@ export default function WargaTagihanPage() {
       {(data) => {
         const sourceRows = localBills.length ? localBills : data.houseBills;
         const rows = sourceRows.filter((bill) => bill.house_id === data.house?.id);
-        const keyword = search.trim().toLowerCase();
         const houseDisplay = data.house ? `Blok ${data.house.blok} - No ${data.house.nomor}` : "-";
         const filteredRows = rows.filter((item) => {
-          const statusMatch = statusFilter === "all" ? true : item.status === statusFilter;
-          const textMatch = keyword
-            ? [houseDisplay, item.periode, item.amount, item.status, item.status_date]
-                .join(" ")
-                .toLowerCase()
-                .includes(keyword)
-            : true;
-          return statusMatch && textMatch;
+          return statusFilter === "all" ? true : item.status === statusFilter;
         });
         const totalItems = filteredRows.length;
         const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
@@ -125,6 +117,11 @@ export default function WargaTagihanPage() {
         const pagedRows = filteredRows.slice(start, start + pageSize);
         const from = totalItems === 0 ? 0 : start + 1;
         const to = totalItems === 0 ? 0 : Math.min(currentPage * pageSize, totalItems);
+
+        console.log("[Table][Warga Tagihan] rows:", rows);
+        console.log("[Table][Warga Tagihan] filteredRows:", filteredRows);
+        console.log("[Table][Warga Tagihan] pagedRows:", pagedRows);
+
         function downloadFilteredReport() {
           downloadRowsAsExcel({
             filenamePrefix: "warga-tagihan-ipl",
@@ -151,17 +148,8 @@ export default function WargaTagihanPage() {
                 <CardTitle>Riwayat Tagihan</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_220px_44px]">
-                  <div>
-                    <label className={filterLabelClass}>Pencarian</label>
-                    <input
-                      className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                      placeholder="Cari unit, periode, amount..."
-                      value={search}
-                      onChange={(event) => setSearch(event.target.value)}
-                    />
-                  </div>
-                  <div>
+                <div className="mb-3 flex flex-wrap items-end gap-2">
+                  <div className="w-full sm:w-[220px]">
                     <label className={filterLabelClass}>Status</label>
                     <select
                       className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -170,12 +158,12 @@ export default function WargaTagihanPage() {
                     >
                       <option value="all">Semua status</option>
                       <option value="Belum bayar">Belum bayar</option>
-                      <option value="Pending">Pending</option>
+                      <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
                       <option value="Verifikasi">Verifikasi</option>
                       <option value="Lunas">Lunas</option>
                     </select>
                   </div>
-                  <div className="flex items-end">
+                  <div className="ml-auto flex items-end">
                     <Button
                       type="button"
                       variant="outline"
@@ -209,7 +197,7 @@ export default function WargaTagihanPage() {
                             <span className="text-muted-foreground">Amount:</span> {item.amount}
                           </p>
                           <p className="sm:col-span-2">
-                            <span className="text-muted-foreground">Status Date:</span> {formatDateTimeUnified(item.status_date)}
+                            <span className="text-muted-foreground">Status Date:</span> <DateTimeText value={item.status_date} />
                           </p>
                         </div>
 
@@ -224,7 +212,7 @@ export default function WargaTagihanPage() {
                             >
                               Bayar
                             </Button>
-                          ) : item.status === "Pending" ? (
+                          ) : item.status === "Menunggu Verifikasi" ? (
                             <Button
                               size="sm"
                               variant="outline"
@@ -322,7 +310,7 @@ export default function WargaTagihanPage() {
                     <span className="text-muted-foreground">Status:</span> {previewBill?.status ?? "-"}
                   </p>
                   <p>
-                    <span className="text-muted-foreground">Status Date:</span> {formatDateTimeUnified(previewBill?.status_date)}
+                    <span className="text-muted-foreground">Status Date:</span> <DateTimeText value={previewBill?.status_date} />
                   </p>
                 </div>
 

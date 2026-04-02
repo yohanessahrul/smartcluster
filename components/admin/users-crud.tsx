@@ -189,13 +189,28 @@ export function UsersCrud() {
     const keyword = search.trim().toLowerCase();
     return rows.filter((row) => {
       const roleMatch = roleFilter === "all" ? true : row.role === roleFilter;
-      const textMatch = keyword
-        ? [row.id, row.name, row.email, row.phone, row.role].join(" ").toLowerCase().includes(keyword)
-        : true;
-      return roleMatch && textMatch;
+      if (!roleMatch) return false;
+      if (!keyword) return true;
+      const haystack = `${row.name} ${row.email} ${row.phone}`.toLowerCase();
+      return haystack.includes(keyword);
     });
   }, [roleFilter, rows, search]);
   const pagination = useTablePagination(filteredRows);
+
+  useEffect(() => {
+    pagination.setPage(1);
+  }, [search, roleFilter, pagination.setPage]);
+
+  useEffect(() => {
+    console.log("[Table][Admin Users] rows:", rows);
+    console.log("[Table][Admin Users] filteredRows:", filteredRows);
+    console.log("[Table][Admin Users] pagedRows:", pagination.pagedRows);
+  }, [rows, filteredRows, pagination.pagedRows]);
+
+  useEffect(() => {
+    if (!hasFullAccess) return;
+    console.log("[Table][Admin Users] historyRows:", historyRows);
+  }, [hasFullAccess, historyRows]);
 
   async function loadUsers() {
     try {
@@ -348,17 +363,17 @@ export function UsersCrud() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_180px_44px]">
-            <div>
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <div className="w-full sm:w-[180px]">
               <label className={labelClass}>Pencarian</label>
               <input
                 className={filterInputClass}
-                placeholder="Cari ID, name, email, phone..."
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                placeholder="Cari nama, email, atau nomor telepon"
               />
             </div>
-            <div>
+            <div className="w-full sm:w-[180px]">
               <label className={labelClass}>Role</label>
               <select
                 className={filterSelectClass}
@@ -371,7 +386,7 @@ export function UsersCrud() {
                 <option value="finance">finance</option>
               </select>
             </div>
-            <div className="flex items-end">
+            <div className="ml-auto flex items-end">
               <Button
                 type="button"
                 variant="outline"

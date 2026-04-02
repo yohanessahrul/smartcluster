@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
@@ -32,8 +33,6 @@ type TransactionFormValue = Omit<TransactionRow, "status"> & { status: Transacti
 
 const inputClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
-const filterInputClass =
-  "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const filterSelectClass =
   "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
@@ -145,7 +144,7 @@ function buildStatusTimeline(rows: AuditLogRow[]): StatusTimelineRow[] {
     .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
 }
 
-function transactionStatusBadge(status: TransactionRow["status"]) {
+function transactionStatusBadge(status: string) {
   return <PaymentStatusBadge status={status} />;
 }
 
@@ -295,7 +294,7 @@ function TransactionForm({
         >
           {allowEmptyStatus ? <option value="">Pilih status</option> : null}
           <option value="Belum bayar">Belum bayar</option>
-          <option value="Pending">Pending</option>
+          <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
           <option value="Verifikasi">Verifikasi</option>
           <option value="Lunas">Lunas</option>
         </select>
@@ -355,7 +354,6 @@ export function TransactionsCrud() {
   const [rows, setRows] = useState<TransactionRow[]>([]);
   const [historyRows, setHistoryRows] = useState<AuditLogRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionRow["transaction_type"]>("all");
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
   const [createForm, setCreateForm] = useState<TransactionFormValue>(emptyForm);
@@ -393,34 +391,32 @@ export function TransactionsCrud() {
   const isAdmin = session?.role === "admin";
 
   const filteredRows = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
     return rows.filter((row) => {
       const typeMatch = typeFilter === "all" ? true : row.transaction_type === typeFilter;
       const methodMatch = methodFilter === "all" ? true : row.payment_method === methodFilter;
-      const textMatch = keyword
-        ? [
-            row.id,
-            row.bill_id ?? "",
-            row.transaction_type,
-            row.transaction_name,
-            row.category,
-            row.amount,
-            row.date,
-            row.payment_method,
-            row.status,
-            row.status_date,
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(keyword)
-        : true;
-      return typeMatch && methodMatch && textMatch;
+      return typeMatch && methodMatch;
     });
-  }, [methodFilter, rows, search, typeFilter]);
+  }, [methodFilter, rows, typeFilter]);
   const tablePagination = useTablePagination(filteredRows);
 
   const previewTimelineRows = useMemo(() => buildStatusTimeline(previewHistoryRows), [previewHistoryRows]);
   const previewPagination = useTablePagination(previewTimelineRows);
+
+  useEffect(() => {
+    console.log("[Table][Admin Transactions] rows:", rows);
+    console.log("[Table][Admin Transactions] filteredRows:", filteredRows);
+    console.log("[Table][Admin Transactions] pagedRows:", tablePagination.pagedRows);
+  }, [rows, filteredRows, tablePagination.pagedRows]);
+
+  useEffect(() => {
+    if (!hasFullAccess) return;
+    console.log("[Table][Admin Transactions] historyRows:", historyRows);
+  }, [hasFullAccess, historyRows]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    console.log("[Table][Admin Transactions][Preview] timelineRows:", previewTimelineRows);
+  }, [previewOpen, previewTimelineRows]);
 
   async function loadTransactions() {
     try {
@@ -600,7 +596,13 @@ export function TransactionsCrud() {
 
   function renderStatusCell(status: string | null) {
     if (!status) return <span className="text-xs text-muted-foreground">-</span>;
-    if (status === "Lunas" || status === "Belum bayar" || status === "Pending" || status === "Verifikasi") {
+    if (
+      status === "Lunas" ||
+      status === "Belum bayar" ||
+      status === "Menunggu Verifikasi" ||
+      status === "Pending" ||
+      status === "Verifikasi"
+    ) {
       return transactionStatusBadge(status);
     }
     return <span className="text-xs">{status}</span>;
@@ -616,7 +618,7 @@ export function TransactionsCrud() {
         { header: "Transaction Type", value: (row) => row.transaction_type },
         { header: "Category", value: (row) => row.category },
         { header: "Amount", value: (row) => formatRupiahFromAny(row.amount) },
-        { header: "Date", value: (row) => formatDateTimeUnified(row.date) },
+        { header: "Status Date", value: (row) => formatDateTimeUnified(row.status_date) },
         { header: "Payment Method", value: (row) => row.payment_method },
         { header: "Status", value: (row) => row.status },
       ],
@@ -633,17 +635,8 @@ export function TransactionsCrud() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_220px_220px_44px]">
-            <div>
-              <label className={labelClass}>Pencarian</label>
-              <input
-                className={filterInputClass}
-                placeholder="Cari ID, tipe, nama transaksi, kategori, status, amount..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-            <div>
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <div className="w-full sm:w-[220px]">
               <label className={labelClass}>Tipe Transaksi</label>
               <select
                 className={filterSelectClass}
@@ -655,7 +648,7 @@ export function TransactionsCrud() {
                 <option value="Pengeluaran">Pengeluaran</option>
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-[220px]">
               <label className={labelClass}>Metode Pembayaran</label>
               <select
                 className={filterSelectClass}
@@ -669,7 +662,7 @@ export function TransactionsCrud() {
                 <option value="E-wallet">E-wallet</option>
               </select>
             </div>
-            <div className="flex items-end">
+            <div className="ml-auto flex items-end">
               <Button
                 type="button"
                 variant="outline"
@@ -688,7 +681,7 @@ export function TransactionsCrud() {
               <TableRow>
                 <TableHead>Transaction Detail</TableHead>
                 <TableHead>Amount</TableHead>
-                <TableHead>Date</TableHead>
+                <TableHead>Status Date</TableHead>
                 <TableHead>Payment Method</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="min-w-[132px]">Aksi</TableHead>
@@ -710,7 +703,9 @@ export function TransactionsCrud() {
                       </div>
                     </TableCell>
                     <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
-                    <TableCell>{formatDateTimeUnified(item.date)}</TableCell>
+                    <TableCell>
+                      <DateTimeText value={item.status_date} />
+                    </TableCell>
                     <TableCell>{item.payment_method}</TableCell>
                     <TableCell>{transactionStatusBadge(item.status)}</TableCell>
                     <TableCell className="min-w-[132px]">
@@ -819,7 +814,7 @@ export function TransactionsCrud() {
             </p>
             <p>
               <span className="text-muted-foreground">Tanggal Status Saat Ini:</span>{" "}
-              {formatDateTimeUnified(previewRow?.status_date)}
+              <DateTimeText value={previewRow?.status_date} />
             </p>
           </div>
 
@@ -828,31 +823,25 @@ export function TransactionsCrud() {
               <TableRow>
                 <TableHead>Waktu Update</TableHead>
                 <TableHead>Author</TableHead>
-                <TableHead>Status Sebelum</TableHead>
-                <TableHead>Status Sesudah</TableHead>
-                <TableHead>Tgl Sebelum</TableHead>
-                <TableHead>Tgl Sesudah</TableHead>
+                <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {previewLoading ? (
-                <ApiTableLoadingRow colSpan={6} message="Memuat detail perubahan status..." />
+                <ApiTableLoadingRow colSpan={3} message="Memuat detail perubahan status..." />
               ) : previewTimelineRows.length ? (
                 previewPagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      {formatDateTimeUnified(item.updatedAt)}
+                      <DateTimeText value={item.updatedAt} />
                     </TableCell>
                     <TableCell>{item.author}</TableCell>
-                    <TableCell>{renderStatusCell(item.beforeStatus)}</TableCell>
                     <TableCell>{renderStatusCell(item.afterStatus)}</TableCell>
-                    <TableCell>{formatDateTimeUnified(item.beforeStatusDate)}</TableCell>
-                    <TableCell>{formatDateTimeUnified(item.afterStatusDate)}</TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>

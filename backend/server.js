@@ -282,7 +282,6 @@ function validateHouseEmails(linkedEmails) {
     .map((email) => String(email).trim().toLowerCase())
     .filter(Boolean);
   const uniqueEmails = Array.from(new Set(emails));
-  if (!uniqueEmails.length) return { ok: false, message: "linked_emails minimal 1 email." };
   if (uniqueEmails.length > 2) return { ok: false, message: "linked_emails maksimal 2 email." };
   return { ok: true, emails: uniqueEmails };
 }

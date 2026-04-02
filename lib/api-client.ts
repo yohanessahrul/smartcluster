@@ -17,7 +17,6 @@ type BillMutationPayload = {
   amount: string;
   payment_method: BillRow["payment_method"];
   status: BillRow["status"];
-  status_date?: string;
   payment_proof_url?: string | null;
   paid_to_developer: boolean;
   date_paid_period_to_developer: string | null;

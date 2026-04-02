@@ -8,9 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { ApiLoadingState } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { formatRupiah, parseRupiahToNumber } from "@/lib/currency";
-import { formatDateTimeUnified } from "@/lib/date-time";
 import { apiClient } from "@/lib/api-client";
 import { BillRow, TransactionRow } from "@/lib/mock-data";
 
@@ -154,6 +154,13 @@ export default function WargaLaporanPage() {
 
   const netBalance = totalIncome - totalExpense;
 
+  useEffect(() => {
+    console.log("[Table][Warga Laporan] transactions:", transactions);
+    console.log("[Table][Warga Laporan] ipl:", bills);
+    console.log("[Table][Warga Laporan] paidTransactions:", paidTransactions);
+    console.log("[Table][Warga Laporan] journalRows:", journalRows);
+  }, [transactions, bills, paidTransactions, journalRows]);
+
   return (
     <WargaAccessGuard>
       {(data) => (
@@ -275,7 +282,7 @@ export default function WargaLaporanPage() {
 
                     <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                       <p>
-                        <span className="text-muted-foreground">Tanggal:</span> {formatDateTimeUnified(item.date)}
+                        <span className="text-muted-foreground">Tanggal:</span> <DateTimeText value={item.date} />
                       </p>
                       <p>
                         <span className="text-muted-foreground">Amount:</span> {formatRupiah(parseRupiahToNumber(item.amount))}

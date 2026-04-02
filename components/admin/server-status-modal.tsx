@@ -7,10 +7,10 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Button } from "@/components/ui/button";
 import { ApiLoadingState } from "@/components/ui/api-loading-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiClient, ServerStatusRow } from "@/lib/api-client";
-import { formatDateTimeUnified } from "@/lib/date-time";
 
 type ServerStatusModalProps = {
   open: boolean;
@@ -248,7 +248,9 @@ export function ServerStatusModal({ open, onClose }: ServerStatusModalProps) {
               </Card>
             </div>
 
-            <p className="text-xs text-muted-foreground">Last update: {formatDateTimeUnified(data.generated_at)}</p>
+            <p className="text-xs text-muted-foreground">
+              Last update: <DateTimeText value={data.generated_at} />
+            </p>
 
             <Card>
               <CardHeader className="pb-2">

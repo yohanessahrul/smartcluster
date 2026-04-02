@@ -8,13 +8,16 @@ import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
-import { formatDateTimeUnified } from "@/lib/date-time";
 
 export default function WargaDashboardPage() {
   return (
     <WargaAccessGuard>
       {(data) => {
+        console.log("[Table][Warga Overview] houseBills:", data.houseBills);
+        console.log("[Table][Warga Overview] houseTransactions:", data.houseTransactions);
+
         if (!data.house) {
           return (
             <div>
@@ -118,7 +121,9 @@ export default function WargaDashboardPage() {
                 {data.houseTransactions.map((item) => (
                   <div key={item.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                     <div>
-                      <p className="text-sm font-medium">{formatDateTimeUnified(item.date)}</p>
+                      <p className="text-sm font-medium">
+                        <DateTimeText value={item.date} />
+                      </p>
                       <p className="text-xs text-muted-foreground">{item.payment_method}</p>
                     </div>
                     <p className="inline-flex items-center text-sm font-semibold">

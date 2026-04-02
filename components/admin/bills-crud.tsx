@@ -2,11 +2,13 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronUp, Crosshair, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { BooleanBadge } from "@/components/ui/boolean-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
+import { DateTimeText } from "@/components/ui/date-time-text";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
@@ -23,8 +25,6 @@ import { downloadRowsAsExcel } from "@/lib/download-excel";
 
 const inputClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
-const filterInputClass =
-  "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const filterSelectClass =
   "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
@@ -97,7 +97,7 @@ function makeBillId(numberValue: number) {
   return `BILL${String(numberValue).padStart(3, "0")}`;
 }
 
-function statusBadge(status: BillRow["status"]) {
+function statusBadge(status: string) {
   return <PaymentStatusBadge status={status} />;
 }
 
@@ -116,7 +116,6 @@ type StatusTimelineRow = {
   action: string;
   afterStatus: string | null;
   afterStatusDate: string | null;
-  afterPaymentMethod: string | null;
 };
 
 function readStringField(value: Record<string, unknown> | null, key: string) {
@@ -129,13 +128,10 @@ function buildStatusTimeline(rows: AuditLogRow[]): StatusTimelineRow[] {
     .map((row) => {
       const beforeStatus = readStringField(row.before_value, "status");
       const afterStatus = readStringField(row.after_value, "status");
-      const beforeStatusDate = readStringField(row.before_value, "status_date");
       const afterStatusDate = readStringField(row.after_value, "status_date");
-      const beforePaymentMethod = readStringField(row.before_value, "payment_method");
-      const afterPaymentMethod = readStringField(row.after_value, "payment_method");
 
       if (row.action === "CREATE") {
-        if (!afterStatus && !afterStatusDate && !afterPaymentMethod) return null;
+        if (!afterStatus && !afterStatusDate) return null;
         return {
           id: row.id,
           updatedAt: row.updated_at,
@@ -143,12 +139,12 @@ function buildStatusTimeline(rows: AuditLogRow[]): StatusTimelineRow[] {
           action: row.action,
           afterStatus,
           afterStatusDate,
-          afterPaymentMethod,
         };
       }
 
       if (row.action !== "UPDATE") return null;
-      if (beforeStatus === afterStatus && beforeStatusDate === afterStatusDate && beforePaymentMethod === afterPaymentMethod) return null;
+      // Fokus histori perubahan status IPL saja: update yang tidak mengubah status di-skip.
+      if (beforeStatus === afterStatus) return null;
 
       return {
         id: row.id,
@@ -157,7 +153,6 @@ function buildStatusTimeline(rows: AuditLogRow[]): StatusTimelineRow[] {
         action: row.action,
         afterStatus,
         afterStatusDate,
-        afterPaymentMethod,
       };
     })
     .filter((item): item is StatusTimelineRow => item !== null)
@@ -244,7 +239,7 @@ function BillForm({
           onChange={(event) => onChange({ ...value, status: event.target.value as BillRow["status"] })}
         >
           <option value="Belum bayar">Belum bayar</option>
-          <option value="Pending">Pending</option>
+          <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
           <option value="Verifikasi">Verifikasi</option>
           <option value="Lunas">Lunas</option>
         </select>
@@ -430,7 +425,7 @@ function FinanceVerifyModal({
             onChange={(event) => onChange({ ...value, status: event.target.value as BillRow["status"] })}
           >
             <option value="Belum bayar">Belum bayar</option>
-            <option value="Pending">Pending</option>
+            <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
             <option value="Verifikasi">Verifikasi</option>
             <option value="Lunas">Lunas</option>
           </select>
@@ -514,13 +509,15 @@ function GenerateBillModal({ open, onClose, value, onChange, onSubmit, errorMess
 }
 
 export function BillsCrud() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { session } = useAuthSession();
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<BillRow[]>([]);
   const [houses, setHouses] = useState<HouseRow[]>([]);
   const [historyRows, setHistoryRows] = useState<AuditLogRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | BillRow["status"]>("all");
   const [blokFilter, setBlokFilter] = useState("all");
   const [periodeFilter, setPeriodeFilter] = useState("all");
@@ -573,6 +570,7 @@ export function BillsCrud() {
   const hasFullAccess = session?.role === "admin" || session?.role === "finance";
   const isAdmin = session?.role === "admin";
   const isFinance = session?.role === "finance";
+  const verifyBillId = searchParams.get("verifyBill")?.trim() ?? "";
 
   const houseById = useMemo(() => {
     return new Map(houses.map((house) => [house.id, house]));
@@ -595,31 +593,15 @@ export function BillsCrud() {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
     return rows.filter((row) => {
       const house = houseById.get(row.house_id);
       const blokValue = house?.blok ?? "-";
       const statusMatch = statusFilter === "all" ? true : row.status === statusFilter;
       const blokMatch = blokFilter === "all" ? true : blokValue === blokFilter;
       const periodeMatch = periodeFilter === "all" ? true : row.periode === periodeFilter;
-      const textMatch = keyword
-        ? [
-            houseDisplayValue(row.house_id),
-            row.periode,
-            row.amount,
-            row.payment_method,
-            row.status,
-            row.status_date,
-            row.paid_to_developer ? "ya" : "tidak",
-            row.date_paid_period_to_developer ?? "",
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(keyword)
-        : true;
-      return statusMatch && blokMatch && periodeMatch && textMatch;
+      return statusMatch && blokMatch && periodeMatch;
     });
-  }, [rows, search, statusFilter, blokFilter, periodeFilter, houseById]);
+  }, [rows, statusFilter, blokFilter, periodeFilter, houseById]);
   const tablePagination = useTablePagination(filteredRows);
 
   const previewTimelineRows = useMemo(() => buildStatusTimeline(previewHistoryRows), [previewHistoryRows]);
@@ -629,6 +611,50 @@ export function BillsCrud() {
     return createRow?.updated_at ?? null;
   }, [previewHistoryRows]);
   const previewHouse = previewRow ? houseById.get(previewRow.house_id) : null;
+
+  useEffect(() => {
+    console.log("[Table][Admin IPL] rows:", rows);
+    console.log("[Table][Admin IPL] filteredRows:", filteredRows);
+    console.log("[Table][Admin IPL] pagedRows:", tablePagination.pagedRows);
+  }, [rows, filteredRows, tablePagination.pagedRows]);
+
+  useEffect(() => {
+    if (!hasFullAccess) return;
+    console.log("[Table][Admin IPL] historyRows:", historyRows);
+  }, [hasFullAccess, historyRows]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    console.log("[Table][Admin IPL][Preview] timelineRows:", previewTimelineRows);
+  }, [previewOpen, previewTimelineRows]);
+
+  useEffect(() => {
+    if (!verifyBillId || !isFinance || loading) return;
+
+    const targetBill = rows.find((item) => item.id === verifyBillId);
+    if (!targetBill) {
+      setMessage(`Data IPL ${verifyBillId} tidak ditemukan.`);
+      clearVerifyBillQuery();
+      return;
+    }
+
+    if (!canFinanceVerify(targetBill.status)) {
+      setMessage(`IPL ${verifyBillId} belum bisa diverifikasi karena status masih "Belum bayar".`);
+      clearVerifyBillQuery();
+      return;
+    }
+
+    openVerifyModal(targetBill);
+    clearVerifyBillQuery();
+  }, [verifyBillId, isFinance, loading, rows]);
+
+  function clearVerifyBillQuery() {
+    if (!verifyBillId) return;
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("verifyBill");
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
 
   async function loadInitialData() {
     try {
@@ -800,7 +826,6 @@ export function BillsCrud() {
   async function verifyBill(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!verifyingId) return;
-    const statusDate = new Date().toISOString();
 
     const current = rows.find((row) => row.id === verifyingId);
     if (!current) {
@@ -818,7 +843,6 @@ export function BillsCrud() {
           amount: current.amount,
           payment_method: verifyForm.payment_method,
           status: verifyForm.status,
-          status_date: statusDate,
           payment_proof_url: current.payment_proof_url ?? null,
           paid_to_developer: current.paid_to_developer,
           date_paid_period_to_developer: current.date_paid_period_to_developer,
@@ -917,7 +941,13 @@ export function BillsCrud() {
 
   function renderStatusCell(status: string | null) {
     if (!status) return <span className="text-xs text-muted-foreground">-</span>;
-    if (status === "Lunas" || status === "Belum bayar" || status === "Pending" || status === "Verifikasi") {
+    if (
+      status === "Lunas" ||
+      status === "Belum bayar" ||
+      status === "Menunggu Verifikasi" ||
+      status === "Pending" ||
+      status === "Verifikasi"
+    ) {
       return statusBadge(status);
     }
     return <span className="text-xs">{status}</span>;
@@ -933,6 +963,7 @@ export function BillsCrud() {
         { header: "Periode", value: (row) => row.periode },
         { header: "Amount", value: (row) => row.amount },
         { header: "Status", value: (row) => row.status },
+        { header: "Date", value: (row) => formatDateTimeUnified(row.status_date) },
       ],
     });
   }
@@ -956,17 +987,8 @@ export function BillsCrud() {
           ) : null}
         </CardHeader>
         <CardContent>
-          <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_220px_220px_220px_44px]">
-            <div>
-              <label className={labelClass}>Pencarian</label>
-              <input
-                className={filterInputClass}
-                placeholder="Cari unit, periode, amount, status date..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-            <div>
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <div className="w-full sm:w-[220px]">
               <label className={labelClass}>Status</label>
               <select
                 className={filterSelectClass}
@@ -975,12 +997,12 @@ export function BillsCrud() {
               >
                 <option value="all">Semua status</option>
                 <option value="Belum bayar">Belum bayar</option>
-                <option value="Pending">Pending</option>
+                <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
                 <option value="Verifikasi">Verifikasi</option>
                 <option value="Lunas">Lunas</option>
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-[220px]">
               <label className={labelClass}>Blok</label>
               <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
                 <option value="all">Semua blok</option>
@@ -991,7 +1013,7 @@ export function BillsCrud() {
                 ))}
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-[220px]">
               <label className={labelClass}>Periode</label>
               <select className={filterSelectClass} value={periodeFilter} onChange={(event) => setPeriodeFilter(event.target.value)}>
                 <option value="all">Semua periode</option>
@@ -1002,7 +1024,7 @@ export function BillsCrud() {
                 ))}
               </select>
             </div>
-            <div className="flex items-end">
+            <div className="ml-auto flex items-end">
               <Button
                 type="button"
                 variant="outline"
@@ -1023,12 +1045,13 @@ export function BillsCrud() {
                 <TableHead>Periode</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
                 <TableHead className="min-w-[132px]">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={5} message="Memuat data IPL..." />
+                <ApiTableLoadingRow colSpan={6} message="Memuat data IPL..." />
               ) : filteredRows.length ? (
                 tablePagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -1036,6 +1059,9 @@ export function BillsCrud() {
                     <TableCell>{item.periode}</TableCell>
                     <TableCell>{item.amount}</TableCell>
                     <TableCell>{statusBadge(item.status)}</TableCell>
+                    <TableCell>
+                      <DateTimeText value={item.status_date} />
+                    </TableCell>
                     <TableCell className="min-w-[132px]">
                       <div className="flex items-center gap-2">
                         <Button
@@ -1090,7 +1116,7 @@ export function BillsCrud() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>
@@ -1188,7 +1214,7 @@ export function BillsCrud() {
             </p>
             <p>
               <span className="text-muted-foreground">Tanggal Generate:</span>{" "}
-              {formatDateTimeUnified(previewBillCreatedAt ?? previewRow?.status_date)}
+              <DateTimeText value={previewBillCreatedAt ?? previewRow?.status_date} />
             </p>
             <p>
               <span className="text-muted-foreground">Paid To Developer:</span>{" "}
@@ -1196,7 +1222,7 @@ export function BillsCrud() {
             </p>
             <p>
               <span className="text-muted-foreground">Date Paid Period To Developer:</span>{" "}
-              {formatDateTimeUnified(previewRow?.date_paid_period_to_developer)}
+              <DateTimeText value={previewRow?.date_paid_period_to_developer} />
             </p>
           </div>
 
@@ -1206,28 +1232,28 @@ export function BillsCrud() {
                 <TableHead>Waktu Update</TableHead>
                 <TableHead>Author</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Payment Method</TableHead>
                 <TableHead>Status Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {previewLoading ? (
-                <ApiTableLoadingRow colSpan={5} message="Memuat detail perubahan status..." />
+                <ApiTableLoadingRow colSpan={4} message="Memuat detail perubahan status..." />
               ) : previewTimelineRows.length ? (
                 previewPagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      {formatDateTimeUnified(item.updatedAt)}
+                      <DateTimeText value={item.updatedAt} />
                     </TableCell>
                     <TableCell>{item.author}</TableCell>
                     <TableCell>{renderStatusCell(item.afterStatus)}</TableCell>
-                    <TableCell>{item.afterPaymentMethod ?? "-"}</TableCell>
-                    <TableCell>{formatDateTimeUnified(item.afterStatusDate)}</TableCell>
+                    <TableCell>
+                      <DateTimeText value={item.afterStatusDate} />
+                    </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>

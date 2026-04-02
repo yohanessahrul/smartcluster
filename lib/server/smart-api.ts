@@ -29,6 +29,7 @@ type UpsertIplIncomeTransactionPayload = {
   amount: string;
   billStatus: string;
   paymentMethod?: string | null;
+  createIfMissing?: boolean;
 };
 
 type GenerateBillsPayload = {
@@ -43,7 +44,6 @@ type UpdateBillPayload = {
   amount?: unknown;
   payment_method?: unknown;
   status?: unknown;
-  status_date?: unknown;
   payment_proof_url?: unknown;
   paid_to_developer?: unknown;
   date_paid_period_to_developer?: unknown;
@@ -92,8 +92,8 @@ const monthNames = [
 ];
 const transactionTypeValues = ["Pemasukan", "Pengeluaran"] as const;
 const transactionCategoryValues = ["IPL Warga", "IPL Cluster", "Barang Inventaris", "Other"] as const;
-const billStatusValues = ["Lunas", "Belum bayar", "Pending", "Verifikasi"] as const;
-const transactionStatusValues = ["Lunas", "Belum bayar", "Verifikasi", "Pending"] as const;
+const billStatusValues = ["Lunas", "Belum bayar", "Menunggu Verifikasi", "Verifikasi"] as const;
+const transactionStatusValues = ["Lunas", "Belum bayar", "Verifikasi", "Menunggu Verifikasi"] as const;
 const residentialStatusValues = ["Owner", "Contract"] as const;
 const userRoleValues = ["admin", "warga", "finance"] as const;
 const paymentMethodValues = ["Transfer Bank", "Cash", "QRIS", "E-wallet"] as const;
@@ -103,7 +103,7 @@ type GlobalApiState = typeof globalThis & {
   smartPerumahanApiSchemaVersion?: number;
 };
 
-const API_SCHEMA_VERSION = 4;
+const API_SCHEMA_VERSION = 6;
 
 export class ApiHttpError extends Error {
   status: number;
@@ -114,10 +114,6 @@ export class ApiHttpError extends Error {
     this.status = status;
     this.detail = detail;
   }
-}
-
-function nowDateTime() {
-  return new Date().toISOString();
 }
 
 function asString(value: unknown) {
@@ -157,9 +153,16 @@ function normalizeDateTimeInput(value: unknown) {
   const trimmed = value.trim();
   if (!trimmed) return null;
 
-  const withTimeIfDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? `${trimmed}T12:00:00+07:00` : trimmed;
-
-  const normalized = withTimeIfDateOnly.includes(" ") ? withTimeIfDateOnly.replace(" ", "T") : withTimeIfDateOnly;
+  const withT = trimmed.includes(" ") ? trimmed.replace(" ", "T") : trimmed;
+  const withTimeIfDateOnly = /^\d{4}-\d{2}-\d{2}$/.test(withT) ? `${withT}T12:00:00+07:00` : withT;
+  const hasTimezone = withTimeIfDateOnly.endsWith("Z") || /[+-]\d{2}:?\d{2}$/.test(withTimeIfDateOnly);
+  const normalized = !hasTimezone
+    ? /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(withTimeIfDateOnly)
+      ? `${withTimeIfDateOnly}:00+07:00`
+      : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?$/.test(withTimeIfDateOnly)
+        ? `${withTimeIfDateOnly}+07:00`
+        : withTimeIfDateOnly
+    : withTimeIfDateOnly;
 
   const parsed = new Date(normalized);
   if (Number.isNaN(parsed.getTime())) return null;
@@ -222,7 +225,9 @@ function normalizeBillStatus(value: unknown) {
 
   const lowered = status.toLowerCase();
   if (lowered === "belum dibayar" || lowered === "belum bayar") return "Belum bayar";
-  if (lowered === "pending") return "Pending";
+  if (lowered === "pending" || lowered === "menunggu verifikasi" || lowered === "menunggu_verifikasi") {
+    return "Menunggu Verifikasi";
+  }
   if (lowered === "verifikasi") return "Verifikasi";
   if (lowered === "lunas") return "Lunas";
 
@@ -232,6 +237,13 @@ function normalizeBillStatus(value: unknown) {
 function normalizeTransactionStatus(value: unknown) {
   const status = asString(value).trim();
   if (transactionStatusValues.includes(status as (typeof transactionStatusValues)[number])) return status;
+  const lowered = status.toLowerCase();
+  if (lowered === "pending" || lowered === "menunggu verifikasi" || lowered === "menunggu_verifikasi") {
+    return "Menunggu Verifikasi";
+  }
+  if (lowered === "belum dibayar" || lowered === "belum bayar") return "Belum bayar";
+  if (lowered === "verifikasi") return "Verifikasi";
+  if (lowered === "lunas") return "Lunas";
   return null;
 }
 
@@ -290,8 +302,8 @@ function toPeriode(monthValue: string) {
 function mapBillStatusToTransactionStatus(status: string) {
   if (status === "Lunas") return "Lunas";
   if (status === "Verifikasi") return "Verifikasi";
-  if (status === "Pending") return "Pending";
-  return "Pending";
+  if (status === "Menunggu Verifikasi") return "Menunggu Verifikasi";
+  return "Belum bayar";
 }
 
 function validateHouseEmails(linkedEmails: unknown) {
@@ -299,7 +311,6 @@ function validateHouseEmails(linkedEmails: unknown) {
     .map((email) => String(email).trim().toLowerCase())
     .filter(Boolean);
   const uniqueEmails = Array.from(new Set(emails));
-  if (!uniqueEmails.length) return { ok: false as const, message: "linked_emails minimal 1 email." };
   if (uniqueEmails.length > 2) return { ok: false as const, message: "linked_emails maksimal 2 email." };
   return { ok: true as const, emails: uniqueEmails };
 }
@@ -337,11 +348,10 @@ async function getNextPrefixedId(prefix: string, tableName: string, queryFn: Que
 async function createAutoIplTransaction(queryFn: QueryFn, payload: CreateAutoIplTransactionPayload) {
   const { actor, billId, amount, billStatus, paymentMethod = "Transfer Bank" } = payload;
   const trxId = await getNextPrefixedId("TRX", "transactions", queryFn);
-  const now = nowDateTime();
   const trxStatus = mapBillStatusToTransactionStatus(billStatus);
   const result = await queryFn(
-    "INSERT INTO transactions (id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date) VALUES ($1,$2,'Pemasukan',$3,'IPL Warga',$4,$5,$6,$7,$5) RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
-    [trxId, billId, "Pembayaran IPL Warga", amount, now, normalizePaymentMethod(paymentMethod), trxStatus],
+    "INSERT INTO transactions (id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date) VALUES ($1,$2,'Pemasukan',$3,'IPL Warga',$4,NOW(),$5,$6,NOW()) RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
+    [trxId, billId, "Pembayaran IPL Warga", amount, normalizePaymentMethod(paymentMethod), trxStatus],
   );
 
   await writeAuditLog(queryFn, {
@@ -357,35 +367,30 @@ async function createAutoIplTransaction(queryFn: QueryFn, payload: CreateAutoIpl
 }
 
 async function upsertIplIncomeTransaction(queryFn: QueryFn, payload: UpsertIplIncomeTransactionPayload) {
-  const { actor, billId, amount, billStatus, paymentMethod = null } = payload;
+  const { actor, billId, amount, billStatus, paymentMethod = null, createIfMissing = true } = payload;
   const existing = await queryFn(
     "SELECT id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date FROM transactions WHERE bill_id=$1 AND transaction_type='Pemasukan' AND category='IPL Warga' ORDER BY date DESC, id DESC LIMIT 1",
     [billId],
   );
 
   const trxStatus = mapBillStatusToTransactionStatus(billStatus);
-  const now = nowDateTime();
 
   if (!existing.rowCount) {
+    if (!createIfMissing) return null;
     return createAutoIplTransaction(queryFn, { actor, billId, amount, billStatus, paymentMethod });
   }
 
   const previous = existing.rows[0] as JsonRecord;
-  const previousStatus = asString(previous.status);
-  const previousStatusDate = asString(previous.status_date);
   const previousTransactionName = asString(previous.transaction_name) || "Pembayaran IPL Warga";
   const previousPaymentMethod = asString(previous.payment_method);
-  const nextStatusDate = previousStatus === trxStatus ? previousStatusDate : now;
 
   const result = await queryFn(
-    "UPDATE transactions SET transaction_name=$1, amount=$2, date=$3, payment_method=COALESCE($4, payment_method), status=$5, status_date=$6 WHERE id=$7 RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
+    "UPDATE transactions SET transaction_name=$1, amount=$2, date=NOW(), payment_method=COALESCE($3, payment_method), status=$4, status_date=CASE WHEN status IS DISTINCT FROM $4 THEN NOW() ELSE status_date END WHERE id=$5 RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
     [
       previousTransactionName,
       amount,
-      now,
       paymentMethod ? normalizePaymentMethod(paymentMethod, previousPaymentMethod) : null,
       trxStatus,
-      nextStatusDate,
       asString(previous.id),
     ],
   );
@@ -580,7 +585,7 @@ async function ensureBillColumns() {
     SET status = CASE
       WHEN status IS NULL OR BTRIM(status) = '' THEN 'Belum bayar'
       WHEN LOWER(BTRIM(status)) IN ('belum dibayar', 'belum bayar') THEN 'Belum bayar'
-      WHEN LOWER(BTRIM(status)) = 'pending' THEN 'Pending'
+      WHEN LOWER(BTRIM(status)) IN ('pending', 'menunggu verifikasi', 'menunggu_verifikasi') THEN 'Menunggu Verifikasi'
       WHEN LOWER(BTRIM(status)) = 'verifikasi' THEN 'Verifikasi'
       WHEN LOWER(BTRIM(status)) = 'lunas' THEN 'Lunas'
       ELSE 'Belum bayar'
@@ -593,7 +598,7 @@ async function ensureBillColumns() {
     BEGIN
       ALTER TABLE bills
       ADD CONSTRAINT bills_status_check
-      CHECK (status IN ('Belum bayar', 'Pending', 'Verifikasi', 'Lunas'));
+      CHECK (status IN ('Belum bayar', 'Menunggu Verifikasi', 'Verifikasi', 'Lunas'));
     EXCEPTION
       WHEN duplicate_object OR duplicate_table THEN NULL;
     END $$;
@@ -666,11 +671,32 @@ async function ensureTransactionColumns() {
   await query("ALTER TABLE transactions ALTER COLUMN transaction_name SET NOT NULL");
   await query("ALTER TABLE transactions ALTER COLUMN transaction_name SET DEFAULT 'Pembayaran IPL Warga'");
   await query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS status TEXT");
+  await query(`
+    DO $$
+    DECLARE constraint_row RECORD;
+    BEGIN
+      FOR constraint_row IN
+        SELECT c.conname
+        FROM pg_constraint c
+        WHERE c.conrelid = 'transactions'::regclass
+          AND c.contype = 'c'
+          AND pg_get_constraintdef(c.oid) ILIKE '%status%'
+      LOOP
+        EXECUTE format('ALTER TABLE transactions DROP CONSTRAINT %I', constraint_row.conname);
+      END LOOP;
+    END $$;
+  `);
   await query("UPDATE transactions SET status='Lunas' WHERE status IS NULL");
   await query("UPDATE transactions SET status='Belum bayar' WHERE LOWER(BTRIM(status)) IN ('belum dibayar', 'belum bayar')");
   await query(
-    "UPDATE transactions SET status='Pending' WHERE status NOT IN ('Lunas', 'Belum bayar', 'Verifikasi', 'Pending')",
+    "UPDATE transactions SET status='Menunggu Verifikasi' WHERE LOWER(BTRIM(status)) IN ('pending', 'menunggu verifikasi', 'menunggu_verifikasi')",
   );
+  await query("UPDATE transactions SET status='Verifikasi' WHERE LOWER(BTRIM(status)) = 'verifikasi'");
+  await query("UPDATE transactions SET status='Lunas' WHERE LOWER(BTRIM(status)) = 'lunas'");
+  await query(
+    "UPDATE transactions SET status='Menunggu Verifikasi' WHERE status NOT IN ('Lunas', 'Belum bayar', 'Verifikasi', 'Menunggu Verifikasi')",
+  );
+  await query("ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_status_check");
   await query("ALTER TABLE transactions ALTER COLUMN status SET NOT NULL");
   await query("ALTER TABLE transactions ALTER COLUMN date SET DEFAULT NOW()");
   await query("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS status_date TIMESTAMPTZ");
@@ -752,6 +778,21 @@ async function ensureTransactionColumns() {
   await query("ALTER TABLE transactions ALTER COLUMN date SET DEFAULT NOW()");
   await query("ALTER TABLE transactions ALTER COLUMN status_date SET NOT NULL");
   await query("ALTER TABLE transactions ALTER COLUMN status_date SET DEFAULT NOW()");
+  await query(`
+    DO $$
+    DECLARE constraint_row RECORD;
+    BEGIN
+      FOR constraint_row IN
+        SELECT c.conname
+        FROM pg_constraint c
+        WHERE c.conrelid = 'transactions'::regclass
+          AND c.contype = 'c'
+          AND pg_get_constraintdef(c.oid) ILIKE '%status%'
+      LOOP
+        EXECUTE format('ALTER TABLE transactions DROP CONSTRAINT %I', constraint_row.conname);
+      END LOOP;
+    END $$;
+  `);
   await query("ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_category_check");
   await query(`
     DO $$
@@ -778,7 +819,7 @@ async function ensureTransactionColumns() {
     BEGIN
       ALTER TABLE transactions
       ADD CONSTRAINT transactions_status_check
-      CHECK (status IN ('Lunas', 'Belum bayar', 'Verifikasi', 'Pending'));
+      CHECK (status IN ('Lunas', 'Belum bayar', 'Verifikasi', 'Menunggu Verifikasi'));
     EXCEPTION
       WHEN duplicate_object OR duplicate_table THEN NULL;
     END $$;
@@ -1164,7 +1205,6 @@ export async function createBill(payload: JsonRecord, actor: string) {
   try {
     const status = normalizeBillStatus(payload.status) ?? "Belum bayar";
     const paymentMethod = normalizePaymentMethod(payload.payment_method, "Transfer Bank");
-    const statusDate = nowDateTime();
     const resolvedPaymentProofUrl = normalizeOptionalUrl(payload.payment_proof_url);
     const paymentProofUrl = status === "Lunas" ? null : resolvedPaymentProofUrl;
     if (status === "Lunas" && resolvedPaymentProofUrl) {
@@ -1177,7 +1217,7 @@ export async function createBill(payload: JsonRecord, actor: string) {
 
     await beginTransaction(transaction);
     const result = await transaction.query(
-      "INSERT INTO bills (id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+      "INSERT INTO bills (id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7,$8,$9) RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
       [
         payload.id,
         payload.house_id,
@@ -1185,7 +1225,6 @@ export async function createBill(payload: JsonRecord, actor: string) {
         payload.amount,
         paymentMethod,
         status,
-        statusDate,
         paymentProofUrl,
         paidToDeveloper,
         datePaidPeriodToDeveloper,
@@ -1199,14 +1238,6 @@ export async function createBill(payload: JsonRecord, actor: string) {
       recordId: asString(result.rows[0]?.id),
       beforeValue: null,
       afterValue: (result.rows[0] as JsonRecord) ?? null,
-    });
-
-    await createAutoIplTransaction((text, params) => transaction.query(text, params), {
-      actor,
-      billId: asString(result.rows[0]?.id),
-      amount: asString(payload.amount),
-      billStatus: status,
-      paymentMethod,
     });
 
     await commitTransaction(transaction);
@@ -1262,22 +1293,15 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
       : payload.date_paid_period_to_developer === undefined
         ? previous.date_paid_period_to_developer
         : normalizeOptionalDateOnly(payload.date_paid_period_to_developer);
-    const manualStatusDate = payload.status_date === undefined ? null : normalizeDateTimeInput(payload.status_date);
-    if (payload.status_date !== undefined && !manualStatusDate) {
-      await rollbackTransaction(transaction);
-      throw new ApiHttpError(400, "Format status_date tidak valid. Gunakan format datetime yang benar.");
-    }
-    const statusDate = manualStatusDate ?? (asString(previous.status) === status ? previous.status_date : nowDateTime());
 
     const result = await transaction.query(
-      "UPDATE bills SET house_id=$1, periode=$2, amount=$3, payment_method=$4, status=$5, status_date=$6, payment_proof_url=$7, paid_to_developer=$8, date_paid_period_to_developer=$9 WHERE id=$10 RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+      "UPDATE bills SET house_id=$1, periode=$2, amount=$3, payment_method=$4, status=$5, status_date=CASE WHEN status IS DISTINCT FROM $5 THEN NOW() ELSE status_date END, payment_proof_url=$6, paid_to_developer=$7, date_paid_period_to_developer=$8 WHERE id=$9 RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
       [
         payload.house_id,
         payload.periode,
         payload.amount,
         paymentMethod,
         status,
-        statusDate,
         paymentProofUrl,
         paidToDeveloper,
         datePaidPeriodToDeveloper,
@@ -1294,15 +1318,14 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
       afterValue: result.rows[0] as JsonRecord,
     });
 
-    if (status === "Lunas") {
-      await upsertIplIncomeTransaction((text, params) => transaction.query(text, params), {
-        actor,
-        billId: id,
-        amount: asString(payload.amount),
-        billStatus: status,
-        paymentMethod,
-      });
-    }
+    await upsertIplIncomeTransaction((text, params) => transaction.query(text, params), {
+      actor,
+      billId: id,
+      amount: asString(payload.amount),
+      billStatus: status,
+      paymentMethod,
+      createIfMissing: false,
+    });
 
     await commitTransaction(transaction);
 
@@ -1411,8 +1434,8 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
 
       const billId = `BILL${String(nextNumber).padStart(3, "0")}`;
       const inserted = await transaction.query(
-        "INSERT INTO bills (id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
-        [billId, houseId, periode, amount, "Transfer Bank", "Belum bayar", nowDateTime(), null, false, null],
+        "INSERT INTO bills (id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7,$8,$9) RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+        [billId, houseId, periode, amount, "Transfer Bank", "Belum bayar", null, false, null],
       );
       await writeAuditLog((text, params) => transaction.query(text, params), {
         author: actor,
@@ -1421,13 +1444,6 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
         recordId: billId,
         beforeValue: null,
         afterValue: inserted.rows[0] as JsonRecord,
-      });
-      await createAutoIplTransaction((text, params) => transaction.query(text, params), {
-        actor,
-        billId,
-        amount,
-        billStatus: "Belum bayar",
-        paymentMethod: "Transfer Bank",
       });
       nextNumber += 1;
       created += 1;
@@ -1473,7 +1489,6 @@ export async function createTransaction(payload: TransactionPayload, actor: stri
         : defaultTransactionName(category || defaultCategory, transactionType);
     const status = normalizeTransactionStatus(payload.status) || "Lunas";
     const transactionDate = normalizeDateTimeInput(payload.date);
-    const statusDate = nowDateTime();
     const paymentMethod = asString(payload.payment_method);
 
     if (!payload.id || !payload.amount || !payload.date || !paymentMethod || !transactionName) {
@@ -1494,8 +1509,8 @@ export async function createTransaction(payload: TransactionPayload, actor: stri
     }
 
     const result = await query(
-      "INSERT INTO transactions (id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
-      [payload.id, billId, transactionType, transactionName, category, payload.amount, transactionDate, paymentMethod, status, statusDate],
+      "INSERT INTO transactions (id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW()) RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
+      [payload.id, billId, transactionType, transactionName, category, payload.amount, transactionDate, paymentMethod, status],
     );
 
     await writeAuditLog(query, {
@@ -1559,11 +1574,10 @@ export async function updateTransaction(id: string, payload: TransactionPayload,
     );
     if (!before.rows.length) throw new ApiHttpError(404, "Transaction tidak ditemukan.");
     const previous = before.rows[0] as JsonRecord;
-    const statusDate = asString(previous.status) === status ? previous.status_date : nowDateTime();
 
     const result = await query(
-      "UPDATE transactions SET bill_id=$1, transaction_type=$2, transaction_name=$3, category=$4, amount=$5, date=$6, payment_method=$7, status=$8, status_date=$9 WHERE id=$10 RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
-      [billId, transactionType, transactionName, category, payload.amount, transactionDate, paymentMethod, status, statusDate, id],
+      "UPDATE transactions SET bill_id=$1, transaction_type=$2, transaction_name=$3, category=$4, amount=$5, date=$6, payment_method=$7, status=$8, status_date=CASE WHEN status IS DISTINCT FROM $8 THEN NOW() ELSE status_date END WHERE id=$9 RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
+      [billId, transactionType, transactionName, category, payload.amount, transactionDate, paymentMethod, status, id],
     );
 
     await writeAuditLog(query, {
@@ -1642,10 +1656,15 @@ export async function payBillWithQris(
       throw new ApiHttpError(400, "IPL sudah lunas.");
     }
 
-    if (currentStatus === "Belum bayar" || currentStatus === "Pending" || currentStatus === "Verifikasi") {
+    if (
+      currentStatus === "Belum bayar" ||
+      currentStatus === "Pending" ||
+      currentStatus === "Menunggu Verifikasi" ||
+      currentStatus === "Verifikasi"
+    ) {
       const updatedBill = await transaction.query(
-        "UPDATE bills SET status=$1, status_date=$2, payment_method=$3, payment_proof_url=$4 WHERE id=$5 RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
-        ["Pending", nowDateTime(), paymentMethod, paymentProofUrl, billId],
+        "UPDATE bills SET status=$1, status_date=NOW(), payment_method=$2, payment_proof_url=$3 WHERE id=$4 RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+        ["Menunggu Verifikasi", paymentMethod, paymentProofUrl, billId],
       );
       latestBill = (updatedBill.rows[0] as JsonRecord) ?? bill;
       await writeAuditLog((text, params) => transaction.query(text, params), {

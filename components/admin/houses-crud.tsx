@@ -22,8 +22,6 @@ import { downloadRowsAsExcel } from "@/lib/download-excel";
 
 const inputClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
-const filterInputClass =
-  "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const filterSelectClass =
   "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
@@ -155,7 +153,7 @@ function HouseForm({
         </select>
       </div>
       <div>
-        <label className={labelClass}>Berpenghuni</label>
+        <label className={labelClass}>Dihuni</label>
         <select
           className={inputClass}
           value={value.isOccupied ? "true" : "false"}
@@ -181,7 +179,6 @@ function HouseForm({
                 });
               }}
               placeholder="Ketik email primary"
-              required
               list={primaryListId}
             />
             <datalist id={primaryListId}>
@@ -204,10 +201,9 @@ function HouseForm({
                 secondary_email: value.secondary_email === nextPrimary ? "" : value.secondary_email,
               });
             }}
-            required
           >
-            <option value="" disabled>
-              Pilih User Primary
+            <option value="">
+              Tanpa Primary
             </option>
             {availableOptions.map((option) => (
               <option key={option.email} value={option.email}>
@@ -316,7 +312,6 @@ export function HousesCrud() {
   const [userRows, setUserRows] = useState<UserRow[]>([]);
   const [historyRows, setHistoryRows] = useState<AuditLogRow[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [blokFilter, setBlokFilter] = useState("all");
   const [occupiedFilter, setOccupiedFilter] = useState<"all" | "true" | "false">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | HouseRow["residential_status"]>("all");
@@ -396,7 +391,6 @@ export function HousesCrud() {
 
   function validateLinkedEmails(form: HouseFormState) {
     const emails = [form.primary_email.trim().toLowerCase(), form.secondary_email.trim().toLowerCase()].filter(Boolean);
-    if (!emails.length) return "Minimal 1 email harus diisi.";
     if (emails.length > 2) return "Maksimal 2 email per house.";
     if (new Set(emails).size !== emails.length) return "Primary dan Secondary tidak boleh sama.";
     const unknown = emails.find((email) => !userByEmail.has(email));
@@ -550,7 +544,7 @@ export function HousesCrud() {
       columns: [
         { header: "Unit", value: (row) => `${row.blok}-${row.nomor}` },
         { header: "Kepemilikan", value: (row) => row.residential_status },
-        { header: "Berpenghuni", value: (row) => row.isOccupied },
+        { header: "Dihuni", value: (row) => row.isOccupied },
         { header: "Primary", value: (row) => linkedUsersList(row, false).find((item) => item.label === "Primary")?.value ?? "-" },
         { header: "Secondary", value: (row) => linkedUsersList(row, false).find((item) => item.label === "Secondary")?.value ?? "-" },
       ],
@@ -558,29 +552,26 @@ export function HousesCrud() {
   }
 
   const filteredRows = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
     return rows.filter((row) => {
       const blokMatch = blokFilter === "all" ? true : row.blok === blokFilter;
       const occupiedMatch =
         occupiedFilter === "all" ? true : occupiedFilter === "true" ? row.isOccupied : !row.isOccupied;
       const statusMatch = statusFilter === "all" ? true : row.residential_status === statusFilter;
-      const linkedUsers = linkedUsersList(row).map((item) => `${item.label} ${item.value}`).join(" ");
-      const raw = [
-        row.id,
-        row.blok,
-        row.nomor,
-        row.residential_status,
-        String(row.isOccupied),
-        row.linked_emails.join(" "),
-        linkedUsers,
-      ]
-        .join(" ")
-        .toLowerCase();
-      const textMatch = keyword ? raw.includes(keyword) : true;
-      return blokMatch && occupiedMatch && statusMatch && textMatch;
+      return blokMatch && occupiedMatch && statusMatch;
     });
-  }, [rows, search, userByEmail, blokFilter, occupiedFilter, statusFilter]);
+  }, [rows, blokFilter, occupiedFilter, statusFilter]);
   const pagination = useTablePagination(filteredRows);
+
+  useEffect(() => {
+    console.log("[Table][Admin Houses] rows:", rows);
+    console.log("[Table][Admin Houses] filteredRows:", filteredRows);
+    console.log("[Table][Admin Houses] pagedRows:", pagination.pagedRows);
+  }, [rows, filteredRows, pagination.pagedRows]);
+
+  useEffect(() => {
+    if (!hasFullAccess) return;
+    console.log("[Table][Admin Houses] historyRows:", historyRows);
+  }, [hasFullAccess, historyRows]);
 
   return (
     <div className="space-y-4">
@@ -592,17 +583,8 @@ export function HousesCrud() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="mb-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_220px_220px_220px_44px]">
-            <div>
-              <label className={labelClass}>Pencarian</label>
-              <input
-                className={filterInputClass}
-                placeholder="Cari blok, nomor, email, atau nama user..."
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-            <div>
+          <div className="mb-3 flex flex-wrap items-end gap-2">
+            <div className="w-full sm:w-[220px]">
               <label className={labelClass}>Blok</label>
               <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
                 <option value="all">Semua blok</option>
@@ -613,19 +595,19 @@ export function HousesCrud() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className={labelClass}>Berpenghuni</label>
+            <div className="w-full sm:w-[220px]">
+              <label className={labelClass}>Dihuni</label>
               <select
                 className={filterSelectClass}
                 value={occupiedFilter}
                 onChange={(event) => setOccupiedFilter(event.target.value as "all" | "true" | "false")}
               >
-                <option value="all">Semua Berpenghuni</option>
+                <option value="all">Semua Dihuni</option>
                 <option value="true">Ya</option>
                 <option value="false">Tidak</option>
               </select>
             </div>
-            <div>
+            <div className="w-full sm:w-[220px]">
               <label className={labelClass}>Kepemilikan</label>
               <select
                 className={filterSelectClass}
@@ -637,7 +619,7 @@ export function HousesCrud() {
                 <option value="Contract">Contract</option>
               </select>
             </div>
-            <div className="flex items-end">
+            <div className="ml-auto flex items-end">
               <Button
                 type="button"
                 variant="outline"
@@ -656,7 +638,7 @@ export function HousesCrud() {
               <TableRow>
                 <TableHead>Unit</TableHead>
                 <TableHead>Kepemilikan</TableHead>
-                <TableHead>Berpenghuni</TableHead>
+                <TableHead>Dihuni</TableHead>
                 <TableHead>Linked Users</TableHead>
                 <TableHead className="min-w-[132px]">Aksi</TableHead>
               </TableRow>
@@ -781,7 +763,7 @@ export function HousesCrud() {
               <span className="text-muted-foreground">Kepemilikan:</span> {previewRow?.residential_status ?? "-"}
             </p>
             <p>
-              <span className="text-muted-foreground">Berpenghuni:</span>{" "}
+              <span className="text-muted-foreground">Dihuni:</span>{" "}
               {previewRow ? <BooleanBadge value={previewRow.isOccupied} /> : "-"}
             </p>
           </div>
