@@ -96,7 +96,10 @@ export function AdminSidebar() {
                 window.dispatchEvent(new Event("smart-open-server-status"));
               }
             }}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-[hsl(var(--menu-fg))] transition-colors hover:bg-[hsl(var(--menu-note))] lg:hidden"
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+              "text-[hsl(var(--menu-fg))] hover:bg-[hsl(var(--menu-note))]"
+            )}
           >
             <Server className="h-4 w-4" />
             <span>Status Server</span>
