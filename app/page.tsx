@@ -154,8 +154,8 @@ export default async function Page() {
         </header>
 
         <section className="relative mb-6 overflow-visible pb-6 md:pb-8">
-          <div className="relative z-10 pr-[110px] sm:pr-[170px] lg:pr-[260px]">
-            <h1 className="max-w-4xl font-heading text-[1.75rem] leading-[1.3] tracking-tight sm:text-5xl sm:leading-[1.2] md:text-6xl">
+          <div className="relative z-10 w-full pr-0 sm:pr-[170px] lg:pr-[260px]">
+            <h1 className="w-full max-w-none font-heading text-[1.75rem] leading-[1.3] tracking-tight sm:max-w-4xl sm:text-5xl sm:leading-[1.2] md:text-6xl">
               <span className="relative inline-block font-black after:absolute after:bottom-0 after:left-0 after:h-[0.2em] after:w-full after:rounded-full after:bg-[hsl(var(--primary)/0.26)]">
                 Solusi digital
               </span>{" "}
@@ -165,7 +165,7 @@ export default async function Page() {
               <br />
               yang lebih <LandingTypingWord />
             </h1>
-            <p className="mt-4 max-w-3xl text-muted-foreground">
+            <p className="mt-4 w-full max-w-none text-muted-foreground sm:max-w-3xl">
               Semua kebutuhan administrasi perumahan kini bisa dikelola lebih mudah dalam satu tempat
             </p>
           </div>
