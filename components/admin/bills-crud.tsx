@@ -1064,15 +1064,15 @@ export function BillsCrud() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+        <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data IPL</CardTitle>
           {hasFullAccess ? (
-            <div className="flex flex-wrap justify-end gap-2">
-              <Button className="h-9 whitespace-nowrap px-3" variant="outline" onClick={openGenerateModal}>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button className="w-full sm:w-auto" variant="outline" onClick={openGenerateModal}>
                 Generate IPL
               </Button>
               {hasFullAccess ? (
-                <Button className="h-9 whitespace-nowrap px-3" onClick={openCreateModal}>
+                <Button className="w-full sm:w-auto" onClick={openCreateModal}>
                   Create IPL
                 </Button>
               ) : null}

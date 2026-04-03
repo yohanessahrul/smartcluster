@@ -651,9 +651,9 @@ export function HousesCrud() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+        <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data House</CardTitle>
-          <Button className="h-9 whitespace-nowrap px-3" onClick={openCreateModal}>
+          <Button className="w-full sm:w-auto" onClick={openCreateModal}>
             Create House
           </Button>
         </CardHeader>
