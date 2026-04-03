@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { BarChart3, ClipboardList, Home, Receipt, ShieldCheck, UserRound } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
-import { UserMenuCta } from "@/components/user-menu-cta";
 import { useWargaResolvedData } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -25,8 +24,6 @@ export function WargaSidebar() {
   const isWarga = session?.role === "warga";
   const hasHouse = Boolean(house);
   const menus = loading ? [] : isWarga ? (hasHouse ? protectedMenus : [overviewMenu]) : [];
-  const displayName = session?.name?.trim() || "User";
-  const displayEmail = session?.email?.trim() || "-";
 
   return (
     <aside className="h-full overflow-y-auto rounded-lg border border-border bg-[hsl(var(--menu-bg))] p-4 text-[hsl(var(--menu-fg))] lg:rounded-none">
@@ -39,18 +36,6 @@ export function WargaSidebar() {
           <p className="text-xs text-[hsl(var(--menu-muted))]">Portal Warga</p>
         </div>
       </div>
-
-      {session ? (
-        <div className="mb-4 lg:hidden">
-          <UserMenuCta
-            name={displayName}
-            email={displayEmail}
-            className="w-full"
-            buttonClassName="w-full justify-between border-[hsl(var(--menu-border))] bg-white/80 text-black hover:bg-white"
-            dropdownClassName="left-0 right-0 w-full border-[hsl(var(--menu-border))] bg-white/95"
-          />
-        </div>
-      ) : null}
 
       <nav className="space-y-1">
         {menus.map((menu) => {

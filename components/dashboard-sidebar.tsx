@@ -6,7 +6,6 @@ import { History, Home, House, ReceiptText, Users, WalletCards } from "lucide-re
 
 import { useAuthSession } from "@/lib/auth-client";
 import { BrandMark } from "@/components/brand-mark";
-import { UserMenuCta } from "@/components/user-menu-cta";
 import { cn } from "@/lib/utils";
 
 const adminMenus = [
@@ -33,8 +32,6 @@ export function AdminSidebar() {
   const isAdmin = role === "admin" || role === "superadmin";
   const visibleMenus = loading ? [] : isFinance ? financeMenus : isAdmin ? adminMenus : [];
   const panelLabel = isFinance ? "Finance Panel" : "Admin Panel";
-  const displayName = session?.name?.trim() || "User";
-  const displayEmail = session?.email?.trim() || "-";
 
   return (
     <aside className="h-full overflow-y-auto rounded-lg border border-border bg-[hsl(var(--menu-bg))] p-4 text-[hsl(var(--menu-fg))] lg:rounded-none">
@@ -47,18 +44,6 @@ export function AdminSidebar() {
           <p className="text-xs text-[hsl(var(--menu-muted))]">{panelLabel}</p>
         </div>
       </div>
-
-      {session ? (
-        <div className="mb-4 lg:hidden">
-          <UserMenuCta
-            name={displayName}
-            email={displayEmail}
-            className="w-full"
-            buttonClassName="w-full justify-between border-[hsl(var(--menu-border))] bg-white/80 text-black hover:bg-white"
-            dropdownClassName="left-0 right-0 w-full border-[hsl(var(--menu-border))] bg-white/95"
-          />
-        </div>
-      ) : null}
 
       <nav className="space-y-1">
         {visibleMenus.map((menu) => {

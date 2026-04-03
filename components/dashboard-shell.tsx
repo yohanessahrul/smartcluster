@@ -2,10 +2,11 @@
 
 import { ReactNode, useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { logout, useAuthSession } from "@/lib/auth-client";
 
 type DashboardShellProps = {
   roleLabel: string;
@@ -14,8 +15,13 @@ type DashboardShellProps = {
 };
 
 export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const { session } = useAuthSession();
+  const displayName = session?.name?.trim() || "User";
+  const displayRole = session?.role || roleLabel;
 
   useEffect(() => {
     setOpen(false);
@@ -31,6 +37,17 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
       window.removeEventListener("smart-close-mobile-menu", closeMobileMenu);
     };
   }, []);
+
+  async function onLogout() {
+    try {
+      setLoggingOut(true);
+      await logout();
+      setOpen(false);
+      router.push("/login");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <>
@@ -83,10 +100,24 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
             </div>
 
             <div className="flex-1">
+              <div className="mb-3 rounded-lg border border-[hsl(var(--menu-border))] bg-white/80 px-3 py-2 text-black">
+                <p className="truncate text-sm font-medium">Hi, {displayName}</p>
+                <p className="truncate text-xs text-muted-foreground">{displayRole}</p>
+              </div>
               <div className="rounded-lg bg-white/45 p-3 shadow-sm [&>aside]:h-full [&>aside]:rounded-none [&>aside]:border-0 [&>aside]:bg-transparent [&>aside]:p-0">
                 {sidebar}
               </div>
             </div>
+
+            <Button
+              type="button"
+              variant="destructive"
+              className="mt-4 w-full"
+              onClick={onLogout}
+              disabled={loggingOut}
+            >
+              {loggingOut ? "Logging out..." : "Logout"}
+            </Button>
           </div>
         </div>
       ) : null}
