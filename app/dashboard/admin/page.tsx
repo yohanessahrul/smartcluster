@@ -133,7 +133,9 @@ export default function AdminDashboardPage() {
   const adminMetrics = safeSnapshot.admin ?? EMPTY_SNAPSHOT.admin!;
   const financeMetrics = safeSnapshot.finance ?? EMPTY_SNAPSHOT.finance!;
   const financeBillsNeedAction = financeMetrics.need_action_rows ?? [];
-  const financeLatestTransactions = financeMetrics.latest_transactions ?? [];
+  const financeLatestTransactions = (financeMetrics.latest_transactions ?? []).filter(
+    (item) => item.status === "Menunggu Verifikasi"
+  );
 
   const snapshotGeneratedLabel = useMemo(() => {
     if (!safeSnapshot.generated_at) return "";
