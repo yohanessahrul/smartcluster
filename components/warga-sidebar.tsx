@@ -21,9 +21,10 @@ const protectedMenus = [
 
 export function WargaSidebar() {
   const pathname = usePathname();
-  const { session, house } = useWargaResolvedData();
+  const { loading, session, house } = useWargaResolvedData();
+  const isWarga = session?.role === "warga";
   const hasHouse = Boolean(house);
-  const menus = hasHouse ? protectedMenus : [overviewMenu];
+  const menus = loading ? [] : isWarga ? (hasHouse ? protectedMenus : [overviewMenu]) : [];
   const displayName = session?.name?.trim() || "User";
   const displayEmail = session?.email?.trim() || "-";
 
@@ -70,6 +71,9 @@ export function WargaSidebar() {
             </Link>
           );
         })}
+        {!loading && !menus.length ? (
+          <p className="px-3 py-2 text-xs text-[hsl(var(--menu-muted))]">Menu tidak tersedia untuk role ini.</p>
+        ) : null}
       </nav>
 
       <p className="mt-6 flex items-center gap-2 rounded-lg bg-[hsl(var(--menu-note))] px-3 py-2 text-xs text-[hsl(var(--menu-muted))]">
