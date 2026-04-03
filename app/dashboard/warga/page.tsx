@@ -83,7 +83,7 @@ export default function WargaDashboardPage() {
           <div>
             <DashboardHeader
               title="Dashboard Warga"
-              description={`Profil rumah ${data.house.id} - Blok ${data.house.blok} No ${data.house.nomor}`}
+              description={`Profil rumah Blok ${data.house.blok} No ${data.house.nomor}`}
             />
 
             <section className="mb-4">
@@ -107,11 +107,13 @@ export default function WargaDashboardPage() {
                       Jatuh tempo tiap tanggal 10
                     </span>
                   </div>
-                  <div className="mt-4">
-                    <Button asChild className="rounded-full">
-                      <Link href="/dashboard/warga/tagihan">Lihat Tagihan</Link>
-                    </Button>
-                  </div>
+                  {latestBill?.status === "Lunas" ? null : (
+                    <div className="mt-4">
+                      <Button asChild className="rounded-full">
+                        <Link href="/dashboard/warga/tagihan">Lihat Tagihan</Link>
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </section>

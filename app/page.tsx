@@ -3,11 +3,13 @@ import {
   Building2,
   CalendarClock,
   Database,
+  FileCheck2,
   HardDrive,
   Home,
   NotebookText,
   ReceiptText,
   ShieldCheck,
+  Upload,
   Users,
   Wallet,
   WalletCards,
@@ -72,14 +74,11 @@ const financeLatestTransactions = [
   },
 ] as const;
 
-const paymentStages = [
-  { label: "Belum bayar", note: "Tagihan sudah dibuat, belum ada bukti pembayaran." },
-  { label: "Menunggu Verifikasi", note: "Warga sudah upload bukti, menunggu pengecekan finance." },
-  { label: "Verifikasi", note: "Data pembayaran sedang diverifikasi." },
-  { label: "Lunas", note: "Pembayaran valid dan tercatat sebagai pemasukan." },
-] as const;
-
 const features = [
+  {
+    title: "Timeline Status IPL Transparan",
+    copy: "Status pembayaran terlihat runtut dari ditagihkan, upload bukti, sampai diverifikasi finance.",
+  },
   {
     title: "Dashboard Role-Based",
     copy: "Admin/Superadmin, Finance, dan Warga memiliki menu serta hak akses yang dipisah sesuai tanggung jawab.",
@@ -93,16 +92,12 @@ const features = [
     copy: "Finance memproses alur status pembayaran sampai Lunas dengan histori perubahan yang jelas.",
   },
   {
-    title: "Tagihan Warga Card-Based",
-    copy: "Dashboard warga difokuskan ke kartu tagihan per periode dengan aksi bayar, upload bukti, dan preview detail yang responsif.",
+    title: "Riwayat Global Terpusat",
+    copy: "Riwayat perubahan dipusatkan pada menu Riwayat khusus admin/superadmin agar loading halaman data utama tetap ringan.",
   },
   {
     title: "Status Server + Refresh Widget",
     copy: "Di Beranda admin/superadmin tersedia CTA Status Server dan Refresh widget untuk monitoring server serta pembaruan snapshot.",
-  },
-  {
-    title: "Riwayat Global Terpusat",
-    copy: "Riwayat perubahan dipusatkan pada menu Riwayat khusus admin/superadmin agar loading halaman data utama tetap ringan.",
   },
 ] as const;
 
@@ -431,19 +426,6 @@ export default async function Page() {
           </CardContent>
         </Card>
 
-        <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {paymentStages.map((item) => (
-            <Card key={item.label}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">{statusBadge(item.label)}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{item.note}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
-
         <section className="mb-6 grid gap-4 lg:grid-cols-3">
           {features.map((feature) => (
             <Card key={feature.title}>
@@ -455,6 +437,59 @@ export default async function Page() {
               </CardContent>
             </Card>
           ))}
+        </section>
+
+        <section className="mb-6">
+          <Card className="w-full border-border/90 bg-card/95 lg:w-1/3">
+            <CardHeader>
+              <CardTitle>Riwayat Perubahan Status IPL</CardTitle>
+              <CardDescription>Lorem ipsum dolor sit amet consectetur adipisicing elit. Rerum nemo ullam, odio sed</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
+                <ol className="space-y-3">
+                  <li className="relative pl-11">
+                    <div className="timeline-dash-flow absolute left-[15px] top-8 h-[calc(100%+6px)] w-[2px]" aria-hidden />
+                    <span className="absolute left-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background">
+                      <ReceiptText className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                    <div className="rounded-lg border border-border/70 bg-background px-3 py-2">
+                      <p className="text-sm leading-relaxed">
+                        <span className="font-medium">Ditagihkan oleh </span>
+                        <span className="font-semibold">Admin</span>
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">3 April 2026, 23:40</p>
+                    </div>
+                  </li>
+                  <li className="relative pl-11">
+                    <div className="timeline-dash-flow absolute left-[15px] top-8 h-[calc(100%+6px)] w-[2px]" aria-hidden />
+                    <span className="absolute left-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background">
+                      <Upload className="h-4 w-4 text-muted-foreground" />
+                    </span>
+                    <div className="rounded-lg border border-border/70 bg-background px-3 py-2">
+                      <p className="text-sm leading-relaxed">
+                        <span className="font-medium">Upload bukti pembayaran oleh </span>
+                        <span className="font-semibold">kamu</span>
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">4 April 2026, 01:10</p>
+                    </div>
+                  </li>
+                  <li className="relative pl-11">
+                    <span className="absolute left-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary bg-primary">
+                      <FileCheck2 className="h-4 w-4 text-primary-foreground" />
+                    </span>
+                    <div className="rounded-lg border border-border/70 bg-background px-3 py-2">
+                      <p className="text-sm leading-relaxed">
+                        <span className="font-medium">Diverifikasi oleh </span>
+                        <span className="font-semibold">Finance</span>
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">4 April 2026, 02:42</p>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+            </CardContent>
+          </Card>
         </section>
 
         <Card>
@@ -472,14 +507,8 @@ export default async function Page() {
         </Card>
 
         <footer className="mt-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <CalendarClock className="h-4 w-4" />
-          <span>Landing page disesuaikan dengan dashboard terbaru Hunita.</span>
-          <Building2 className="ml-2 h-4 w-4" />
           <ShieldCheck className="h-4 w-4" />
-          <ReceiptText className="h-4 w-4" />
-          <WalletCards className="h-4 w-4" />
-          <Database className="h-4 w-4" />
-          <HardDrive className="h-4 w-4" />
+          <span>Developed by Yohanes Sahrul</span>
         </footer>
       </div>
     </div>

@@ -102,8 +102,27 @@
   animation: cloud-bounce 4.8s ease-in-out infinite;
 }
 
+@keyframes timeline-dash-flow {
+  from {
+    background-position-y: 0;
+  }
+  to {
+    background-position-y: 12px;
+  }
+}
+
+.timeline-dash-flow {
+  background-image: repeating-linear-gradient(to bottom, hsl(var(--foreground) / 0.75) 0 6px, transparent 6px 12px);
+  background-repeat: repeat-y;
+  background-size: 2px 12px;
+  animation: timeline-dash-flow 0.9s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-cloud-bounce {
+    animation: none;
+  }
+  .timeline-dash-flow {
     animation: none;
   }
 }
