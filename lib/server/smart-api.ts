@@ -1776,7 +1776,13 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
     if (!month || !amount) throw new ApiHttpError(400, "month dan amount wajib diisi.");
 
     const periode = toPeriode(month);
+    if (!periode) throw new ApiHttpError(400, "Format month tidak valid.");
     await beginTransaction(transaction);
+
+    const existingPeriodeCount = await transaction.query("SELECT COUNT(*)::int AS total FROM bills WHERE periode=$1", [periode]);
+    if (Number(existingPeriodeCount.rows[0]?.total ?? 0) > 0) {
+      throw new ApiHttpError(409, `Periode ${periode} sudah pernah digenerate.`);
+    }
 
     const houses = await transaction.query("SELECT id FROM houses ORDER BY id ASC");
     await transaction.query(

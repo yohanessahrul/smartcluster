@@ -12,6 +12,7 @@ import {
   Wallet,
   WalletCards,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { cookies } from "next/headers";
 
@@ -20,6 +21,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
+import { LandingTypingWord } from "@/components/landing-typing-word";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -151,19 +153,36 @@ export default async function Page() {
           ) : null}
         </header>
 
-        <section className="mb-6">
-          <Badge variant="outline" className="mb-3 rounded-full px-3 py-1 text-xs">
-            Transparan • Tercatat • Verifikasi Terstruktur
-          </Badge>
-          <h1 className="max-w-4xl font-heading text-3xl leading-tight tracking-tight md:text-5xl">
-            Solusi digital untuk administrasi perumahan yang lebih tertata.
-          </h1>
-          <p className="mt-4 max-w-3xl text-muted-foreground">
-            Semua kebutuhan administrasi perumahan kini bisa dikelola lebih mudah dalam satu tempat
-          </p>
+        <section className="relative mb-6 overflow-visible pb-6 md:pb-8">
+          <div className="relative z-10 pr-[110px] sm:pr-[170px] lg:pr-[260px]">
+            <h1 className="max-w-4xl font-heading text-4xl leading-[1.2] tracking-tight sm:text-5xl md:text-6xl">
+              <span className="relative inline-block font-black after:absolute after:bottom-0 after:left-0 after:h-[0.2em] after:w-full after:rounded-full after:bg-[hsl(var(--primary)/0.26)]">
+                Solusi digital
+              </span>{" "}
+              untuk
+              <br />
+              administrasi perumahan
+              <br />
+              yang lebih <LandingTypingWord />
+            </h1>
+            <p className="mt-4 max-w-3xl text-muted-foreground">
+              Semua kebutuhan administrasi perumahan kini bisa dikelola lebih mudah dalam satu tempat
+            </p>
+          </div>
+
+          <div className="pointer-events-none absolute right-2 top-1/2 z-0 w-full max-w-[180px] -translate-x-[100px] -translate-y-1/2 sm:right-3 sm:max-w-[250px] lg:right-6 lg:max-w-[325px]">
+            <Image
+              src="/brand/finance-hero-illustration.svg"
+              alt="Ilustrasi transaksi keuangan"
+              width={900}
+              height={780}
+              priority
+              className="animate-cloud-bounce relative mx-auto h-auto w-full drop-shadow-[0_14px_26px_hsl(var(--primary)/0.2)]"
+            />
+          </div>
         </section>
 
-        <Card className="mb-6 border-border/90 bg-card/95">
+        <Card className="mb-6 mt-10 border-border/90 bg-card/95 md:mt-12">
           <CardHeader className="pb-4">
             <CardTitle>Mockup Dashboard Terbaru</CardTitle>
             <CardDescription>Preview visual tampilan dashboard web dan mobile sesuai implementasi saat ini.</CardDescription>

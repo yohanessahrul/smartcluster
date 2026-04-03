@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Eye, FileSpreadsheet, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -712,43 +712,24 @@ export function TransactionsCrud() {
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data Transaksi</CardTitle>
-          <Button className="w-full sm:w-auto" onClick={openCreateModal}>
-            Create Transaksi
+          <Button className="w-full sm:hidden" onClick={openCreateModal}>
+            <Plus className="mr-2 h-4 w-4" />
+            Tambah Transaksi
           </Button>
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
             <div className="flex w-full items-end gap-2 sm:hidden">
-              <Button type="button" variant="outline" className="h-10 flex-1" onClick={() => setFilterModalOpen(true)}>
+              <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filter
               </Button>
             </div>
-            <div className="hidden w-full sm:block sm:w-[220px]">
-              <label className={labelClass}>Tipe Transaksi</label>
-              <select
-                className={filterSelectClass}
-                value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value as "all" | TransactionRow["transaction_type"])}
-              >
-                <option value="all">Semua tipe</option>
-                <option value="Pemasukan">Pemasukan</option>
-                <option value="Pengeluaran">Pengeluaran</option>
-              </select>
-            </div>
-            <div className="hidden w-full sm:block sm:w-[220px]">
-              <label className={labelClass}>Metode Pembayaran</label>
-              <select
-                className={filterSelectClass}
-                value={methodFilter}
-                onChange={(event) => setMethodFilter(event.target.value as "all" | TransactionRow["payment_method"])}
-              >
-                <option value="all">Semua metode</option>
-                <option value="Transfer Bank">Transfer Bank</option>
-                <option value="Cash">Cash</option>
-                <option value="QRIS">QRIS</option>
-                <option value="E-wallet">E-wallet</option>
-              </select>
+            <div className="hidden items-end gap-2 sm:flex">
+              <Button className="h-10" onClick={openCreateModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Transaksi
+              </Button>
             </div>
             {isAdmin && selectedIds.length ? (
               <>
@@ -770,17 +751,22 @@ export function TransactionsCrud() {
                 </div>
               </>
             ) : null}
-            <div className="ml-auto hidden items-end sm:flex">
+            <div className="ml-auto hidden items-end gap-2 sm:flex">
+              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={() => setFilterModalOpen(true)}>
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="text-sm">Filter</span>
+              </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 w-10 p-0"
-                aria-label="Download report transaksi"
-                title="Download report transaksi"
+                className="h-10 gap-2 px-3"
+                aria-label="Download Excel"
+                title="Download Excel"
                 onClick={downloadFilteredReport}
                 disabled={!filteredRows.length}
               >
                 <FileSpreadsheet className="h-4 w-4" />
+                <span className="text-sm">Download Excel</span>
               </Button>
             </div>
           </div>

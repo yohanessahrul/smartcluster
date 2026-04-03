@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileSpreadsheet, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, FileCheck2, FileSpreadsheet, ReceiptText, SlidersHorizontal, Upload } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
@@ -15,10 +15,118 @@ import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { formatDateTimeUnified } from "@/lib/date-time";
 import { downloadRowsAsExcel } from "@/lib/download-excel";
-import { BillRow } from "@/lib/mock-data";
-import { apiClient, emitDataChanged } from "@/lib/api-client";
+import { BillRow, UserRow } from "@/lib/mock-data";
+import { apiClient, AuditLogRow, emitDataChanged } from "@/lib/api-client";
 
 const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
+
+type UserDirectory = Record<
+  string,
+  {
+    name: string;
+    role: UserRow["role"];
+  }
+>;
+
+type BillTimelineStep = {
+  key: "billed" | "uploaded" | "verified";
+  textPrefix: string;
+  actor: string;
+  at: string | null;
+};
+
+function readStringField(value: Record<string, unknown> | null | undefined, key: string) {
+  const field = value?.[key];
+  return typeof field === "string" ? field : null;
+}
+
+function normalizeStatus(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeEmail(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function formatRoleLabel(role: UserRow["role"]) {
+  switch (role) {
+    case "superadmin":
+      return "Superadmin";
+    case "admin":
+      return "Admin";
+    case "warga":
+      return "Warga";
+    case "finance":
+    default:
+      return "Finance";
+  }
+}
+
+function resolveActorRoleLabel(author: string | null | undefined, userDirectory: UserDirectory, fallback: UserRow["role"] = "finance") {
+  const normalizedAuthor = normalizeEmail(author);
+  if (!normalizedAuthor) return formatRoleLabel(fallback);
+  const found = userDirectory[normalizedAuthor];
+  if (found?.role) return formatRoleLabel(found.role);
+  return formatRoleLabel(fallback);
+}
+
+function buildLunasTimeline(
+  logs: AuditLogRow[],
+  userDirectory: UserDirectory,
+  viewerEmail: string | null,
+) {
+  const orderedLogs = [...logs].sort((a, b) => {
+    const timeA = new Date(a.updated_at).getTime();
+    const timeB = new Date(b.updated_at).getTime();
+    if (timeA !== timeB) return timeA - timeB;
+    return a.id - b.id;
+  });
+
+  const createLog = orderedLogs.find((row) => row.action === "CREATE");
+  const statusUpdates = orderedLogs.filter((row) => row.action === "UPDATE");
+  const uploadLog = statusUpdates.find((row) => normalizeStatus(readStringField(row.after_value, "status")) === "menunggu verifikasi");
+  const verifiedLog =
+    [...statusUpdates]
+      .reverse()
+      .find((row) => normalizeStatus(readStringField(row.after_value, "status")) === "lunas") ?? null;
+
+  const billedActor = resolveActorRoleLabel(createLog?.author, userDirectory, "finance");
+  const verifiedActor = resolveActorRoleLabel(verifiedLog?.author, userDirectory, "finance");
+  const viewer = normalizeEmail(viewerEmail);
+  const uploadAuthor = normalizeEmail(uploadLog?.author);
+  const uploadActor = uploadAuthor && viewer && uploadAuthor === viewer ? "kamu" : "kamu";
+
+  const steps: BillTimelineStep[] = [];
+
+  if (createLog) {
+    steps.push({
+      key: "billed",
+      textPrefix: "Ditagihkan oleh",
+      actor: billedActor,
+      at: createLog.updated_at,
+    });
+  }
+
+  if (uploadLog) {
+    steps.push({
+      key: "uploaded",
+      textPrefix: "Upload bukti pembayaran oleh",
+      actor: uploadActor,
+      at: uploadLog.updated_at,
+    });
+  }
+
+  if (verifiedLog) {
+    steps.push({
+      key: "verified",
+      textPrefix: "Diverifikasi oleh",
+      actor: verifiedActor,
+      at: verifiedLog.updated_at,
+    });
+  }
+
+  return steps;
+}
 
 export default function WargaTagihanPage() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
@@ -35,6 +143,10 @@ export default function WargaTagihanPage() {
   const [payProofFile, setPayProofFile] = useState<File | null>(null);
   const [paySubmitting, setPaySubmitting] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [userDirectory, setUserDirectory] = useState<UserDirectory>({});
+  const [previewViewerEmail, setPreviewViewerEmail] = useState<string | null>(null);
+  const [previewTimelineSteps, setPreviewTimelineSteps] = useState<BillTimelineStep[]>([]);
+  const [previewTimelineLoading, setPreviewTimelineLoading] = useState(false);
 
   useEffect(() => {
     const sync = async () => {
@@ -51,6 +163,57 @@ export default function WargaTagihanPage() {
   }, []);
 
   useEffect(() => {
+    let isActive = true;
+    const loadUserDirectory = async () => {
+      try {
+        const users = await apiClient.getUsers();
+        if (!isActive) return;
+        const nextDirectory = users.reduce<UserDirectory>((acc, user) => {
+          acc[user.email.toLowerCase()] = { name: user.name, role: user.role };
+          return acc;
+        }, {});
+        setUserDirectory(nextDirectory);
+      } catch {
+        if (!isActive) return;
+        setUserDirectory({});
+      }
+    };
+    void loadUserDirectory();
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!previewModalOpen || !previewBill || previewBill.status !== "Lunas") {
+      setPreviewTimelineSteps([]);
+      setPreviewTimelineLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    const loadTimeline = async () => {
+      try {
+        setPreviewTimelineLoading(true);
+        const logs = await apiClient.getAuditLogs("bills", 200, previewBill.id);
+        if (!isActive) return;
+        const steps = buildLunasTimeline(logs, userDirectory, previewViewerEmail);
+        setPreviewTimelineSteps(steps);
+      } catch {
+        if (!isActive) return;
+        setPreviewTimelineSteps([]);
+      } finally {
+        if (isActive) setPreviewTimelineLoading(false);
+      }
+    };
+
+    void loadTimeline();
+    return () => {
+      isActive = false;
+    };
+  }, [previewModalOpen, previewBill, previewViewerEmail, userDirectory]);
+
+  useEffect(() => {
     setPage(1);
   }, [statusFilter]);
 
@@ -65,8 +228,10 @@ export default function WargaTagihanPage() {
     setPayError("");
   }
 
-  function openPreviewModal(bill: BillRow) {
+  function openPreviewModal(bill: BillRow, viewerEmail?: string | null) {
     setPreviewBill(bill);
+    setPreviewViewerEmail(normalizeEmail(viewerEmail));
+    setPreviewTimelineSteps([]);
     setPreviewModalOpen(true);
   }
 
@@ -157,92 +322,85 @@ export default function WargaTagihanPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="flex w-full items-end gap-2 sm:hidden">
-                    <Button type="button" variant="outline" className="h-10 flex-1" onClick={() => setFilterModalOpen(true)}>
+                  <div className="flex w-full items-end gap-2 sm:w-auto">
+                    <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
                       Filter
                     </Button>
-                  </div>
-                  <div className="hidden w-full sm:block sm:w-[220px]">
-                    <label className={filterLabelClass}>Status</label>
-                    <select
-                      className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                      value={statusFilter}
-                      onChange={(event) => setStatusFilter(event.target.value as "all" | BillRow["status"])}
-                    >
-                      <option value="all">Semua status</option>
-                      <option value="Belum bayar">Belum bayar</option>
-                      <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
-                      <option value="Verifikasi">Verifikasi</option>
-                      <option value="Lunas">Lunas</option>
-                    </select>
                   </div>
                   <div className="ml-auto hidden items-end sm:flex">
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-10 w-10 p-0"
-                      aria-label="Download report tagihan"
-                      title="Download report tagihan"
+                      className="h-10 gap-2 px-3"
+                      aria-label="Download Excel"
+                      title="Download Excel"
                       onClick={downloadFilteredReport}
                       disabled={!filteredRows.length}
                     >
                       <FileSpreadsheet className="h-4 w-4" />
+                      <span className="text-sm">Download Excel</span>
                     </Button>
                   </div>
                 </div>
                 <div className="space-y-3">
                   {filteredRows.length ? (
-                    pagedRows.map((item) => (
-                      <div key={item.id} className="rounded-lg border border-border bg-background p-3 sm:p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Periode</p>
-                            <p className="font-medium">{item.periode}</p>
+                    pagedRows.map((item) => {
+                      const isLunas = item.status === "Lunas";
+                      const isMenungguVerifikasi = item.status === "Menunggu Verifikasi";
+
+                      return (
+                        <div
+                          key={item.id}
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Lihat detail IPL ${item.id}`}
+                          onClick={() => openPreviewModal(item, data.session?.email)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              openPreviewModal(item, data.session?.email);
+                            }
+                          }}
+                          className={`group rounded-lg border p-3 transition-colors duration-200 sm:p-4 ${
+                            isLunas
+                              ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+                              : isMenungguVerifikasi
+                                ? "border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))] hover:bg-[hsl(var(--warning-bg))]/80"
+                              : "border-border bg-background hover:bg-muted/40"
+                          } cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className={`text-xs ${isLunas ? "text-primary-foreground/80" : "text-muted-foreground"}`}>Periode</p>
+                              <p className="font-medium">{item.periode}</p>
+                            </div>
+                            <PaymentStatusBadge status={item.status} />
                           </div>
-                          <PaymentStatusBadge status={item.status} />
-                        </div>
 
-                        <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                          <p>
-                            <span className="text-muted-foreground">Unit:</span> {houseDisplay}
-                          </p>
-                          <p>
-                            <span className="text-muted-foreground">Amount:</span> {item.amount}
-                          </p>
-                          <p className="sm:col-span-2">
-                            <span className="text-muted-foreground">Status Date:</span> <DateTimeText value={item.status_date} />
-                          </p>
+                          <div className="mt-3 flex items-center justify-between gap-3">
+                            <p className="font-heading text-2xl font-black sm:text-3xl">{item.amount}</p>
+                            {item.status === "Belum bayar" ? (
+                              <Button
+                                size="sm"
+                                className="h-9 px-4 text-sm"
+                                aria-label="Bayar"
+                                title="Bayar"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  openPayModal(item);
+                                }}
+                              >
+                                Bayar
+                                <ArrowRight className="ml-0 h-0 w-0 opacity-0 transition-all duration-200 group-hover:ml-2 group-hover:h-4 group-hover:w-4 group-hover:opacity-100" />
+                              </Button>
+                            ) : (
+                              <span className={`text-xs ${isLunas ? "text-primary-foreground/80" : "text-muted-foreground"}`}>-</span>
+                            )}
+                          </div>
                         </div>
-
-                        <div className="mt-3 flex justify-end">
-                          {item.status === "Belum bayar" ? (
-                            <Button
-                              size="sm"
-                              className="h-8 px-3"
-                              aria-label="Bayar"
-                              title="Bayar"
-                              onClick={() => openPayModal(item)}
-                            >
-                              Bayar
-                            </Button>
-                          ) : item.status === "Menunggu Verifikasi" ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 px-3"
-                              aria-label="Lihat detail IPL"
-                              title="Lihat detail IPL"
-                              onClick={() => openPreviewModal(item)}
-                            >
-                              Lihat
-                            </Button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="rounded-lg border border-border bg-background p-6 text-center text-sm text-muted-foreground">
                       No record available
@@ -355,31 +513,86 @@ export default function WargaTagihanPage() {
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Bukti Transaksi</p>
-                  {previewBill?.payment_proof_url ? (
-                    isImageProof(previewBill.payment_proof_url) ? (
-                      <div className="overflow-hidden rounded-lg border border-border bg-muted/20">
-                        <img
-                          src={previewBill.payment_proof_url}
-                          alt={`Bukti transaksi ${previewBill.id}`}
-                          className="h-auto max-h-[420px] w-full object-contain"
-                        />
+                {previewBill?.status === "Belum bayar" ? (
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      if (!previewBill) return;
+                      setPreviewModalOpen(false);
+                      openPayModal(previewBill);
+                    }}
+                  >
+                    Bayar
+                  </Button>
+                ) : previewBill?.status === "Lunas" ? (
+                  previewTimelineLoading ? (
+                    <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+                      Memuat riwayat status...
+                    </div>
+                  ) : previewTimelineSteps.length ? (
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium">Riwayat Perubahan Status IPL</p>
+                      <div className="rounded-lg border border-border bg-muted p-3 sm:p-4">
+                        <ol className="space-y-3">
+                          {previewTimelineSteps.map((step, index) => {
+                            const isLast = index === previewTimelineSteps.length - 1;
+                            const isVerifiedStep = step.key === "verified";
+                            const StepIcon = step.key === "billed" ? ReceiptText : step.key === "uploaded" ? Upload : FileCheck2;
+                            return (
+                              <li key={step.key} className="relative pl-11">
+                                {!isLast ? (
+                                  <span className="absolute left-[15px] top-8 h-[calc(100%-2px)] w-px bg-border" aria-hidden />
+                                ) : null}
+                                <span
+                                  className={`absolute left-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-full border ${
+                                    isVerifiedStep ? "border-primary bg-primary" : "border-border bg-card"
+                                  }`}
+                                >
+                                  <StepIcon className={`h-4 w-4 ${isVerifiedStep ? "text-primary-foreground" : "text-muted-foreground"}`} />
+                                </span>
+                                <div className="rounded-lg border border-border/70 bg-card px-3 py-2">
+                                  <p className="text-sm leading-relaxed">
+                                    <span className="font-medium">{step.textPrefix}</span>{" "}
+                                    <span className="font-semibold">{step.actor}</span>
+                                  </p>
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    <DateTimeText value={step.at} />
+                                  </p>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ol>
                       </div>
+                    </div>
+                  ) : null
+                ) : previewBill?.status !== "Lunas" ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Bukti Transaksi</p>
+                    {previewBill?.payment_proof_url ? (
+                      isImageProof(previewBill.payment_proof_url) ? (
+                        <div className="h-[360px] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-muted/20">
+                          <img
+                            src={previewBill.payment_proof_url}
+                            alt={`Bukti transaksi ${previewBill.id}`}
+                            className="h-auto w-full"
+                          />
+                        </div>
+                      ) : (
+                        <a
+                          href={previewBill.payment_proof_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-primary underline underline-offset-2"
+                        >
+                          Lihat Bukti Transaksi
+                        </a>
+                      )
                     ) : (
-                      <a
-                        href={previewBill.payment_proof_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-primary underline underline-offset-2"
-                      >
-                        Lihat Bukti Transaksi
-                      </a>
-                    )
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Bukti transaksi belum tersedia.</p>
-                  )}
-                </div>
+                      <p className="text-sm text-muted-foreground">Bukti transaksi belum tersedia.</p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </SimpleModal>
           </div>

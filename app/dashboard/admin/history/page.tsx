@@ -116,72 +116,26 @@ export default function AdminGlobalHistoryPage() {
         }
       />
 
-      <div className="flex w-full items-end gap-2 sm:hidden">
-        <Button type="button" variant="outline" className="h-10 flex-1" onClick={() => setFilterModalOpen(true)}>
+      <div className="flex w-full items-end gap-2 sm:w-auto">
+        <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
           <SlidersHorizontal className="mr-2 h-4 w-4" />
           Filter
         </Button>
       </div>
 
-      <div className="hidden flex-wrap gap-3 sm:flex">
-        <div className="w-full sm:w-[220px]">
-          <label className={labelClass}>Table</label>
-          <select
-            className={filterSelectClass}
-            value={tableFilter}
-            onChange={(event) =>
-              setTableFilter(event.target.value as "all" | "users" | "houses" | "bills" | "transactions")
-            }
-          >
-            <option value="all">Semua table</option>
-            <option value="users">users</option>
-            <option value="houses">houses</option>
-            <option value="bills">bills</option>
-            <option value="transactions">transactions</option>
-          </select>
-        </div>
-        <div className="w-full sm:w-[220px]">
-          <label className={labelClass}>Action</label>
-          <select
-            className={filterSelectClass}
-            value={actionFilter}
-            onChange={(event) => setActionFilter(event.target.value as "all" | "CREATE" | "UPDATE" | "DELETE")}
-          >
-            <option value="all">Semua action</option>
-            <option value="CREATE">CREATE</option>
-            <option value="UPDATE">UPDATE</option>
-            <option value="DELETE">DELETE</option>
-          </select>
-        </div>
-        <div className="w-full sm:w-[220px]">
-          <label className={labelClass}>Start Date</label>
-          <input
-            type="date"
-            className={filterSelectClass}
-            value={startDate}
-            onChange={(event) => setStartDate(event.target.value)}
-          />
-        </div>
-        <div className="w-full sm:w-[220px]">
-          <label className={labelClass}>End Date</label>
-          <input
-            type="date"
-            className={filterSelectClass}
-            value={endDate}
-            onChange={(event) => setEndDate(event.target.value)}
-          />
-        </div>
+      <div className="hidden sm:flex sm:justify-end">
         <div className="ml-auto flex items-end">
           <Button
             type="button"
             variant="outline"
-            className="h-10 w-10 p-0"
-            aria-label="Download report history"
-            title="Download report history"
+            className="h-10 gap-2 px-3"
+            aria-label="Download Excel"
+            title="Download Excel"
             onClick={downloadFilteredReport}
             disabled={!filteredRows.length}
           >
             <FileSpreadsheet className="h-4 w-4" />
+            <span className="text-sm">Download Excel</span>
           </Button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Eye, FileSpreadsheet, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { BooleanBadge } from "@/components/ui/boolean-badge";
@@ -653,52 +653,24 @@ export function HousesCrud() {
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data Rumah</CardTitle>
-          <Button className="w-full sm:w-auto" onClick={openCreateModal}>
-            Create Rumah
+          <Button className="w-full sm:hidden" onClick={openCreateModal}>
+            <Plus className="mr-2 h-4 w-4" />
+            Tambah Rumah
           </Button>
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
             <div className="flex w-full items-end gap-2 sm:hidden">
-              <Button type="button" variant="outline" className="h-10 flex-1" onClick={() => setFilterModalOpen(true)}>
+              <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filter
               </Button>
             </div>
-            <div className="hidden w-full sm:block sm:w-[220px]">
-              <label className={labelClass}>Blok</label>
-              <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
-                <option value="all">Semua blok</option>
-                {blokOptions.map((blok) => (
-                  <option key={blok} value={blok}>
-                    Blok {blok}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="hidden w-full sm:block sm:w-[220px]">
-              <label className={labelClass}>Dihuni</label>
-              <select
-                className={filterSelectClass}
-                value={occupiedFilter}
-                onChange={(event) => setOccupiedFilter(event.target.value as "all" | "true" | "false")}
-              >
-                <option value="all">Semua Dihuni</option>
-                <option value="true">Ya</option>
-                <option value="false">Tidak</option>
-              </select>
-            </div>
-            <div className="hidden w-full sm:block sm:w-[220px]">
-              <label className={labelClass}>Kepemilikan</label>
-              <select
-                className={filterSelectClass}
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as "all" | HouseRow["residential_status"])}
-              >
-                <option value="all">Semua Kepemilikan</option>
-                <option value="Owner">Owner</option>
-                <option value="Contract">Contract</option>
-              </select>
+            <div className="hidden items-end gap-2 sm:flex">
+              <Button className="h-10" onClick={openCreateModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Rumah
+              </Button>
             </div>
             {selectedIds.length ? (
               <>
@@ -716,17 +688,22 @@ export function HousesCrud() {
                 </div>
               </>
             ) : null}
-            <div className="ml-auto hidden items-end sm:flex">
+            <div className="ml-auto hidden items-end gap-2 sm:flex">
+              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={() => setFilterModalOpen(true)}>
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="text-sm">Filter</span>
+              </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 w-10 p-0"
-                aria-label="Download report rumah"
-                title="Download report rumah"
+                className="h-10 gap-2 px-3"
+                aria-label="Download Excel"
+                title="Download Excel"
                 onClick={downloadFilteredReport}
                 disabled={!filteredRows.length}
               >
                 <FileSpreadsheet className="h-4 w-4" />
+                <span className="text-sm">Download Excel</span>
               </Button>
             </div>
           </div>

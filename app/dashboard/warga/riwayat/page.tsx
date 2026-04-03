@@ -84,37 +84,24 @@ export default function WargaRiwayatPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="flex w-full items-end gap-2 sm:hidden">
-                    <Button type="button" variant="outline" className="h-10 flex-1" onClick={() => setFilterModalOpen(true)}>
+                  <div className="flex w-full items-end gap-2 sm:w-auto">
+                    <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
                       Filter
                     </Button>
-                  </div>
-                  <div className="hidden w-full sm:block sm:w-[220px]">
-                    <label className={filterLabelClass}>Metode Pembayaran</label>
-                    <select
-                      className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                      value={methodFilter}
-                      onChange={(event) => setMethodFilter(event.target.value as "all" | TransactionRow["payment_method"])}
-                    >
-                      <option value="all">Semua metode</option>
-                      <option value="Transfer Bank">Transfer Bank</option>
-                      <option value="Cash">Cash</option>
-                      <option value="QRIS">QRIS</option>
-                      <option value="E-wallet">E-wallet</option>
-                    </select>
                   </div>
                   <div className="ml-auto hidden items-end sm:flex">
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-10 w-10 p-0"
-                      aria-label="Download report riwayat"
-                      title="Download report riwayat"
+                      className="h-10 gap-2 px-3"
+                      aria-label="Download Excel"
+                      title="Download Excel"
                       onClick={downloadFilteredReport}
                       disabled={!filteredRows.length}
                     >
                       <FileSpreadsheet className="h-4 w-4" />
+                      <span className="text-sm">Download Excel</span>
                     </Button>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Crosshair, Eye, FileSpreadsheet, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Crosshair, Eye, FileSpreadsheet, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { BooleanBadge } from "@/components/ui/boolean-badge";
@@ -72,7 +72,9 @@ function getDefaultMonth() {
 
 function toPeriode(monthValue: string) {
   const [year, month] = monthValue.split("-");
+  if (!year || !month) return "";
   const index = Number(month) - 1;
+  if (Number.isNaN(index) || index < 0 || index > 11) return "";
   return `${monthNames[index]} ${year}`;
 }
 
@@ -487,11 +489,23 @@ type GenerateBillModalProps = {
   value: GenerateForm;
   onChange: (value: GenerateForm) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  alreadyGenerated?: boolean;
+  periodeLabel?: string;
   submitting?: boolean;
   errorMessage?: string;
 };
 
-function GenerateBillModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: GenerateBillModalProps) {
+function GenerateBillModal({
+  open,
+  onClose,
+  value,
+  onChange,
+  onSubmit,
+  alreadyGenerated = false,
+  periodeLabel,
+  submitting,
+  errorMessage,
+}: GenerateBillModalProps) {
   return (
     <SimpleModal open={open} onClose={onClose} title="Generate IPL">
       <form className="space-y-3" onSubmit={onSubmit}>
@@ -519,7 +533,12 @@ function GenerateBillModal({ open, onClose, value, onChange, onSubmit, submittin
         <p className="text-xs text-muted-foreground">
           Action ini akan membuat tagihan IPL dari setiap rumah, akan men-skip rumah yang sudah bayar di bulan sebelumnya.
         </p>
-        <Button type="submit" loading={submitting} loadingText="Generate..." disabled={submitting}>
+        {alreadyGenerated ? (
+          <p className="text-xs text-amber-700">
+            Periode {periodeLabel ?? "-"} sudah pernah digenerate.
+          </p>
+        ) : null}
+        <Button type="submit" loading={submitting} loadingText="Generate..." disabled={submitting || alreadyGenerated}>
           Generate IPL
         </Button>
       </form>
@@ -616,6 +635,12 @@ export function BillsCrud() {
   const periodeOptions = useMemo(() => {
     return Array.from(new Set(rows.map((row) => row.periode).filter(Boolean))).sort((a, b) => toMonthValue(b).localeCompare(toMonthValue(a)));
   }, [rows]);
+  const selectedGeneratePeriode = useMemo(() => toPeriode(generateForm.month), [generateForm.month]);
+  const isGeneratePeriodAlreadyExists = useMemo(() => {
+    if (!selectedGeneratePeriode) return false;
+    const target = selectedGeneratePeriode.trim().toLowerCase();
+    return rows.some((row) => row.periode.trim().toLowerCase() === target);
+  }, [rows, selectedGeneratePeriode]);
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -994,6 +1019,10 @@ export function BillsCrud() {
   async function generateBillForAllHouses(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setGenerateError("");
+    if (isGeneratePeriodAlreadyExists) {
+      setGenerateError(`Periode ${selectedGeneratePeriode || "-"} sudah pernah digenerate.`);
+      return;
+    }
     try {
       setGenerateSubmitting(true);
       const result = await apiClient.generateBills({
@@ -1080,8 +1109,9 @@ export function BillsCrud() {
           {hasFullAccess ? (
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               {hasFullAccess ? (
-                <Button className="w-full sm:w-auto" onClick={openCreateModal}>
-                  Create IPL
+                <Button className="w-full sm:hidden" onClick={openCreateModal}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tambah IPL
                 </Button>
               ) : null}
             </div>
@@ -1090,47 +1120,19 @@ export function BillsCrud() {
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
             <div className="flex w-full items-end gap-2 sm:hidden">
-              <Button type="button" variant="outline" className="h-10 flex-1" onClick={() => setFilterModalOpen(true)}>
+              <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filter
               </Button>
             </div>
-            <div className="hidden w-full sm:block sm:w-[220px]">
-              <label className={labelClass}>Status</label>
-              <select
-                className={filterSelectClass}
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as "all" | BillRow["status"])}
-              >
-                <option value="all">Semua status</option>
-                <option value="Belum bayar">Belum bayar</option>
-                <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
-                <option value="Verifikasi">Verifikasi</option>
-                <option value="Lunas">Lunas</option>
-              </select>
-            </div>
-            <div className="hidden w-full sm:block sm:w-[220px]">
-              <label className={labelClass}>Blok</label>
-              <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
-                <option value="all">Semua blok</option>
-                {blokOptions.map((blok) => (
-                  <option key={blok} value={blok}>
-                    Blok {blok}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="hidden w-full sm:block sm:w-[220px]">
-              <label className={labelClass}>Periode</label>
-              <select className={filterSelectClass} value={periodeFilter} onChange={(event) => setPeriodeFilter(event.target.value)}>
-                <option value="all">Semua periode</option>
-                {periodeOptions.map((periode) => (
-                  <option key={periode} value={periode}>
-                    {periode}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {hasFullAccess ? (
+              <div className="hidden items-end gap-2 sm:flex">
+                <Button className="h-10" onClick={openCreateModal}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tambah IPL
+                </Button>
+              </div>
+            ) : null}
             {isAdmin && selectedIds.length ? (
               <>
                 <div className="w-full sm:w-[180px]">
@@ -1151,17 +1153,22 @@ export function BillsCrud() {
                 </div>
               </>
             ) : null}
-            <div className="ml-auto hidden items-end sm:flex">
+            <div className="ml-auto hidden items-end gap-2 sm:flex">
+              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={() => setFilterModalOpen(true)}>
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="text-sm">Filter</span>
+              </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 w-10 p-0"
-                aria-label="Download report IPL"
-                title="Download report IPL"
+                className="h-10 gap-2 px-3"
+                aria-label="Download Excel"
+                title="Download Excel"
                 onClick={downloadFilteredReport}
                 disabled={!filteredRows.length}
               >
                 <FileSpreadsheet className="h-4 w-4" />
+                <span className="text-sm">Download Excel</span>
               </Button>
             </div>
           </div>
@@ -1381,6 +1388,8 @@ export function BillsCrud() {
         value={generateForm}
         onChange={setGenerateForm}
         onSubmit={generateBillForAllHouses}
+        alreadyGenerated={isGeneratePeriodAlreadyExists}
+        periodeLabel={selectedGeneratePeriode}
         submitting={generateSubmitting}
         errorMessage={generateError}
       />
