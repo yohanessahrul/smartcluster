@@ -17,23 +17,27 @@ export function LandingGenerateIplWidget() {
   }, []);
 
   return (
-    <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
-      <div className="space-y-3">
+    <div className="h-full rounded-lg border border-border bg-muted/30 p-4 sm:p-5">
+      <div className="flex h-full flex-col gap-3">
         <Button type="button" className="w-full">
           <Sparkles className="mr-2 h-4 w-4" />
           Generate IPL
         </Button>
 
-        <div className="relative flex justify-center py-1" aria-hidden>
-          <div className="timeline-dash-flow h-10 w-[2px]" />
+        <div className="relative flex justify-center py-0.5" aria-hidden>
+          <div className="timeline-dash-flow h-7 w-[2px]" />
         </div>
 
         <button
           type="button"
-          className="inline-flex w-full items-center justify-center rounded-lg border border-dashed border-border bg-transparent px-3 py-2 text-sm font-medium text-foreground/90 transition hover:bg-muted/40"
+          className="inline-flex min-h-[140px] w-full flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-transparent px-3 py-4 text-foreground/90 transition hover:bg-muted/40"
         >
-          <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" />
-          Membuat {count} tagihan
+          <span className="text-base font-medium">Membuat</span>
+          <span className="mt-2 inline-flex items-center gap-2 text-5xl font-black leading-none text-primary">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            {count}
+          </span>
+          <span className="mt-2 text-lg font-semibold">tagihan</span>
         </button>
       </div>
     </div>

@@ -441,13 +441,13 @@ export default async function Page() {
         </section>
 
         <section className="mb-6 grid gap-4 lg:grid-cols-3">
-          <Card className="w-full border-border/90 bg-card/95 lg:col-span-1">
+          <Card className="flex h-full w-full flex-col border-border/90 bg-card/95 lg:col-span-1">
             <CardHeader>
               <CardTitle>Riwayat Perubahan Status IPL</CardTitle>
               <CardDescription>Lorem ipsum dolor sit amet consectetur adipisicing elit. Rerum nemo ullam, odio sed</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
+            <CardContent className="flex-1">
+              <div className="h-full rounded-lg border border-border bg-muted/30 p-3 sm:p-4">
                 <ol className="space-y-3">
                   <li className="relative pl-11">
                     <div className="timeline-dash-flow absolute left-[15px] top-8 h-[calc(100%+6px)] w-[2px]" aria-hidden />
@@ -492,12 +492,12 @@ export default async function Page() {
             </CardContent>
           </Card>
 
-          <Card className="w-full border-border/90 bg-card/95 lg:col-span-1">
+          <Card className="flex h-full w-full flex-col border-border/90 bg-card/95 lg:col-span-1">
             <CardHeader>
               <CardTitle>Generate IPL</CardTitle>
               <CardDescription>Trigger pembuatan tagihan IPL massal dengan indikator proses berjalan.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1">
               <LandingGenerateIplWidget />
             </CardContent>
           </Card>
