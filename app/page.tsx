@@ -42,21 +42,30 @@ const adminMetrics: Metric[] = [
 
 const financeMetrics: Metric[] = [
   { label: "Success Payment", value: "212 • Rp31,8 Jt", icon: Wallet },
-  { label: "Pending Payment", value: "48 • Rp7,2 Jt", icon: BellRing, tone: "warning" },
-  { label: "Unit Active", value: "248 Rumah", icon: Home },
+  { label: "Need Verification", value: "48 • Rp7,2 Jt", icon: BellRing, tone: "warning" },
+  { label: "Need Follow Up", value: "24 • Rp3,6 Jt", icon: WalletCards },
+  { label: "Unit Summary", value: "248 Rumah • 220 Dihuni", icon: Home },
 ];
-
-const bills = [
-  { name: "Budi Santoso", unit: "A-12", period: "April 2026", amount: "Rp150.000", status: "Lunas" },
-  { name: "Sri Wulandari", unit: "B-03", period: "April 2026", amount: "Rp150.000", status: "Menunggu Verifikasi" },
-  { name: "Agus Pratama", unit: "C-21", period: "April 2026", amount: "Rp150.000", status: "Verifikasi" },
-  { name: "Nadia Putri", unit: "A-07", period: "April 2026", amount: "Rp150.000", status: "Belum bayar" },
-] as const;
 
 const financeQueue = [
   { unit: "B-03", period: "April 2026", amount: "Rp150.000", status: "Menunggu Verifikasi" },
-  { unit: "C-21", period: "April 2026", amount: "Rp150.000", status: "Verifikasi" },
+  { unit: "C-21", period: "April 2026", amount: "Rp150.000", status: "Menunggu Verifikasi" },
   { unit: "D-18", period: "April 2026", amount: "Rp150.000", status: "Menunggu Verifikasi" },
+] as const;
+
+const financeLatestTransactions = [
+  {
+    detail: "Pembayaran IPL Warga",
+    amount: "Rp150.000",
+    method: "Transfer Bank",
+    status: "Menunggu Verifikasi",
+  },
+  {
+    detail: "Pembayaran IPL Cluster",
+    amount: "Rp300.000",
+    method: "QRIS",
+    status: "Menunggu Verifikasi",
+  },
 ] as const;
 
 const paymentStages = [
@@ -84,12 +93,12 @@ const features = [
     copy: "Warga melihat ringkasan jurnal dari transaksi yang sudah lunas per periode.",
   },
   {
-    title: "Status Server",
-    copy: "Admin dapat memantau kapasitas database 500MB dan storage bucket 1GB langsung dari dashboard.",
+    title: "Status Server + Refresh",
+    copy: "Di Beranda admin tersedia CTA Status Server dan Refresh Data untuk monitoring dan update snapshot.",
   },
   {
-    title: "Audit & Histori",
-    copy: "Semua table utama memiliki histori perubahan dengan before/after value dan author.",
+    title: "Riwayat Global",
+    copy: "Riwayat perubahan dipusatkan pada menu Riwayat agar loading halaman data utama tetap ringan.",
   },
 ] as const;
 
@@ -164,7 +173,7 @@ export default async function Page() {
                     </CardHeader>
                     <CardContent className="space-y-2 pt-0 text-sm">
                       <div className="rounded-lg bg-[hsl(var(--menu-active))] px-3 py-2 font-medium">Beranda</div>
-                      <div className="rounded-lg px-3 py-2">Status Server</div>
+                      <div className="rounded-lg px-3 py-2">Riwayat</div>
                       <div className="rounded-lg px-3 py-2">Pengguna</div>
                       <div className="rounded-lg px-3 py-2">Rumah</div>
                       <div className="rounded-lg px-3 py-2">IPL</div>
@@ -192,31 +201,18 @@ export default async function Page() {
 
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle>Daftar IPL Bulanan</CardTitle>
+                        <CardTitle>Aksi Cepat Beranda Admin</CardTitle>
+                        <CardDescription>CTA yang tersedia di halaman Beranda admin saat ini.</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <Table className="min-w-[700px]">
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Warga</TableHead>
-                              <TableHead>Unit</TableHead>
-                              <TableHead>Periode</TableHead>
-                              <TableHead>Nominal</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {bills.map((bill) => (
-                              <TableRow key={`${bill.name}-${bill.unit}`}>
-                                <TableCell>{bill.name}</TableCell>
-                                <TableCell>{bill.unit}</TableCell>
-                                <TableCell>{bill.period}</TableCell>
-                                <TableCell>{bill.amount}</TableCell>
-                                <TableCell>{statusBadge(bill.status)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="rounded-full">
+                            CTA: Status Server
+                          </Badge>
+                          <Badge variant="outline" className="rounded-full">
+                            CTA: Refresh Data
+                          </Badge>
+                        </div>
                       </CardContent>
                     </Card>
                   </div>
@@ -274,6 +270,34 @@ export default async function Page() {
                                 <TableCell>{item.unit}</TableCell>
                                 <TableCell>{item.period}</TableCell>
                                 <TableCell>{item.amount}</TableCell>
+                                <TableCell>{statusBadge(item.status)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle>5 Transaksi Terakhir</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table className="min-w-[620px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Detail Transaksi</TableHead>
+                              <TableHead>Nominal</TableHead>
+                              <TableHead>Metode</TableHead>
+                              <TableHead>Status</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {financeLatestTransactions.map((item, index) => (
+                              <TableRow key={`${item.detail}-${index}`}>
+                                <TableCell>{item.detail}</TableCell>
+                                <TableCell>{item.amount}</TableCell>
+                                <TableCell>{item.method}</TableCell>
                                 <TableCell>{statusBadge(item.status)}</TableCell>
                               </TableRow>
                             ))}
