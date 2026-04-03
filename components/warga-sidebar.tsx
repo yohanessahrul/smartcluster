@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BarChart3, ClipboardList, Home, Receipt, ShieldCheck, UserRound } from "lucide-react";
 
+import { BrandMark } from "@/components/brand-mark";
 import { UserMenuCta } from "@/components/user-menu-cta";
 import { useWargaResolvedData } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
@@ -28,9 +29,14 @@ export function WargaSidebar() {
 
   return (
     <aside className="h-full overflow-y-auto rounded-lg border border-border bg-[hsl(var(--menu-bg))] p-4 text-[hsl(var(--menu-fg))] lg:rounded-none">
-      <div className="mb-6 rounded-lg bg-[hsl(var(--menu-note))] p-3">
-        <p className="font-heading text-sm">Portal Warga</p>
-        <p className="text-xs text-[hsl(var(--menu-muted))]">Akses tagihan dan transparansi dana</p>
+      <div className="mb-6 flex items-center gap-3 rounded-lg bg-[hsl(var(--menu-note))] p-3">
+        <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/85 p-1">
+          <BrandMark className="h-7 w-7" />
+        </div>
+        <div>
+          <p className="font-heading text-sm">Smart Cluster</p>
+          <p className="text-xs text-[hsl(var(--menu-muted))]">Portal Warga</p>
+        </div>
       </div>
 
       {session ? (

@@ -1,5 +1,4 @@
-import { Building2 } from "lucide-react";
-
+import { BrandMark } from "@/components/brand-mark";
 import { LoginForm } from "@/components/login-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -10,8 +9,8 @@ export default function LoginPage() {
         <Card>
           <CardHeader className="space-y-4">
             <div className="rounded-lg border border-[hsl(var(--menu-border))] bg-gradient-to-br from-[hsl(var(--menu-bg))] to-[hsl(var(--menu-note))] p-4 text-[hsl(var(--menu-fg))]">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[hsl(var(--menu-active))] text-white">
-                <Building2 className="h-5 w-5" />
+              <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-white/90 p-1 shadow-sm ring-1 ring-[hsl(var(--menu-border))]">
+                <BrandMark className="h-9 w-9" />
               </div>
               <p className="font-heading text-lg">Smart Cluster</p>
               <p className="mt-1 text-xs leading-relaxed text-[hsl(var(--menu-muted))]">

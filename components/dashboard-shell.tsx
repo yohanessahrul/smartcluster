@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 
+import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 
 type DashboardShellProps = {
@@ -34,9 +35,14 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
   return (
     <>
       <div className="mb-4 flex items-center justify-between lg:hidden">
-        <div>
-          <p className="font-heading text-base">Smart Cluster</p>
-          <p className="text-xs text-muted-foreground">{roleLabel}</p>
+        <div className="flex items-center gap-2">
+          <div className="grid h-8 w-8 place-items-center rounded-md bg-white/90 p-1">
+            <BrandMark className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="font-heading text-base">Smart Cluster</p>
+            <p className="text-xs text-muted-foreground">{roleLabel}</p>
+          </div>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
           <Menu className="mr-1 h-4 w-4" />
@@ -55,9 +61,14 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
         <div className="fixed inset-0 z-50 bg-[hsl(var(--menu-bg))] text-[hsl(var(--menu-fg))] lg:hidden">
           <div className="flex min-h-full flex-col overflow-y-auto p-4 pt-5">
             <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="font-heading text-base">Smart Cluster</p>
-                <p className="text-xs text-[hsl(var(--menu-muted))]">{roleLabel}</p>
+              <div className="flex items-center gap-2">
+                <div className="grid h-8 w-8 place-items-center rounded-md bg-white/90 p-1">
+                  <BrandMark className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="font-heading text-base">Smart Cluster</p>
+                  <p className="text-xs text-[hsl(var(--menu-muted))]">{roleLabel}</p>
+                </div>
               </div>
               <Button
                 type="button"
@@ -76,7 +87,6 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
                 {sidebar}
               </div>
             </div>
-
           </div>
         </div>
       ) : null}

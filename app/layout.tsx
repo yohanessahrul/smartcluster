@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: "Smart Cluster - UI Prototype",
   description: "Shadcn-styled Smart Cluster dashboard for admin and warga flow.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [{ url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" }],
+    shortcut: "/brand/favicon-32.png",
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

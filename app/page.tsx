@@ -16,6 +16,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 
 import { Badge } from "@/components/ui/badge";
+import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
@@ -112,8 +113,8 @@ export default async function Page() {
       <div className="container relative z-10 py-6 md:py-9">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-primary text-sm font-heading font-semibold text-primary-foreground">
-              SC
+            <div className="grid h-10 w-10 place-items-center rounded-lg border border-border/70 bg-white/90 p-1 shadow-sm">
+              <BrandMark className="h-8 w-8" />
             </div>
             <div>
               <p className="font-heading text-base font-semibold">Smart Cluster</p>

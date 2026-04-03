@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, History, Home, House, ReceiptText, Users, WalletCards } from "lucide-react";
+import { History, Home, House, ReceiptText, Users, WalletCards } from "lucide-react";
 
 import { useAuthSession } from "@/lib/auth-client";
+import { BrandMark } from "@/components/brand-mark";
 import { UserMenuCta } from "@/components/user-menu-cta";
 import { cn } from "@/lib/utils";
 
@@ -36,8 +37,8 @@ export function AdminSidebar() {
   return (
     <aside className="h-full overflow-y-auto rounded-lg border border-border bg-[hsl(var(--menu-bg))] p-4 text-[hsl(var(--menu-fg))] lg:rounded-none">
       <div className="mb-6 flex items-center gap-3 rounded-lg bg-[hsl(var(--menu-note))] p-3">
-        <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-          <Building2 className="h-4 w-4" />
+        <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/85 p-1">
+          <BrandMark className="h-7 w-7" />
         </div>
         <div>
           <p className="font-heading text-base">Smart Cluster</p>

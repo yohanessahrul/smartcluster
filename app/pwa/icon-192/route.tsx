@@ -1,28 +1,5 @@
-import { ImageResponse } from "next/og";
+import { NextResponse } from "next/server";
 
-export async function GET() {
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(145deg, #0d8f7a 0%, #23b99e 100%)",
-          color: "white",
-          fontSize: 72,
-          fontWeight: 700,
-          borderRadius: 36,
-        }}
-      >
-        SP
-      </div>
-    ),
-    {
-      width: 192,
-      height: 192,
-    }
-  );
+export async function GET(request: Request) {
+  return NextResponse.redirect(new URL("/brand/icon-192.png", request.url), 307);
 }
