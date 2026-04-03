@@ -458,17 +458,6 @@ export function UsersCrud() {
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filter
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 w-10 p-0"
-                aria-label="Download report users"
-                title="Download report users"
-                onClick={downloadFilteredReport}
-                disabled={!filteredRows.length}
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-              </Button>
             </div>
             <div className="hidden w-full sm:block sm:w-[180px]">
               <label className={labelClass}>Pencarian</label>
