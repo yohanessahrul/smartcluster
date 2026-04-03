@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { LandingTypingWord } from "@/components/landing-typing-word";
+import { LandingGenerateIplWidget } from "@/components/landing-generate-ipl-widget";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -439,8 +440,8 @@ export default async function Page() {
           ))}
         </section>
 
-        <section className="mb-6">
-          <Card className="w-full border-border/90 bg-card/95 lg:w-1/3">
+        <section className="mb-6 grid gap-4 lg:grid-cols-3">
+          <Card className="w-full border-border/90 bg-card/95 lg:col-span-1">
             <CardHeader>
               <CardTitle>Riwayat Perubahan Status IPL</CardTitle>
               <CardDescription>Lorem ipsum dolor sit amet consectetur adipisicing elit. Rerum nemo ullam, odio sed</CardDescription>
@@ -488,6 +489,16 @@ export default async function Page() {
                   </li>
                 </ol>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="w-full border-border/90 bg-card/95 lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Generate IPL</CardTitle>
+              <CardDescription>Trigger pembuatan tagihan IPL massal dengan indikator proses berjalan.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LandingGenerateIplWidget />
             </CardContent>
           </Card>
         </section>
