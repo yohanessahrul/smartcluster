@@ -155,7 +155,7 @@ export default async function Page() {
 
         <section className="relative mb-6 overflow-visible pb-6 md:pb-8">
           <div className="relative z-10 pr-[110px] sm:pr-[170px] lg:pr-[260px]">
-            <h1 className="max-w-4xl font-heading text-[2rem] leading-[1.28] tracking-tight sm:text-5xl sm:leading-[1.2] md:text-6xl">
+            <h1 className="max-w-4xl font-heading text-[1.75rem] leading-[1.3] tracking-tight sm:text-5xl sm:leading-[1.2] md:text-6xl">
               <span className="relative inline-block font-black after:absolute after:bottom-0 after:left-0 after:h-[0.2em] after:w-full after:rounded-full after:bg-[hsl(var(--primary)/0.26)]">
                 Solusi digital
               </span>{" "}
@@ -177,7 +177,7 @@ export default async function Page() {
               width={900}
               height={780}
               priority
-              className="relative mx-auto h-auto w-full drop-shadow-[0_14px_26px_hsl(var(--primary)/0.2)] sm:animate-cloud-bounce"
+              className="animate-cloud-bounce relative mx-auto h-auto w-full drop-shadow-[0_14px_26px_hsl(var(--primary)/0.2)]"
             />
           </div>
         </section>
