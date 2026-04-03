@@ -62,14 +62,11 @@ export function LoginForm() {
   return (
     <div className="space-y-4">
       <FormErrorAlert message={error} />
-      <Button type="button" className="w-full" disabled={submitting || sessionLoading} onClick={onGoogleLogin}>
+      <Button type="button" className="mx-auto flex w-auto min-w-[140px]" disabled={submitting || sessionLoading} onClick={onGoogleLogin}>
         <LogIn className="mr-2 h-4 w-4" />
-        {submitting ? "Memproses..." : "Login dengan Google"}
+        {submitting ? "Memproses..." : "Login"}
       </Button>
       {info ? <p className="text-sm text-muted-foreground">{info}</p> : null}
-      <p className="text-xs text-muted-foreground">
-        Setelah login Google berhasil, sistem akan cek email ke tabel user.
-      </p>
     </div>
   );
 }
