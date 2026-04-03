@@ -29,6 +29,7 @@ export default function AdminDashboardPage() {
   const [loadError, setLoadError] = useState("");
   const [showServerStatus, setShowServerStatus] = useState(false);
   const [openedFromQuery, setOpenedFromQuery] = useState(false);
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
 
   useEffect(() => {
     void loadDashboardData();
@@ -108,17 +109,19 @@ export default function AdminDashboardPage() {
   }, [transactions]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     console.log("[Table][Dashboard Admin] users:", users);
     console.log("[Table][Dashboard Admin] houses:", houses);
     console.log("[Table][Dashboard Admin] ipl:", bills);
     console.log("[Table][Dashboard Admin] transactions:", transactions);
-  }, [users, houses, bills, transactions]);
+  }, [shouldLogTableData, users, houses, bills, transactions]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     if (!isFinance) return;
     console.log("[Table][Dashboard Finance] iplNeedAction:", financeBillsNeedAction);
     console.log("[Table][Dashboard Finance] latestTransactions:", financeLatestTransactions);
-  }, [isFinance, financeBillsNeedAction, financeLatestTransactions]);
+  }, [shouldLogTableData, isFinance, financeBillsNeedAction, financeLatestTransactions]);
 
   useEffect(() => {
     if (!isAdmin) return;

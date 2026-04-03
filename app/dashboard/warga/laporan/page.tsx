@@ -27,6 +27,7 @@ type JournalRow = {
 };
 
 export default function WargaLaporanPage() {
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [bills, setBills] = useState<BillRow[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
@@ -155,11 +156,12 @@ export default function WargaLaporanPage() {
   const netBalance = totalIncome - totalExpense;
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     console.log("[Table][Warga Laporan] transactions:", transactions);
     console.log("[Table][Warga Laporan] ipl:", bills);
     console.log("[Table][Warga Laporan] paidTransactions:", paidTransactions);
     console.log("[Table][Warga Laporan] journalRows:", journalRows);
-  }, [transactions, bills, paidTransactions, journalRows]);
+  }, [shouldLogTableData, transactions, bills, paidTransactions, journalRows]);
 
   return (
     <WargaAccessGuard>

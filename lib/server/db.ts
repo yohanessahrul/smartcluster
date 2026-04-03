@@ -62,7 +62,8 @@ if (!globalDbState.smartPerumahanPgPool) {
   const useSsl =
     process.env.DB_SSL === "true" ||
     (process.env.DB_SSL !== "false" && /supabase\.co/i.test(connectionString));
-  const defaultPoolMax = shouldRequireExplicitDbUrl() ? 1 : 10;
+  const isSupabasePooler = /pooler\.supabase\.com/i.test(connectionString);
+  const defaultPoolMax = shouldRequireExplicitDbUrl() ? (isSupabasePooler ? 10 : 1) : 10;
   const max = asPositiveInt(process.env.DB_POOL_MAX, defaultPoolMax);
   const idleTimeoutMillis = asPositiveInt(process.env.DB_IDLE_TIMEOUT_MS, 10_000);
   const connectionTimeoutMillis = asPositiveInt(process.env.DB_CONNECTION_TIMEOUT_MS, 5_000);

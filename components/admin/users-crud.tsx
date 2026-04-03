@@ -169,6 +169,7 @@ function UpdateUserModal({ open, onClose, value, onChange, onSubmit, submitting,
 }
 
 export function UsersCrud() {
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
   const { session } = useAuthSession();
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<UserRow[]>([]);
@@ -239,15 +240,17 @@ export function UsersCrud() {
   }, [selectedIds.length, bulkAction]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     console.log("[Table][Admin Users] rows:", rows);
     console.log("[Table][Admin Users] filteredRows:", filteredRows);
     console.log("[Table][Admin Users] pagedRows:", pagination.pagedRows);
-  }, [rows, filteredRows, pagination.pagedRows]);
+  }, [shouldLogTableData, rows, filteredRows, pagination.pagedRows]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     if (!hasFullAccess) return;
     console.log("[Table][Admin Users] historyRows:", historyRows);
-  }, [hasFullAccess, historyRows]);
+  }, [shouldLogTableData, hasFullAccess, historyRows]);
 
   async function loadUsers() {
     try {

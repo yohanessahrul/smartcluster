@@ -19,6 +19,7 @@ import { TransactionRow } from "@/lib/mock-data";
 const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 
 export default function WargaRiwayatPage() {
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -41,9 +42,11 @@ export default function WargaRiwayatPage() {
         const from = totalItems === 0 ? 0 : start + 1;
         const to = totalItems === 0 ? 0 : Math.min(currentPage * pageSize, totalItems);
 
-        console.log("[Table][Warga Riwayat] rows:", data.houseTransactions);
-        console.log("[Table][Warga Riwayat] filteredRows:", filteredRows);
-        console.log("[Table][Warga Riwayat] pagedRows:", pagedRows);
+        if (shouldLogTableData) {
+          console.log("[Table][Warga Riwayat] rows:", data.houseTransactions);
+          console.log("[Table][Warga Riwayat] filteredRows:", filteredRows);
+          console.log("[Table][Warga Riwayat] pagedRows:", pagedRows);
+        }
 
         function downloadFilteredReport() {
           downloadRowsAsExcel({

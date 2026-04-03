@@ -12,11 +12,15 @@ import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 
 export default function WargaDashboardPage() {
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
+
   return (
     <WargaAccessGuard>
       {(data) => {
-        console.log("[Table][Warga Overview] houseBills:", data.houseBills);
-        console.log("[Table][Warga Overview] houseTransactions:", data.houseTransactions);
+        if (shouldLogTableData) {
+          console.log("[Table][Warga Overview] houseBills:", data.houseBills);
+          console.log("[Table][Warga Overview] houseTransactions:", data.houseTransactions);
+        }
 
         if (!data.house) {
           return (

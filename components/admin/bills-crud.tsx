@@ -528,6 +528,7 @@ function GenerateBillModal({ open, onClose, value, onChange, onSubmit, submittin
 }
 
 export function BillsCrud() {
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -641,15 +642,17 @@ export function BillsCrud() {
   const previewHouse = previewRow ? houseById.get(previewRow.house_id) : null;
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     console.log("[Table][Admin IPL] rows:", rows);
     console.log("[Table][Admin IPL] filteredRows:", filteredRows);
     console.log("[Table][Admin IPL] pagedRows:", tablePagination.pagedRows);
-  }, [rows, filteredRows, tablePagination.pagedRows]);
+  }, [shouldLogTableData, rows, filteredRows, tablePagination.pagedRows]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     if (!hasFullAccess) return;
     console.log("[Table][Admin IPL] historyRows:", historyRows);
-  }, [hasFullAccess, historyRows]);
+  }, [shouldLogTableData, hasFullAccess, historyRows]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
@@ -662,9 +665,10 @@ export function BillsCrud() {
   }, [selectedIds.length, bulkAction]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     if (!previewOpen) return;
     console.log("[Table][Admin IPL][Preview] timelineRows:", previewTimelineRows);
-  }, [previewOpen, previewTimelineRows]);
+  }, [shouldLogTableData, previewOpen, previewTimelineRows]);
 
   useEffect(() => {
     if (!verifyBillId || !isFinance || loading) return;

@@ -21,6 +21,7 @@ import { apiClient, emitDataChanged } from "@/lib/api-client";
 const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 
 export default function WargaTagihanPage() {
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
   const [payModalOpen, setPayModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState<BillRow | null>(null);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
@@ -118,9 +119,11 @@ export default function WargaTagihanPage() {
         const from = totalItems === 0 ? 0 : start + 1;
         const to = totalItems === 0 ? 0 : Math.min(currentPage * pageSize, totalItems);
 
-        console.log("[Table][Warga Tagihan] rows:", rows);
-        console.log("[Table][Warga Tagihan] filteredRows:", filteredRows);
-        console.log("[Table][Warga Tagihan] pagedRows:", pagedRows);
+        if (shouldLogTableData) {
+          console.log("[Table][Warga Tagihan] rows:", rows);
+          console.log("[Table][Warga Tagihan] filteredRows:", filteredRows);
+          console.log("[Table][Warga Tagihan] pagedRows:", pagedRows);
+        }
 
         function downloadFilteredReport() {
           downloadRowsAsExcel({

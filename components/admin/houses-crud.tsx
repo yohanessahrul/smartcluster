@@ -314,6 +314,7 @@ function UpdateHouseModal({ open, onClose, value, onChange, onSubmit, emailOptio
 }
 
 export function HousesCrud() {
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
   const { session } = useAuthSession();
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<HouseRow[]>([]);
@@ -655,15 +656,17 @@ export function HousesCrud() {
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     console.log("[Table][Admin Houses] rows:", rows);
     console.log("[Table][Admin Houses] filteredRows:", filteredRows);
     console.log("[Table][Admin Houses] pagedRows:", pagination.pagedRows);
-  }, [rows, filteredRows, pagination.pagedRows]);
+  }, [shouldLogTableData, rows, filteredRows, pagination.pagedRows]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     if (!hasFullAccess) return;
     console.log("[Table][Admin Houses] historyRows:", historyRows);
-  }, [hasFullAccess, historyRows]);
+  }, [shouldLogTableData, hasFullAccess, historyRows]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));

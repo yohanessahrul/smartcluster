@@ -97,6 +97,8 @@ const transactionStatusValues = ["Lunas", "Belum bayar", "Verifikasi", "Menunggu
 const residentialStatusValues = ["Owner", "Contract"] as const;
 const userRoleValues = ["admin", "superadmin", "warga", "finance"] as const;
 const paymentMethodValues = ["Transfer Bank", "Cash", "QRIS", "E-wallet"] as const;
+const SCHEMA_META_KEY = "smart_api_schema_version";
+const SCHEMA_MIGRATION_LOCK_ID = 762430991;
 
 type GlobalApiState = typeof globalThis & {
   smartPerumahanApiReadyPromise?: Promise<void>;
@@ -837,6 +839,54 @@ async function ensurePerformanceIndexes() {
   );
 }
 
+function shouldAutoMigrateSchema() {
+  const raw = (process.env.SMART_API_AUTO_MIGRATE || "").trim().toLowerCase();
+  if (raw === "false" || raw === "0" || raw === "off") return false;
+  return true;
+}
+
+async function ensureSchemaMetaTable() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+}
+
+async function getStoredSchemaVersion() {
+  const result = await query<{ value: string }>("SELECT value FROM app_meta WHERE key=$1 LIMIT 1", [SCHEMA_META_KEY]);
+  const rawValue = result.rows[0]?.value;
+  if (!rawValue) return null;
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+}
+
+async function setStoredSchemaVersion(version: number) {
+  await query(
+    `
+      INSERT INTO app_meta (key, value, updated_at)
+      VALUES ($1, $2, NOW())
+      ON CONFLICT (key) DO UPDATE
+      SET value = EXCLUDED.value,
+          updated_at = NOW()
+    `,
+    [SCHEMA_META_KEY, String(version)],
+  );
+}
+
+async function runSchemaMigrations() {
+  await ensureAuditTable();
+  await ensureUserRoleConstraint();
+  await ensureHouseColumns();
+  await ensureHouseUserOrderColumn();
+  await ensureBillColumns();
+  await ensureTransactionColumns();
+  await ensurePerformanceIndexes();
+}
+
 async function beginTransaction(client: PoolClient) {
   await client.query("BEGIN");
 }
@@ -856,13 +906,33 @@ export async function ensureBackendReady() {
 
   if (!hasCurrentVersion) {
     globalState.smartPerumahanApiReadyPromise = (async () => {
-      await ensureAuditTable();
-      await ensureUserRoleConstraint();
-      await ensureHouseColumns();
-      await ensureHouseUserOrderColumn();
-      await ensureBillColumns();
-      await ensureTransactionColumns();
-      await ensurePerformanceIndexes();
+      await ensureSchemaMetaTable();
+      const currentVersion = await getStoredSchemaVersion();
+      if (currentVersion === API_SCHEMA_VERSION) {
+        globalState.smartPerumahanApiSchemaVersion = API_SCHEMA_VERSION;
+        return;
+      }
+
+      if (!shouldAutoMigrateSchema()) {
+        throw new ApiHttpError(
+          503,
+          "Schema backend belum siap.",
+          "Set SMART_API_AUTO_MIGRATE=true untuk menjalankan migrasi otomatis.",
+        );
+      }
+
+      await query("SELECT pg_advisory_lock($1)", [SCHEMA_MIGRATION_LOCK_ID]);
+      try {
+        await ensureSchemaMetaTable();
+        const lockedVersion = await getStoredSchemaVersion();
+        if (lockedVersion !== API_SCHEMA_VERSION) {
+          await runSchemaMigrations();
+          await setStoredSchemaVersion(API_SCHEMA_VERSION);
+        }
+      } finally {
+        await query("SELECT pg_advisory_unlock($1)", [SCHEMA_MIGRATION_LOCK_ID]).catch(() => null);
+      }
+
       globalState.smartPerumahanApiSchemaVersion = API_SCHEMA_VERSION;
     })().catch((error) => {
       globalState.smartPerumahanApiReadyPromise = undefined;

@@ -364,6 +364,7 @@ function UpdateTransactionModal({ open, onClose, value, onChange, onSubmit, subm
 }
 
 export function TransactionsCrud() {
+  const shouldLogTableData = process.env.NODE_ENV !== "production";
   const { session } = useAuthSession();
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<TransactionRow[]>([]);
@@ -426,15 +427,17 @@ export function TransactionsCrud() {
   const previewPagination = useTablePagination(previewTimelineRows);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     console.log("[Table][Admin Transactions] rows:", rows);
     console.log("[Table][Admin Transactions] filteredRows:", filteredRows);
     console.log("[Table][Admin Transactions] pagedRows:", tablePagination.pagedRows);
-  }, [rows, filteredRows, tablePagination.pagedRows]);
+  }, [shouldLogTableData, rows, filteredRows, tablePagination.pagedRows]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     if (!hasFullAccess) return;
     console.log("[Table][Admin Transactions] historyRows:", historyRows);
-  }, [hasFullAccess, historyRows]);
+  }, [shouldLogTableData, hasFullAccess, historyRows]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
@@ -447,9 +450,10 @@ export function TransactionsCrud() {
   }, [selectedIds.length, bulkAction]);
 
   useEffect(() => {
+    if (!shouldLogTableData) return;
     if (!previewOpen) return;
     console.log("[Table][Admin Transactions][Preview] timelineRows:", previewTimelineRows);
-  }, [previewOpen, previewTimelineRows]);
+  }, [shouldLogTableData, previewOpen, previewTimelineRows]);
 
   async function loadTransactions() {
     try {
