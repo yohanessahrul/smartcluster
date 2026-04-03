@@ -1,11 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
@@ -15,7 +14,7 @@ import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { UserRow } from "@/lib/mock-data";
-import { apiClient, AuditLogRow, emitDataChanged } from "@/lib/api-client";
+import { apiClient, emitDataChanged } from "@/lib/api-client";
 import { useAuthSession } from "@/lib/auth-client";
 import { downloadRowsAsExcel } from "@/lib/download-excel";
 
@@ -173,8 +172,6 @@ export function UsersCrud() {
   const { session } = useAuthSession();
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<UserRow[]>([]);
-  const [historyRows, setHistoryRows] = useState<AuditLogRow[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | UserRow["role"]>("all");
   const [createForm, setCreateForm] = useState<UserRow>(emptyForm);
@@ -189,7 +186,6 @@ export function UsersCrud() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<"" | "delete">("");
   const [deleting, setDeleting] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
   const [successToast, setSuccessToast] = useState("");
   const [createError, setCreateError] = useState("");
@@ -201,17 +197,6 @@ export function UsersCrud() {
   useEffect(() => {
     loadUsers();
   }, []);
-
-  useEffect(() => {
-    if (session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance") {
-      loadHistory();
-      return;
-    }
-    setHistoryRows([]);
-    setHistoryLoading(false);
-  }, [session?.role]);
-
-  const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
 
   const filteredRows = useMemo(() => {
     const keyword = search.trim().toLowerCase();
@@ -246,12 +231,6 @@ export function UsersCrud() {
     console.log("[Table][Admin Users] pagedRows:", pagination.pagedRows);
   }, [shouldLogTableData, rows, filteredRows, pagination.pagedRows]);
 
-  useEffect(() => {
-    if (!shouldLogTableData) return;
-    if (!hasFullAccess) return;
-    console.log("[Table][Admin Users] historyRows:", historyRows);
-  }, [shouldLogTableData, hasFullAccess, historyRows]);
-
   async function loadUsers() {
     try {
       setLoading(true);
@@ -264,18 +243,6 @@ export function UsersCrud() {
     }
   }
 
-  async function loadHistory() {
-    try {
-      setHistoryLoading(true);
-      const rows = await apiClient.getAuditLogs("users", 40);
-      setHistoryRows(rows);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal memuat history users.");
-    } finally {
-      setHistoryLoading(false);
-    }
-  }
-
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError("");
@@ -283,7 +250,6 @@ export function UsersCrud() {
     try {
       await apiClient.createUser(createForm, { actorEmail });
       await loadUsers();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setCreateForm(emptyForm);
       setCreateOpen(false);
@@ -337,7 +303,6 @@ export function UsersCrud() {
         role: editForm.role,
       }, { actorEmail });
       await loadUsers();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setEditingId(null);
       setEditForm(emptyForm);
@@ -357,7 +322,6 @@ export function UsersCrud() {
     try {
       await apiClient.deleteUser(id, { actorEmail });
       await loadUsers();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       if (editingId === id) {
         setEditingId(null);
@@ -390,7 +354,6 @@ export function UsersCrud() {
     }
 
     await loadUsers();
-    if (hasFullAccess) await loadHistory();
     emitDataChanged();
 
     return { failedIds, total: uniqueIds.length };
@@ -703,28 +666,6 @@ export function UsersCrud() {
         description={`${selectedIds.length} data user terpilih akan dihapus permanen.`}
         loading={deleting}
       />
-
-      {hasFullAccess ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-heading text-lg">History Perubahan User</h3>
-            <Button variant="outline" size="sm" onClick={() => setShowHistory((prev) => !prev)}>
-              {showHistory ? (
-                <>
-                  Sembunyikan
-                  <ChevronUp className="ml-2 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Tampilkan
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </div>
-          {showHistory ? <ChangeHistoryTable title="History Perubahan User" rows={historyRows} loading={historyLoading} /> : null}
-        </div>
-      ) : null}
     </div>
   );
 }

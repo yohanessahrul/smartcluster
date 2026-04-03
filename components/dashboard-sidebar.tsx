@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Home, House, ReceiptText, Server, Users, WalletCards } from "lucide-react";
+import { Building2, History, Home, House, ReceiptText, Users, WalletCards } from "lucide-react";
 
 import { useAuthSession } from "@/lib/auth-client";
 import { UserMenuCta } from "@/components/user-menu-cta";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 const menus = [
   { href: "/dashboard/admin", label: "Overview", icon: Home },
+  { href: "/dashboard/admin/history", label: "History", icon: History },
   { href: "/dashboard/admin/users", label: "Users", icon: Users },
   { href: "/dashboard/admin/houses", label: "Houses", icon: House },
   { href: "/dashboard/admin/bills", label: "IPL", icon: ReceiptText },
@@ -31,7 +32,6 @@ export function AdminSidebar() {
   const panelLabel = session?.role === "finance" ? "Finance Panel" : "Admin Panel";
   const displayName = session?.name?.trim() || "User";
   const displayEmail = session?.email?.trim() || "-";
-  const serverStatusHref = pathname === "/dashboard/admin" ? "/dashboard/admin" : "/dashboard/admin?statusServer=1";
 
   return (
     <aside className="h-full overflow-y-auto rounded-lg border border-border bg-[hsl(var(--menu-bg))] p-4 text-[hsl(var(--menu-fg))] lg:rounded-none">
@@ -58,25 +58,6 @@ export function AdminSidebar() {
       ) : null}
 
       <nav className="space-y-1">
-        {session?.role === "admin" || session?.role === "superadmin" ? (
-          <Link
-            href={serverStatusHref}
-            onClick={() => {
-              if (typeof window === "undefined") return;
-              window.dispatchEvent(new Event("smart-close-mobile-menu"));
-              if (pathname === "/dashboard/admin") {
-                window.dispatchEvent(new Event("smart-open-server-status"));
-              }
-            }}
-            className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
-              "text-[hsl(var(--menu-fg))] hover:bg-[hsl(var(--menu-note))]"
-            )}
-          >
-            <Server className="h-4 w-4" />
-            <span>Status Server</span>
-          </Link>
-        ) : null}
         {visibleMenus.map((menu) => {
           const active = pathname === menu.href;
           return (

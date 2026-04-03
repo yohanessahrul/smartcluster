@@ -71,7 +71,7 @@ export function UserMenuCta({
     <div ref={menuRef} className={cn("relative", className)}>
       <Button
         type="button"
-        variant="outline"
+        variant="default"
         className={cn("h-10 rounded-lg px-3", buttonClassName)}
         aria-label="Buka menu akun"
         aria-expanded={openMenu}

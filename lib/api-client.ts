@@ -316,6 +316,12 @@ export const apiClient = {
     if (recordId) params.set("record_id", recordId);
     return request<AuditLogRow[]>(`/api/audit-logs?${params.toString()}`);
   },
+  getGlobalAuditLogs: (limit = 200, recordId?: string) => {
+    const params = new URLSearchParams();
+    params.set("limit", String(limit));
+    if (recordId) params.set("record_id", recordId);
+    return request<AuditLogRow[]>(`/api/audit-logs?${params.toString()}`);
+  },
   getServerStatus: () => request<ServerStatusRow>("/api/server-status"),
 };
 

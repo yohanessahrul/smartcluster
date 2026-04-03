@@ -1,12 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
@@ -368,8 +367,6 @@ export function TransactionsCrud() {
   const { session } = useAuthSession();
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<TransactionRow[]>([]);
-  const [historyRows, setHistoryRows] = useState<AuditLogRow[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionRow["transaction_type"]>("all");
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
   const [createForm, setCreateForm] = useState<TransactionFormValue>(emptyForm);
@@ -386,7 +383,6 @@ export function TransactionsCrud() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<"" | "delete">("");
   const [deleting, setDeleting] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
   const [successToast, setSuccessToast] = useState("");
   const [createError, setCreateError] = useState("");
@@ -398,17 +394,6 @@ export function TransactionsCrud() {
   useEffect(() => {
     loadTransactions();
   }, []);
-
-  useEffect(() => {
-    if (session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance") {
-      loadHistory();
-      return;
-    }
-    setHistoryRows([]);
-    setHistoryLoading(false);
-  }, [session?.role]);
-
-  const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
   const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
   const filteredRows = useMemo(() => {
@@ -432,12 +417,6 @@ export function TransactionsCrud() {
     console.log("[Table][Admin Transactions] filteredRows:", filteredRows);
     console.log("[Table][Admin Transactions] pagedRows:", tablePagination.pagedRows);
   }, [shouldLogTableData, rows, filteredRows, tablePagination.pagedRows]);
-
-  useEffect(() => {
-    if (!shouldLogTableData) return;
-    if (!hasFullAccess) return;
-    console.log("[Table][Admin Transactions] historyRows:", historyRows);
-  }, [shouldLogTableData, hasFullAccess, historyRows]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
@@ -467,18 +446,6 @@ export function TransactionsCrud() {
     }
   }
 
-  async function loadHistory() {
-    try {
-      setHistoryLoading(true);
-      const rows = await apiClient.getAuditLogs("transactions", 40);
-      setHistoryRows(rows);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal memuat history transactions.");
-    } finally {
-      setHistoryLoading(false);
-    }
-  }
-
   async function createTransaction(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError("");
@@ -501,7 +468,6 @@ export function TransactionsCrud() {
         status: createForm.status as TransactionRow["status"],
       }, { actorEmail });
       await loadTransactions();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setCreateForm(emptyForm);
       setCreateOpen(false);
@@ -570,7 +536,6 @@ export function TransactionsCrud() {
         status: editForm.status as TransactionRow["status"],
       }, { actorEmail });
       await loadTransactions();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setEditingId(null);
       setEditForm(emptyForm);
@@ -590,7 +555,6 @@ export function TransactionsCrud() {
     try {
       await apiClient.deleteTransaction(id, { actorEmail });
       await loadTransactions();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       if (editingId === id) {
         setEditingId(null);
@@ -623,7 +587,6 @@ export function TransactionsCrud() {
     }
 
     await loadTransactions();
-    if (hasFullAccess) await loadHistory();
     emitDataChanged();
 
     return { failedIds, total: uniqueIds.length };
@@ -1039,28 +1002,6 @@ export function TransactionsCrud() {
         description={`${selectedIds.length} data transaction terpilih akan dihapus permanen.`}
         loading={deleting}
       />
-
-      {hasFullAccess ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-heading text-lg">History Perubahan Transaction</h3>
-            <Button variant="outline" size="sm" onClick={() => setShowHistory((prev) => !prev)}>
-              {showHistory ? (
-                <>
-                  Sembunyikan
-                  <ChevronUp className="ml-2 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Tampilkan
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </div>
-          {showHistory ? <ChangeHistoryTable title="History Perubahan Transaction" rows={historyRows} loading={historyLoading} /> : null}
-        </div>
-      ) : null}
     </div>
   );
 }

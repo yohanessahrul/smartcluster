@@ -1,13 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { BooleanBadge } from "@/components/ui/boolean-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
@@ -16,7 +15,7 @@ import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { HouseRow, UserRow } from "@/lib/mock-data";
-import { apiClient, AuditLogRow, emitDataChanged } from "@/lib/api-client";
+import { apiClient, emitDataChanged } from "@/lib/api-client";
 import { useAuthSession } from "@/lib/auth-client";
 import { downloadRowsAsExcel } from "@/lib/download-excel";
 
@@ -319,8 +318,6 @@ export function HousesCrud() {
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<HouseRow[]>([]);
   const [userRows, setUserRows] = useState<UserRow[]>([]);
-  const [historyRows, setHistoryRows] = useState<AuditLogRow[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
   const [blokFilter, setBlokFilter] = useState("all");
   const [occupiedFilter, setOccupiedFilter] = useState<"all" | "true" | "false">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | HouseRow["residential_status"]>("all");
@@ -336,7 +333,6 @@ export function HousesCrud() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<"" | "delete">("");
   const [deleting, setDeleting] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [message, setMessage] = useState("");
   const [successToast, setSuccessToast] = useState("");
   const [createError, setCreateError] = useState("");
@@ -367,17 +363,6 @@ export function HousesCrud() {
     loadInitialData();
   }, []);
 
-  useEffect(() => {
-    if (session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance") {
-      loadHistory();
-      return;
-    }
-    setHistoryRows([]);
-    setHistoryLoading(false);
-  }, [session?.role]);
-
-  const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
-
   async function loadInitialData() {
     try {
       setLoading(true);
@@ -388,18 +373,6 @@ export function HousesCrud() {
       setMessage(error instanceof Error ? error.message : "Gagal memuat data houses.");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function loadHistory() {
-    try {
-      setHistoryLoading(true);
-      const rows = await apiClient.getAuditLogs("houses", 40);
-      setHistoryRows(rows);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal memuat history houses.");
-    } finally {
-      setHistoryLoading(false);
     }
   }
 
@@ -433,7 +406,6 @@ export function HousesCrud() {
         { actorEmail }
       );
       await loadInitialData();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setCreateForm(emptyForm);
       setCreateOpen(false);
@@ -499,7 +471,6 @@ export function HousesCrud() {
         secondary_email: editForm.secondary_email.trim().toLowerCase(),
       }, { actorEmail });
       await loadInitialData();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       setEditingId(null);
       setEditForm(emptyForm);
@@ -519,7 +490,6 @@ export function HousesCrud() {
     try {
       await apiClient.deleteHouse(id, { actorEmail });
       await loadInitialData();
-      if (hasFullAccess) await loadHistory();
       emitDataChanged();
       if (editingId === id) {
         setEditingId(null);
@@ -552,7 +522,6 @@ export function HousesCrud() {
     }
 
     await loadInitialData();
-    if (hasFullAccess) await loadHistory();
     emitDataChanged();
 
     return { failedIds, total: uniqueIds.length };
@@ -661,12 +630,6 @@ export function HousesCrud() {
     console.log("[Table][Admin Houses] filteredRows:", filteredRows);
     console.log("[Table][Admin Houses] pagedRows:", pagination.pagedRows);
   }, [shouldLogTableData, rows, filteredRows, pagination.pagedRows]);
-
-  useEffect(() => {
-    if (!shouldLogTableData) return;
-    if (!hasFullAccess) return;
-    console.log("[Table][Admin Houses] historyRows:", historyRows);
-  }, [shouldLogTableData, hasFullAccess, historyRows]);
 
   useEffect(() => {
     setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
@@ -947,28 +910,6 @@ export function HousesCrud() {
         description={`${selectedIds.length} data house terpilih akan dihapus permanen.`}
         loading={deleting}
       />
-
-      {hasFullAccess ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-heading text-lg">History Perubahan House</h3>
-            <Button variant="outline" size="sm" onClick={() => setShowHistory((prev) => !prev)}>
-              {showHistory ? (
-                <>
-                  Sembunyikan
-                  <ChevronUp className="ml-2 h-4 w-4" />
-                </>
-              ) : (
-                <>
-                  Tampilkan
-                  <ChevronDown className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </div>
-          {showHistory ? <ChangeHistoryTable title="History Perubahan House" rows={historyRows} loading={historyLoading} /> : null}
-        </div>
-      ) : null}
     </div>
   );
 }

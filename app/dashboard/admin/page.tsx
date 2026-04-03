@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Home, NotebookText, RefreshCw, Users, Wallet } from "lucide-react";
+import { AlertCircle, Home, NotebookText, RefreshCw, Server, Users, Wallet } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { ServerStatusModal } from "@/components/admin/server-status-modal";
@@ -137,10 +137,8 @@ export default function AdminDashboardPage() {
 
   const snapshotGeneratedLabel = useMemo(() => {
     if (!safeSnapshot.generated_at) return "";
-    return safeSnapshot.generated_by
-      ? `Snapshot: ${safeSnapshot.generated_by}`
-      : "Snapshot overview terbaru";
-  }, [safeSnapshot.generated_at, safeSnapshot.generated_by]);
+    return "Snapshot overview terbaru";
+  }, [safeSnapshot.generated_at]);
 
   useEffect(() => {
     if (!shouldLogTableData) return;
@@ -149,10 +147,16 @@ export default function AdminDashboardPage() {
 
   const headerActions = isAdmin
     ? (
-        <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing..." onClick={refreshSnapshotData}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh Data
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="outline" onClick={() => setShowServerStatus(true)}>
+            <Server className="mr-2 h-4 w-4" />
+            Status Server
+          </Button>
+          <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing..." onClick={refreshSnapshotData}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh Data
+          </Button>
+        </div>
       )
     : null;
 
