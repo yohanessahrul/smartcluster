@@ -710,9 +710,9 @@ export function TransactionsCrud() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>Data Transaction</CardTitle>
-          <Button className="w-full sm:w-auto" onClick={openCreateModal}>
+          <Button className="h-9 whitespace-nowrap px-3" onClick={openCreateModal}>
             Create Transaction
           </Button>
         </CardHeader>
