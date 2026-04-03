@@ -30,7 +30,7 @@ export function LandingGenerateIplWidget() {
 
         <button
           type="button"
-          className="inline-flex min-h-[140px] w-full flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-border bg-transparent px-3 py-4 text-foreground/90 transition hover:bg-muted/40"
+          className="inline-flex min-h-[140px] w-full flex-1 flex-col items-center justify-center rounded-lg border-2 border-dashed border-[hsl(var(--foreground)/0.35)] bg-[hsl(var(--accent)/0.18)] px-3 py-4 text-foreground/90 transition hover:bg-[hsl(var(--accent)/0.24)]"
         >
           <span className="text-base font-medium">Membuat</span>
           <span className="mt-2 inline-flex items-center gap-2 text-5xl font-black leading-none text-primary">
