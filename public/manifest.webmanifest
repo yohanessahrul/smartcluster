@@ -1,7 +1,7 @@
 {
-  "name": "Smart Cluster",
-  "short_name": "Perumahan",
-  "description": "Aplikasi manajemen IPL untuk pengurus dan warga perumahan.",
+  "name": "Hunita",
+  "short_name": "Hunita",
+  "description": "Sistem Management Perumahan yang transparan.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,13 +10,13 @@
   "theme_color": "#0d8f7a",
   "icons": [
     {
-      "src": "/brand/icon-192.png",
+      "src": "/brand/icon-192-green.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/brand/icon-512.png",
+      "src": "/brand/icon-512-green.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

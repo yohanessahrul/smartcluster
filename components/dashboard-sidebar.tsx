@@ -43,7 +43,7 @@ export function AdminSidebar() {
           <BrandMark className="h-7 w-7" />
         </div>
         <div>
-          <p className="font-heading text-base">Smart Cluster</p>
+          <p className="font-heading text-base">Hunita</p>
           <p className="text-xs text-[hsl(var(--menu-muted))]">{panelLabel}</p>
         </div>
       </div>

@@ -40,7 +40,7 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
             <BrandMark className="h-6 w-6" />
           </div>
           <div>
-            <p className="font-heading text-base">Smart Cluster</p>
+            <p className="font-heading text-base">Hunita</p>
             <p className="text-xs text-muted-foreground">{roleLabel}</p>
           </div>
         </div>
@@ -66,7 +66,7 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
                   <BrandMark className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="font-heading text-base">Smart Cluster</p>
+                  <p className="font-heading text-base">Hunita</p>
                   <p className="text-xs text-[hsl(var(--menu-muted))]">{roleLabel}</p>
                 </div>
               </div>

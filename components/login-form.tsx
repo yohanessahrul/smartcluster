@@ -34,7 +34,7 @@ export function LoginForm() {
     if (!oauthError) return;
 
     if (oauthError.includes("email_not_registered")) {
-      setError("Email Google anda belum terdaftar di sistem kami. Hubungi administrator segera.");
+      setError("Email anda belum terdaftar di sistem kami. Hubungi administrator segera.");
       return;
     }
     if (oauthError.includes("google_config_missing")) {

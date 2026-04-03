@@ -1485,7 +1485,7 @@ async function startServer() {
     await ensureBillColumns();
     await ensureTransactionColumns();
     app.listen(PORT, () => {
-      console.log(`Smart Cluster API running at http://localhost:${PORT}`);
+      console.log(`Hunita API running at http://localhost:${PORT}`);
     });
   } catch (error) {
     console.error("Gagal start backend:", error);

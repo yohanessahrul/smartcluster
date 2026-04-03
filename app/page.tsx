@@ -18,6 +18,8 @@ import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { UserMenuCta } from "@/components/user-menu-cta";
 import { readSessionFromToken } from "@/lib/server/auth-session";
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
 const paymentStages = [
   { label: "Belum bayar", note: "Tagihan sudah dibuat, belum ada bukti pembayaran." },
   { label: "Menunggu Verifikasi", note: "Warga sudah upload bukti, menunggu pengecekan finance." },
@@ -54,6 +56,16 @@ const features = [
 
 const futureFeature = ["Notifikasi Tagihan", "Reminder Belum Bayar", "Booking Fasilitas", "Marketplace Warga", "Laporan Pengeluaran Detail"] as const;
 
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "Hunita",
+  description: "Sistem Management Perumahan yang transparan.",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  url: APP_URL,
+};
+
 function statusBadge(status: string) {
   return <PaymentStatusBadge status={status} />;
 }
@@ -66,6 +78,7 @@ export default async function Page() {
 
   return (
     <div className="relative overflow-hidden">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
       <div className="absolute -left-24 bottom-[-180px] h-80 w-80 rounded-full bg-[hsl(var(--spark-amber))] blur-3xl" />
       <div className="absolute -right-14 -top-20 h-72 w-72 rounded-full bg-[hsl(var(--spark-teal))] blur-3xl" />
 
@@ -76,8 +89,8 @@ export default async function Page() {
               <BrandMark className="h-8 w-8" />
             </div>
             <div>
-              <p className="font-heading text-base font-semibold">Smart Cluster</p>
-              <p className="text-sm text-muted-foreground">Sistem Manajemen Transaksi & IPL</p>
+              <p className="font-heading text-base font-semibold">Hunita</p>
+              <p className="text-sm text-muted-foreground">Sistem Management Perumahan yang transparan.</p>
             </div>
           </div>
           {!hasActiveSession ? (
@@ -119,7 +132,7 @@ export default async function Page() {
                       <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
                       <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
                       <div className="ml-2 rounded-md bg-white px-2 py-0.5 text-[10px] text-muted-foreground">
-                        smart-cluster-app.vercel.app/dashboard/admin
+                        hunita.vercel.app/dashboard/admin
                       </div>
                     </div>
 
@@ -277,7 +290,7 @@ export default async function Page() {
 
         <footer className="mt-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <CalendarClock className="h-4 w-4" />
-          <span>Landing page disesuaikan dengan dashboard terbaru Smart Cluster.</span>
+          <span>Landing page disesuaikan dengan dashboard terbaru Hunita.</span>
           <Building2 className="ml-2 h-4 w-4" />
           <ShieldCheck className="h-4 w-4" />
           <ReceiptText className="h-4 w-4" />

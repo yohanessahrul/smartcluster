@@ -1,10 +1,10 @@
-const CACHE_NAME = "smart-cluster-v3";
+const CACHE_NAME = "smart-cluster-v4";
 const PRECACHE_URLS = [
   "/offline",
   "/manifest.webmanifest",
-  "/brand/favicon-32.png",
-  "/brand/icon-192.png",
-  "/brand/icon-512.png",
+  "/brand/favicon-32-green.png",
+  "/brand/icon-192-green.png",
+  "/brand/icon-512-green.png",
 ];
 
 function isStaticAsset(pathname) {

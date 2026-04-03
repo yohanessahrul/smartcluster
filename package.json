@@ -1,7 +1,7 @@
 {
   "name": "new-project",
   "version": "1.0.0",
-  "description": "Smart Cluster shadcn UI prototype",
+  "description": "Hunita - Sistem Management Perumahan yang transparan.",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",

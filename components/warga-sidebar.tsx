@@ -35,7 +35,7 @@ export function WargaSidebar() {
           <BrandMark className="h-7 w-7" />
         </div>
         <div>
-          <p className="font-heading text-sm">Smart Cluster</p>
+          <p className="font-heading text-sm">Hunita</p>
           <p className="text-xs text-[hsl(var(--menu-muted))]">Portal Warga</p>
         </div>
       </div>

@@ -1,6 +1,17 @@
+import type { Metadata } from "next";
+
 import { BrandMark } from "@/components/brand-mark";
 import { LoginForm } from "@/components/login-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Login",
+  description: "Login Hunita untuk akses dashboard perumahan.",
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function LoginPage() {
   return (
@@ -12,9 +23,9 @@ export default function LoginPage() {
               <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-white/90 p-1 shadow-sm ring-1 ring-[hsl(var(--menu-border))]">
                 <BrandMark className="h-9 w-9" />
               </div>
-              <p className="font-heading text-lg">Smart Cluster</p>
+              <p className="font-heading text-lg">Hunita</p>
               <p className="mt-1 text-xs leading-relaxed text-[hsl(var(--menu-muted))]">
-                Sistem manajemen transaksi dan IPL perumahan yang transparan, rapi, dan mudah dipantau.
+                Sistem Management Perumahan yang transparan.
               </p>
             </div>
             <div>

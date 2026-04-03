@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("Smart Cluster public flow", () => {
+test.describe("Hunita public flow", () => {
   test("landing page renders key content", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("Smart Cluster").first()).toBeVisible();
-    await expect(page.getByText("Sistem Manajemen Transaksi & IPL")).toBeVisible();
+    await expect(page.getByText("Hunita").first()).toBeVisible();
+    await expect(page.getByText("Sistem Management Perumahan yang transparan.")).toBeVisible();
   });
 
   test("login page renders google login button", async ({ page }) => {

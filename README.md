@@ -1,6 +1,6 @@
-# Smart Cluster - Next.js + shadcn/ui
+# Hunita - Next.js + shadcn/ui
 
-Prototype frontend berbasis PRD Smart Cluster menggunakan:
+Prototype frontend berbasis PRD Hunita menggunakan:
 
 - Next.js App Router
 - Next.js Route Handlers API (`app/api/*`)
