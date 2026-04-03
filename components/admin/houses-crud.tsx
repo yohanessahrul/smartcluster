@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { BooleanBadge } from "@/components/ui/boolean-badge";
@@ -321,6 +321,7 @@ export function HousesCrud() {
   const [blokFilter, setBlokFilter] = useState("all");
   const [occupiedFilter, setOccupiedFilter] = useState<"all" | "true" | "false">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | HouseRow["residential_status"]>("all");
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<HouseFormState>(emptyForm);
   const [editForm, setEditForm] = useState<HouseFormState>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -611,6 +612,12 @@ export function HousesCrud() {
     });
   }
 
+  function resetFilters() {
+    setBlokFilter("all");
+    setOccupiedFilter("all");
+    setStatusFilter("all");
+  }
+
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
       const blokMatch = blokFilter === "all" ? true : row.blok === blokFilter;
@@ -652,7 +659,13 @@ export function HousesCrud() {
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
-            <div className="w-full sm:w-[220px]">
+            <div className="w-full sm:hidden">
+              <Button type="button" variant="outline" className="w-full" onClick={() => setFilterModalOpen(true)}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+            <div className="hidden w-full sm:block sm:w-[220px]">
               <label className={labelClass}>Blok</label>
               <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
                 <option value="all">Semua blok</option>
@@ -663,7 +676,7 @@ export function HousesCrud() {
                 ))}
               </select>
             </div>
-            <div className="w-full sm:w-[220px]">
+            <div className="hidden w-full sm:block sm:w-[220px]">
               <label className={labelClass}>Dihuni</label>
               <select
                 className={filterSelectClass}
@@ -675,7 +688,7 @@ export function HousesCrud() {
                 <option value="false">Tidak</option>
               </select>
             </div>
-            <div className="w-full sm:w-[220px]">
+            <div className="hidden w-full sm:block sm:w-[220px]">
               <label className={labelClass}>Kepemilikan</label>
               <select
                 className={filterSelectClass}
@@ -826,6 +839,53 @@ export function HousesCrud() {
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
+      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Houses" className="max-w-md">
+        <div className="space-y-3">
+          <div>
+            <label className={labelClass}>Blok</label>
+            <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
+              <option value="all">Semua blok</option>
+              {blokOptions.map((blok) => (
+                <option key={blok} value={blok}>
+                  Blok {blok}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Dihuni</label>
+            <select
+              className={filterSelectClass}
+              value={occupiedFilter}
+              onChange={(event) => setOccupiedFilter(event.target.value as "all" | "true" | "false")}
+            >
+              <option value="all">Semua Dihuni</option>
+              <option value="true">Ya</option>
+              <option value="false">Tidak</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Kepemilikan</label>
+            <select
+              className={filterSelectClass}
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as "all" | HouseRow["residential_status"])}
+            >
+              <option value="all">Semua Kepemilikan</option>
+              <option value="Owner">Owner</option>
+              <option value="Contract">Contract</option>
+            </select>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={resetFilters}>
+              Reset
+            </Button>
+            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+              Terapkan
+            </Button>
+          </div>
+        </div>
+      </SimpleModal>
 
       <CreateHouseModal
         open={createOpen}

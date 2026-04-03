@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, SlidersHorizontal } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
@@ -34,6 +34,7 @@ export default function WargaTagihanPage() {
   const [pageSize, setPageSize] = useState(10);
   const [payProofFile, setPayProofFile] = useState<File | null>(null);
   const [paySubmitting, setPaySubmitting] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   useEffect(() => {
     const sync = async () => {
@@ -52,6 +53,10 @@ export default function WargaTagihanPage() {
   useEffect(() => {
     setPage(1);
   }, [statusFilter]);
+
+  function resetFilters() {
+    setStatusFilter("all");
+  }
 
   function openPayModal(bill: BillRow) {
     setSelectedBill(bill);
@@ -152,7 +157,13 @@ export default function WargaTagihanPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="w-full sm:w-[220px]">
+                  <div className="w-full sm:hidden">
+                    <Button type="button" variant="outline" className="w-full" onClick={() => setFilterModalOpen(true)}>
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Filter
+                    </Button>
+                  </div>
+                  <div className="hidden w-full sm:block sm:w-[220px]">
                     <label className={filterLabelClass}>Status</label>
                     <select
                       className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -253,6 +264,33 @@ export default function WargaTagihanPage() {
                 />
               </CardContent>
             </Card>
+
+            <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Tagihan" className="max-w-md">
+              <div className="space-y-3">
+                <div>
+                  <label className={filterLabelClass}>Status</label>
+                  <select
+                    className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value as "all" | BillRow["status"])}
+                  >
+                    <option value="all">Semua status</option>
+                    <option value="Belum bayar">Belum bayar</option>
+                    <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
+                    <option value="Verifikasi">Verifikasi</option>
+                    <option value="Lunas">Lunas</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={resetFilters}>
+                    Reset
+                  </Button>
+                  <Button type="button" onClick={() => setFilterModalOpen(false)}>
+                    Terapkan
+                  </Button>
+                </div>
+              </div>
+            </SimpleModal>
 
             <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
 

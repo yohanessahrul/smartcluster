@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, SlidersHorizontal } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
+import { SimpleModal } from "@/components/ui/simple-modal";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { formatRupiahFromAny } from "@/lib/currency";
 import { formatDateTimeUnified } from "@/lib/date-time";
@@ -21,12 +22,17 @@ const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 export default function WargaRiwayatPage() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     setPage(1);
   }, [methodFilter]);
+
+  function resetFilters() {
+    setMethodFilter("all");
+  }
 
   return (
     <WargaAccessGuard>
@@ -78,7 +84,13 @@ export default function WargaRiwayatPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="w-full sm:w-[220px]">
+                  <div className="w-full sm:hidden">
+                    <Button type="button" variant="outline" className="w-full" onClick={() => setFilterModalOpen(true)}>
+                      <SlidersHorizontal className="mr-2 h-4 w-4" />
+                      Filter
+                    </Button>
+                  </div>
+                  <div className="hidden w-full sm:block sm:w-[220px]">
                     <label className={filterLabelClass}>Metode Pembayaran</label>
                     <select
                       className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -166,6 +178,33 @@ export default function WargaRiwayatPage() {
                 />
               </CardContent>
             </Card>
+
+            <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Riwayat" className="max-w-md">
+              <div className="space-y-3">
+                <div>
+                  <label className={filterLabelClass}>Metode Pembayaran</label>
+                  <select
+                    className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    value={methodFilter}
+                    onChange={(event) => setMethodFilter(event.target.value as "all" | TransactionRow["payment_method"])}
+                  >
+                    <option value="all">Semua metode</option>
+                    <option value="Transfer Bank">Transfer Bank</option>
+                    <option value="Cash">Cash</option>
+                    <option value="QRIS">QRIS</option>
+                    <option value="E-wallet">E-wallet</option>
+                  </select>
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button type="button" variant="outline" onClick={resetFilters}>
+                    Reset
+                  </Button>
+                  <Button type="button" onClick={() => setFilterModalOpen(false)}>
+                    Terapkan
+                  </Button>
+                </div>
+              </div>
+            </SimpleModal>
           </div>
         );
       }}

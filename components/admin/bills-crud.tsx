@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Crosshair, Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { Crosshair, Eye, FileSpreadsheet, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { BooleanBadge } from "@/components/ui/boolean-badge";
@@ -538,6 +538,7 @@ export function BillsCrud() {
   const [statusFilter, setStatusFilter] = useState<"all" | BillRow["status"]>("all");
   const [blokFilter, setBlokFilter] = useState("all");
   const [periodeFilter, setPeriodeFilter] = useState("all");
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<BillRow>(emptyForm);
   const [editForm, setEditForm] = useState<BillRow>(emptyForm);
   const [createProofFile, setCreateProofFile] = useState<File | null>(null);
@@ -1054,6 +1055,12 @@ export function BillsCrud() {
     });
   }
 
+  function resetFilters() {
+    setStatusFilter("all");
+    setBlokFilter("all");
+    setPeriodeFilter("all");
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -1074,7 +1081,13 @@ export function BillsCrud() {
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
-            <div className="w-full sm:w-[220px]">
+            <div className="w-full sm:hidden">
+              <Button type="button" variant="outline" className="w-full" onClick={() => setFilterModalOpen(true)}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+            <div className="hidden w-full sm:block sm:w-[220px]">
               <label className={labelClass}>Status</label>
               <select
                 className={filterSelectClass}
@@ -1088,7 +1101,7 @@ export function BillsCrud() {
                 <option value="Lunas">Lunas</option>
               </select>
             </div>
-            <div className="w-full sm:w-[220px]">
+            <div className="hidden w-full sm:block sm:w-[220px]">
               <label className={labelClass}>Blok</label>
               <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
                 <option value="all">Semua blok</option>
@@ -1099,7 +1112,7 @@ export function BillsCrud() {
                 ))}
               </select>
             </div>
-            <div className="w-full sm:w-[220px]">
+            <div className="hidden w-full sm:block sm:w-[220px]">
               <label className={labelClass}>Periode</label>
               <select className={filterSelectClass} value={periodeFilter} onChange={(event) => setPeriodeFilter(event.target.value)}>
                 <option value="all">Semua periode</option>
@@ -1263,6 +1276,55 @@ export function BillsCrud() {
           ) : null}
         </CardContent>
       </Card>
+
+      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter IPL" className="max-w-md">
+        <div className="space-y-3">
+          <div>
+            <label className={labelClass}>Status</label>
+            <select
+              className={filterSelectClass}
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as "all" | BillRow["status"])}
+            >
+              <option value="all">Semua status</option>
+              <option value="Belum bayar">Belum bayar</option>
+              <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
+              <option value="Verifikasi">Verifikasi</option>
+              <option value="Lunas">Lunas</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Blok</label>
+            <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
+              <option value="all">Semua blok</option>
+              {blokOptions.map((blok) => (
+                <option key={blok} value={blok}>
+                  Blok {blok}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Periode</label>
+            <select className={filterSelectClass} value={periodeFilter} onChange={(event) => setPeriodeFilter(event.target.value)}>
+              <option value="all">Semua periode</option>
+              {periodeOptions.map((periode) => (
+                <option key={periode} value={periode}>
+                  {periode}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={resetFilters}>
+              Reset
+            </Button>
+            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+              Terapkan
+            </Button>
+          </div>
+        </div>
+      </SimpleModal>
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />

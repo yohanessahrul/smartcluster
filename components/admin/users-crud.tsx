@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -174,6 +174,7 @@ export function UsersCrud() {
   const [rows, setRows] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | UserRow["role"]>("all");
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<UserRow>(emptyForm);
   const [editForm, setEditForm] = useState<UserRow>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -436,6 +437,11 @@ export function UsersCrud() {
     });
   }
 
+  function resetFilters() {
+    setSearch("");
+    setRoleFilter("all");
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -447,7 +453,13 @@ export function UsersCrud() {
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
-            <div className="w-full sm:w-[180px]">
+            <div className="w-full sm:hidden">
+              <Button type="button" variant="outline" className="w-full" onClick={() => setFilterModalOpen(true)}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+            <div className="hidden w-full sm:block sm:w-[180px]">
               <label className={labelClass}>Pencarian</label>
               <input
                 className={filterInputClass}
@@ -456,7 +468,7 @@ export function UsersCrud() {
                 placeholder="Cari nama, email, atau nomor telepon"
               />
             </div>
-            <div className="w-full sm:w-[180px]">
+            <div className="hidden w-full sm:block sm:w-[180px]">
               <label className={labelClass}>Role</label>
               <select
                 className={filterSelectClass}
@@ -601,6 +613,41 @@ export function UsersCrud() {
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
+      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Users" className="max-w-md">
+        <div className="space-y-3">
+          <div>
+            <label className={labelClass}>Pencarian</label>
+            <input
+              className={filterInputClass}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Cari nama, email, atau nomor telepon"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Role</label>
+            <select
+              className={filterSelectClass}
+              value={roleFilter}
+              onChange={(event) => setRoleFilter(event.target.value as "all" | UserRow["role"])}
+            >
+              <option value="all">Semua role</option>
+              <option value="admin">admin</option>
+              <option value="superadmin">superadmin</option>
+              <option value="warga">warga</option>
+              <option value="finance">finance</option>
+            </select>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={resetFilters}>
+              Reset
+            </Button>
+            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+              Terapkan
+            </Button>
+          </div>
+        </div>
+      </SimpleModal>
 
       <CreateUserModal
         open={createOpen}

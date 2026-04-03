@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Eye, FileSpreadsheet, Pencil, Trash2 } from "lucide-react";
+import { Eye, FileSpreadsheet, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -369,6 +369,7 @@ export function TransactionsCrud() {
   const [rows, setRows] = useState<TransactionRow[]>([]);
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionRow["transaction_type"]>("all");
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<TransactionFormValue>(emptyForm);
   const [editForm, setEditForm] = useState<TransactionFormValue>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -701,6 +702,11 @@ export function TransactionsCrud() {
     });
   }
 
+  function resetFilters() {
+    setTypeFilter("all");
+    setMethodFilter("all");
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -712,7 +718,13 @@ export function TransactionsCrud() {
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
-            <div className="w-full sm:w-[220px]">
+            <div className="w-full sm:hidden">
+              <Button type="button" variant="outline" className="w-full" onClick={() => setFilterModalOpen(true)}>
+                <SlidersHorizontal className="mr-2 h-4 w-4" />
+                Filter
+              </Button>
+            </div>
+            <div className="hidden w-full sm:block sm:w-[220px]">
               <label className={labelClass}>Tipe Transaksi</label>
               <select
                 className={filterSelectClass}
@@ -724,7 +736,7 @@ export function TransactionsCrud() {
                 <option value="Pengeluaran">Pengeluaran</option>
               </select>
             </div>
-            <div className="w-full sm:w-[220px]">
+            <div className="hidden w-full sm:block sm:w-[220px]">
               <label className={labelClass}>Metode Pembayaran</label>
               <select
                 className={filterSelectClass}
@@ -887,6 +899,45 @@ export function TransactionsCrud() {
           ) : null}
         </CardContent>
       </Card>
+
+      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Transactions" className="max-w-md">
+        <div className="space-y-3">
+          <div>
+            <label className={labelClass}>Tipe Transaksi</label>
+            <select
+              className={filterSelectClass}
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value as "all" | TransactionRow["transaction_type"])}
+            >
+              <option value="all">Semua tipe</option>
+              <option value="Pemasukan">Pemasukan</option>
+              <option value="Pengeluaran">Pengeluaran</option>
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Metode Pembayaran</label>
+            <select
+              className={filterSelectClass}
+              value={methodFilter}
+              onChange={(event) => setMethodFilter(event.target.value as "all" | TransactionRow["payment_method"])}
+            >
+              <option value="all">Semua metode</option>
+              <option value="Transfer Bank">Transfer Bank</option>
+              <option value="Cash">Cash</option>
+              <option value="QRIS">QRIS</option>
+              <option value="E-wallet">E-wallet</option>
+            </select>
+          </div>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={resetFilters}>
+              Reset
+            </Button>
+            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+              Terapkan
+            </Button>
+          </div>
+        </div>
+      </SimpleModal>
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
