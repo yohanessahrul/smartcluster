@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw, SlidersHorizontal } from "lucide-react";
+import { FileSpreadsheet, RefreshCw, SlidersHorizontal } from "lucide-react";
 
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DashboardHeader } from "@/components/dashboard-header";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { apiClient, AuditLogRow } from "@/lib/api-client";
 import { useAuthSession } from "@/lib/auth-client";
+import { downloadRowsAsExcel } from "@/lib/download-excel";
 
 const filterSelectClass =
   "h-10 w-full rounded-[6px] border border-input bg-background px-3 pr-10 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
@@ -75,6 +76,22 @@ export default function AdminGlobalHistoryPage() {
     setEndDate("");
   }
 
+  function downloadFilteredReport() {
+    downloadRowsAsExcel({
+      filenamePrefix: "global-history",
+      rows: filteredRows,
+      columns: [
+        { header: "Waktu Update", value: (row) => row.updated_at },
+        { header: "Author", value: (row) => row.author },
+        { header: "Table", value: (row) => row.table_name },
+        { header: "Action", value: (row) => row.action },
+        { header: "Record ID", value: (row) => row.record_id ?? "-" },
+        { header: "Before", value: (row) => JSON.stringify(row.before_value ?? {}) },
+        { header: "After", value: (row) => JSON.stringify(row.after_value ?? {}) },
+      ],
+    });
+  }
+
   if (isFinance) {
     return (
       <div>
@@ -99,10 +116,21 @@ export default function AdminGlobalHistoryPage() {
         }
       />
 
-      <div className="sm:hidden">
-        <Button type="button" variant="outline" className="w-full" onClick={() => setFilterModalOpen(true)}>
+      <div className="flex w-full items-end gap-2 sm:hidden">
+        <Button type="button" variant="outline" className="h-10 flex-1" onClick={() => setFilterModalOpen(true)}>
           <SlidersHorizontal className="mr-2 h-4 w-4" />
           Filter
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-10 w-10 p-0"
+          aria-label="Download report history"
+          title="Download report history"
+          onClick={downloadFilteredReport}
+          disabled={!filteredRows.length}
+        >
+          <FileSpreadsheet className="h-4 w-4" />
         </Button>
       </div>
 
@@ -153,6 +181,19 @@ export default function AdminGlobalHistoryPage() {
             value={endDate}
             onChange={(event) => setEndDate(event.target.value)}
           />
+        </div>
+        <div className="ml-auto flex items-end">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 w-10 p-0"
+            aria-label="Download report history"
+            title="Download report history"
+            onClick={downloadFilteredReport}
+            disabled={!filteredRows.length}
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 

@@ -157,10 +157,21 @@ export default function WargaTagihanPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="w-full sm:hidden">
-                    <Button type="button" variant="outline" className="w-full" onClick={() => setFilterModalOpen(true)}>
+                  <div className="flex w-full items-end gap-2 sm:hidden">
+                    <Button type="button" variant="outline" className="h-10 flex-1" onClick={() => setFilterModalOpen(true)}>
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
                       Filter
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 w-10 p-0"
+                      aria-label="Download report tagihan"
+                      title="Download report tagihan"
+                      onClick={downloadFilteredReport}
+                      disabled={!filteredRows.length}
+                    >
+                      <FileSpreadsheet className="h-4 w-4" />
                     </Button>
                   </div>
                   <div className="hidden w-full sm:block sm:w-[220px]">
@@ -177,7 +188,7 @@ export default function WargaTagihanPage() {
                       <option value="Lunas">Lunas</option>
                     </select>
                   </div>
-                  <div className="ml-auto flex items-end">
+                  <div className="ml-auto hidden items-end sm:flex">
                     <Button
                       type="button"
                       variant="outline"
