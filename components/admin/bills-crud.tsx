@@ -27,6 +27,7 @@ const inputClass =
 const filterSelectClass =
   "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
+const OPEN_GENERATE_IPL_EVENT = "smart-open-generate-ipl";
 
 const emptyForm: BillRow = {
   id: "",
@@ -581,6 +582,16 @@ export function BillsCrud() {
     loadInitialData();
   }, []);
 
+  useEffect(() => {
+    function onOpenGenerateFromHeader() {
+      openGenerateModal();
+    }
+    window.addEventListener(OPEN_GENERATE_IPL_EVENT, onOpenGenerateFromHeader);
+    return () => {
+      window.removeEventListener(OPEN_GENERATE_IPL_EVENT, onOpenGenerateFromHeader);
+    };
+  }, []);
+
   const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
   const isAdmin = session?.role === "admin" || session?.role === "superadmin";
   const isFinance = session?.role === "finance";
@@ -1068,9 +1079,6 @@ export function BillsCrud() {
           <CardTitle>Data IPL</CardTitle>
           {hasFullAccess ? (
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Button className="w-full sm:w-auto" variant="outline" onClick={openGenerateModal}>
-                Generate IPL
-              </Button>
               {hasFullAccess ? (
                 <Button className="w-full sm:w-auto" onClick={openCreateModal}>
                   Create IPL

@@ -75,6 +75,7 @@ export function UserMenuCta({
         className={cn("h-10 rounded-lg px-3", buttonClassName)}
         aria-label="Buka menu akun"
         aria-expanded={openMenu}
+        suppressHydrationWarning
         onClick={() => setOpenMenu((prev) => !prev)}
       >
         <span className="max-w-[180px] truncate text-left text-sm">Hi, {name}</span>

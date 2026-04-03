@@ -154,9 +154,9 @@ export default function AdminDashboardPage() {
             <Server className="mr-2 h-4 w-4" />
             Status Server
           </Button>
-          <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing..." onClick={refreshSnapshotData}>
+          <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh Data
+            Refresh widget
           </Button>
         </div>
       )
