@@ -566,7 +566,7 @@ export default function WargaTagihanPage() {
                       </div>
                     </div>
                   ) : null
-                ) : previewBill?.status !== "Lunas" ? (
+                ) : (
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Bukti Transaksi</p>
                     {previewBill?.payment_proof_url ? (
