@@ -1,15 +1,10 @@
 import {
-  BellRing,
   Building2,
   CalendarClock,
   Database,
   HardDrive,
-  Home,
-  NotebookText,
   ReceiptText,
   ShieldCheck,
-  Users,
-  Wallet,
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
@@ -19,54 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserMenuCta } from "@/components/user-menu-cta";
 import { readSessionFromToken } from "@/lib/server/auth-session";
-
-type Metric = {
-  label: string;
-  value: string;
-  icon: typeof Home;
-  tone?: "warning";
-};
-
-const adminMetrics: Metric[] = [
-  { label: "Total Rumah", value: "284", icon: Home },
-  { label: "Total Warga", value: "276", icon: Users },
-  { label: "Tagihan Lunas", value: "212", icon: NotebookText },
-  { label: "Belum Bayar", value: "72 Rumah", icon: BellRing, tone: "warning" },
-];
-
-const financeMetrics: Metric[] = [
-  { label: "Success Payment", value: "212 • Rp31,8 Jt", icon: Wallet },
-  { label: "Need Verification", value: "48 • Rp7,2 Jt", icon: BellRing, tone: "warning" },
-  { label: "Need Follow Up", value: "24 • Rp3,6 Jt", icon: WalletCards },
-  { label: "Unit Summary", value: "248 Rumah • 220 Dihuni", icon: Home },
-];
-
-const financeQueue = [
-  { unit: "B-03", period: "April 2026", amount: "Rp150.000", status: "Menunggu Verifikasi" },
-  { unit: "C-21", period: "April 2026", amount: "Rp150.000", status: "Menunggu Verifikasi" },
-  { unit: "D-18", period: "April 2026", amount: "Rp150.000", status: "Menunggu Verifikasi" },
-] as const;
-
-const financeLatestTransactions = [
-  {
-    detail: "Pembayaran IPL Warga",
-    amount: "Rp150.000",
-    method: "Transfer Bank",
-    status: "Menunggu Verifikasi",
-  },
-  {
-    detail: "Pembayaran IPL Cluster",
-    amount: "Rp300.000",
-    method: "QRIS",
-    status: "Menunggu Verifikasi",
-  },
-] as const;
 
 const paymentStages = [
   { label: "Belum bayar", note: "Tagihan sudah dibuat, belum ada bukti pembayaran." },
@@ -154,237 +104,134 @@ export default async function Page() {
 
         <Card className="mb-6 border-border/90 bg-card/95">
           <CardHeader className="pb-4">
-            <CardTitle>Simulasi Dashboard Terbaru</CardTitle>
-            <CardDescription>Ringkasan halaman yang saat ini tersedia di aplikasi.</CardDescription>
+            <CardTitle>Mockup Dashboard Terbaru</CardTitle>
+            <CardDescription>Preview visual tampilan dashboard web dan mobile sesuai implementasi saat ini.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="admin">
-              <TabsList>
-                <TabsTrigger value="admin">Admin</TabsTrigger>
-                <TabsTrigger value="finance">Finance</TabsTrigger>
-                <TabsTrigger value="warga">Warga</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="admin">
-                <div className="mt-4 grid gap-4 lg:grid-cols-[240px_1fr]">
-                  <Card className="border-0 bg-[hsl(var(--menu-bg))] text-[hsl(var(--menu-fg))] shadow-none">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm text-[hsl(var(--menu-muted))]">Menu Admin</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 pt-0 text-sm">
-                      <div className="rounded-lg bg-[hsl(var(--menu-active))] px-3 py-2 font-medium">Beranda</div>
-                      <div className="rounded-lg px-3 py-2">Riwayat</div>
-                      <div className="rounded-lg px-3 py-2">Pengguna</div>
-                      <div className="rounded-lg px-3 py-2">Rumah</div>
-                      <div className="rounded-lg px-3 py-2">IPL</div>
-                      <div className="rounded-lg px-3 py-2">Transaksi</div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      {adminMetrics.map((metric) => (
-                        <Card
-                          key={metric.label}
-                          className={metric.tone === "warning" ? "border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]" : ""}
-                        >
-                          <CardContent className="flex items-start justify-between p-4">
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
-                              <p className="mt-2 font-heading text-xl">{metric.value}</p>
-                            </div>
-                            <metric.icon className="h-4 w-4 text-muted-foreground" />
-                          </CardContent>
-                        </Card>
-                      ))}
+            <div className="grid gap-6 lg:grid-cols-[1.5fr_0.9fr]">
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">Mockup Dashboard Web (MacBook)</p>
+                <div className="rounded-2xl border border-border/80 bg-zinc-900/95 p-3 shadow-xl">
+                  <div className="mx-auto mb-2 h-1.5 w-16 rounded-full bg-zinc-700" />
+                  <div className="overflow-hidden rounded-xl border border-zinc-800 bg-[hsl(var(--background))]">
+                    <div className="flex items-center gap-2 border-b border-border bg-zinc-100 px-3 py-2">
+                      <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                      <div className="ml-2 rounded-md bg-white px-2 py-0.5 text-[10px] text-muted-foreground">
+                        smart-cluster-app.vercel.app/dashboard/admin
+                      </div>
                     </div>
 
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle>Aksi Cepat Beranda Admin</CardTitle>
-                        <CardDescription>CTA yang tersedia di halaman Beranda admin saat ini.</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="rounded-full">
-                            CTA: Status Server
-                          </Badge>
-                          <Badge variant="outline" className="rounded-full">
-                            CTA: Refresh Data
-                          </Badge>
+                    <div className="grid grid-cols-[170px_1fr]">
+                      <aside className="border-r border-border bg-[hsl(var(--menu-bg))] p-3 text-[hsl(var(--menu-fg))]">
+                        <p className="mb-3 text-xs text-[hsl(var(--menu-muted))]">Admin Panel</p>
+                        <div className="space-y-1 text-xs">
+                          <div className="rounded-md bg-[hsl(var(--menu-active))] px-2 py-1.5 text-white">Beranda</div>
+                          <div className="rounded-md px-2 py-1.5">Riwayat</div>
+                          <div className="rounded-md px-2 py-1.5">Pengguna</div>
+                          <div className="rounded-md px-2 py-1.5">Rumah</div>
+                          <div className="rounded-md px-2 py-1.5">IPL</div>
+                          <div className="rounded-md px-2 py-1.5">Transaksi</div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </TabsContent>
+                      </aside>
 
-              <TabsContent value="finance">
-                <div className="mt-4 grid gap-4 lg:grid-cols-[220px_1fr]">
-                  <Card className="border-0 bg-[hsl(var(--menu-bg))] text-[hsl(var(--menu-fg))] shadow-none">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm text-[hsl(var(--menu-muted))]">Menu Finance</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 pt-0 text-sm">
-                      <div className="rounded-lg bg-[hsl(var(--menu-active))] px-3 py-2 font-medium">Beranda</div>
-                      <div className="rounded-lg px-3 py-2">IPL</div>
-                      <div className="rounded-lg px-3 py-2">Transaksi</div>
-                    </CardContent>
-                  </Card>
-
-                  <div className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                      {financeMetrics.map((metric) => (
-                        <Card
-                          key={metric.label}
-                          className={metric.tone === "warning" ? "border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]" : ""}
-                        >
-                          <CardContent className="flex items-start justify-between p-4">
-                            <div>
-                              <p className="text-xs font-medium text-muted-foreground">{metric.label}</p>
-                              <p className="mt-2 font-heading text-lg">{metric.value}</p>
-                            </div>
-                            <metric.icon className="h-4 w-4 text-muted-foreground" />
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle>Antrian Verifikasi IPL</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <Table className="min-w-[620px]">
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Unit</TableHead>
-                              <TableHead>Periode</TableHead>
-                              <TableHead>Nominal</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {financeQueue.map((item) => (
-                              <TableRow key={`${item.unit}-${item.period}`}>
-                                <TableCell>{item.unit}</TableCell>
-                                <TableCell>{item.period}</TableCell>
-                                <TableCell>{item.amount}</TableCell>
-                                <TableCell>{statusBadge(item.status)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <CardTitle>5 Transaksi Terakhir</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <Table className="min-w-[620px]">
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Detail Transaksi</TableHead>
-                              <TableHead>Nominal</TableHead>
-                              <TableHead>Metode</TableHead>
-                              <TableHead>Status</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {financeLatestTransactions.map((item, index) => (
-                              <TableRow key={`${item.detail}-${index}`}>
-                                <TableCell>{item.detail}</TableCell>
-                                <TableCell>{item.amount}</TableCell>
-                                <TableCell>{item.method}</TableCell>
-                                <TableCell>{statusBadge(item.status)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="warga">
-                <div className="mt-4 grid gap-4 lg:grid-cols-[340px_1fr]">
-                  <Card className="overflow-hidden border-0 bg-[hsl(var(--phone-bg))] text-[hsl(var(--phone-fg))]">
-                    <CardContent className="space-y-4 p-4">
-                      <div className="mx-auto h-4 w-24 rounded-full bg-[hsl(var(--phone-notch))]" />
-                      <div>
-                        <p className="text-sm text-[hsl(var(--phone-muted))]">Dashboard Warga</p>
-                        <h3 className="font-heading text-lg">Halo, Budi</h3>
-                      </div>
-                      <div className="rounded-lg bg-white p-4 text-[hsl(var(--phone-card-ink))]">
-                        <p className="text-xs text-[hsl(var(--phone-card-muted))]">Tagihan IPL April 2026</p>
-                        <p className="my-1 font-heading text-2xl">Rp150.000</p>
-                        <p className="text-xs text-[hsl(var(--phone-card-muted))]">Status: Menunggu Verifikasi (bukti sudah diupload)</p>
-                      </div>
-                      <Button variant="secondary" className="w-full rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                        Bayar / Upload Bukti
-                      </Button>
-                      <div className="rounded-lg border border-[hsl(var(--phone-chip-border))] p-3 text-sm">
-                        <p className="mb-2 text-xs text-[hsl(var(--phone-muted))]">Riwayat Tagihan</p>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span>
-                              <DateTimeText value="2026-03-10" /> - Lunas
-                            </span>
-                            <strong>Rp150.000</strong>
+                      <div className="space-y-3 p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold">Beranda Admin</p>
+                            <p className="text-[11px] text-muted-foreground">Ringkasan operasional IPL terbaru</p>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span>
-                              <DateTimeText value="2026-04-10" /> - Menunggu Verifikasi
-                            </span>
-                            <strong>Rp150.000</strong>
+                          <div className="flex gap-1">
+                            <Badge variant="outline" className="h-6 px-2 text-[10px]">
+                              Status Server
+                            </Badge>
+                            <Badge variant="outline" className="h-6 px-2 text-[10px]">
+                              Refresh Data
+                            </Badge>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="rounded-lg border border-border p-2">
+                            <p className="text-[10px] text-muted-foreground">Total Rumah</p>
+                            <p className="text-sm font-semibold">284</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-2">
+                            <p className="text-[10px] text-muted-foreground">Total Warga</p>
+                            <p className="text-sm font-semibold">276</p>
+                          </div>
+                          <div className="rounded-lg border border-border p-2">
+                            <p className="text-[10px] text-muted-foreground">Tagihan Lunas</p>
+                            <p className="text-sm font-semibold">212</p>
+                          </div>
+                          <div className="rounded-lg border border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))] p-2">
+                            <p className="text-[10px] text-muted-foreground">Belum Bayar</p>
+                            <p className="text-sm font-semibold">72</p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-border p-2">
+                          <p className="mb-2 text-[10px] text-muted-foreground">IPL Perlu Tindakan</p>
+                          <div className="space-y-1 text-[11px]">
+                            <div className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1">
+                              <span>Blok A11 • April 2026</span>
+                              {statusBadge("Menunggu Verifikasi")}
+                            </div>
+                            <div className="flex items-center justify-between rounded-md bg-muted/40 px-2 py-1">
+                              <span>Blok B03 • April 2026</span>
+                              {statusBadge("Belum bayar")}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Laporan Keuangan (Jurnal Umum)</CardTitle>
-                      <CardDescription>Warga melihat jurnal dari transaksi yang sudah lunas dan terkelompok per periode.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Table className="min-w-[620px]">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Periode</TableHead>
-                            <TableHead>Keterangan</TableHead>
-                            <TableHead>Tipe</TableHead>
-                            <TableHead>Nominal</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell>Maret 2026</TableCell>
-                            <TableCell>Pembayaran IPL Warga (populate)</TableCell>
-                            <TableCell>
-                              <Badge variant="success">Pemasukan</Badge>
-                            </TableCell>
-                            <TableCell>Rp5.100.000</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell>Maret 2026</TableCell>
-                            <TableCell>Pembelian Barang Inventaris</TableCell>
-                            <TableCell>
-                              <Badge variant="warning">Pengeluaran</Badge>
-                            </TableCell>
-                            <TableCell>Rp1.350.000</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
+                  <div className="mx-auto mt-2 h-2 w-48 rounded-b-xl bg-zinc-700" />
                 </div>
-              </TabsContent>
-            </Tabs>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-sm font-medium text-muted-foreground">Mockup Dashboard Mobile (Handphone)</p>
+                <div className="mx-auto w-[290px] rounded-[28px] border border-border/70 bg-[hsl(var(--phone-bg))] p-3 text-[hsl(var(--phone-fg))] shadow-xl">
+                  <div className="mx-auto mb-3 h-4 w-24 rounded-full bg-[hsl(var(--phone-notch))]" />
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-[hsl(var(--phone-muted))]">Dashboard Warga</p>
+                      <p className="font-heading text-lg">Halo, Budi</p>
+                    </div>
+                    <div className="rounded-lg bg-white p-3 text-[hsl(var(--phone-card-ink))]">
+                      <p className="text-[11px] text-[hsl(var(--phone-card-muted))]">Tagihan IPL April 2026</p>
+                      <p className="my-1 font-heading text-2xl">Rp150.000</p>
+                      <p className="text-[11px] text-[hsl(var(--phone-card-muted))]">Status: Menunggu Verifikasi</p>
+                    </div>
+                    <div className="rounded-lg border border-[hsl(var(--phone-chip-border))] p-3">
+                      <p className="mb-2 text-[11px] text-[hsl(var(--phone-muted))]">Riwayat Tagihan</p>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span>Maret 2026</span>
+                          {statusBadge("Lunas")}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>April 2026</span>
+                          {statusBadge("Menunggu Verifikasi")}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-[hsl(var(--phone-chip-border))] p-3">
+                      <p className="mb-2 text-[11px] text-[hsl(var(--phone-muted))]">Menu Warga</p>
+                      <div className="flex flex-wrap gap-1.5 text-[11px]">
+                        <Badge variant="secondary">Beranda</Badge>
+                        <Badge variant="secondary">Profil</Badge>
+                        <Badge variant="secondary">IPL</Badge>
+                        <Badge variant="secondary">Riwayat Bayar</Badge>
+                        <Badge variant="secondary">Laporan Dana</Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
