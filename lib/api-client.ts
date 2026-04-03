@@ -81,38 +81,71 @@ export type ServerStatusRow = {
   }>;
 };
 
+function isTransientServerTimeoutMessage(message: string) {
+  const lowered = message.toLowerCase();
+  return lowered.includes("connection terminated due to connection timeout") || lowered.includes("timeout exceeded when trying to connect");
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function request<T>(path: string, init?: RequestInit & MutationOptions): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   const isNonFormRequest = method === "GET" || method === "HEAD";
-  let response: Response;
+  const maxAttempts = isNonFormRequest ? 2 : 1;
+  let lastError: unknown = null;
 
-  try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.actorEmail ? { "x-actor-email": init.actorEmail } : {}),
-        ...(init?.headers ?? {}),
-      },
-      ...init,
-    });
-  } catch (error) {
-    if (isNonFormRequest) {
-      emitDeveloperError({
-        title: "Network Request Failed",
-        message: error instanceof Error ? error.message : "Fetch failed.",
-        detail: `Request: ${method} ${path}`,
-        source: "api-client/request",
-        stack: error instanceof Error ? error.stack : undefined,
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let response: Response;
+
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: {
+          "Content-Type": "application/json",
+          ...(init?.actorEmail ? { "x-actor-email": init.actorEmail } : {}),
+          ...(init?.headers ?? {}),
+        },
+        ...init,
       });
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxAttempts) {
+        await wait(250);
+        continue;
+      }
+      if (isNonFormRequest) {
+        emitDeveloperError({
+          title: "Network Request Failed",
+          message: error instanceof Error ? error.message : "Fetch failed.",
+          detail: `Request: ${method} ${path}`,
+          source: "api-client/request",
+          stack: error instanceof Error ? error.stack : undefined,
+        });
+      }
+      throw error;
     }
-    throw error;
-  }
 
-  if (!response.ok) {
+    if (response.ok) {
+      if (response.status === 204) {
+        return undefined as T;
+      }
+      return (await response.json()) as T;
+    }
+
     const errorBody = (await response.json().catch(() => null)) as JsonRecord | null;
     const baseMessage = typeof errorBody?.message === "string" ? errorBody.message : "API request gagal.";
     const detail = typeof errorBody?.detail === "string" ? errorBody.detail : "";
     const message = detail ? `${baseMessage}: ${detail}` : baseMessage;
+    lastError = new Error(message);
+
+    const canRetry =
+      isNonFormRequest && attempt < maxAttempts && response.status >= 500 && isTransientServerTimeoutMessage(message);
+
+    if (canRetry) {
+      await wait(300);
+      continue;
+    }
 
     if (isNonFormRequest) {
       emitDeveloperError({
@@ -126,11 +159,7 @@ async function request<T>(path: string, init?: RequestInit & MutationOptions): P
     throw new Error(message);
   }
 
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return (await response.json()) as T;
+  throw lastError instanceof Error ? lastError : new Error("API request gagal.");
 }
 
 async function uploadRequest<T>(path: string, formData: FormData, options?: MutationOptions): Promise<T> {

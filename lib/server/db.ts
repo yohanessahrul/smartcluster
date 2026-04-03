@@ -38,6 +38,27 @@ function asPositiveInt(value: string | undefined, fallback: number) {
   return Math.floor(parsed);
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientConnectionError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("connection terminated due to connection timeout") ||
+    message.includes("timeout exceeded when trying to connect") ||
+    message.includes("connection terminated unexpectedly") ||
+    message.includes("ecconnreset") ||
+    message.includes("econnrefused")
+  );
+}
+
+function isReadOnlySelectQuery(text: string) {
+  const normalized = text.trim().toLowerCase();
+  return normalized.startsWith("select");
+}
+
 if (!globalDbState.smartPerumahanPgPool) {
   const hasExplicitDbUrl = Boolean(
     process.env.DATABASE_URL ||
@@ -65,8 +86,11 @@ if (!globalDbState.smartPerumahanPgPool) {
   const isSupabasePooler = /pooler\.supabase\.com/i.test(connectionString);
   const defaultPoolMax = shouldRequireExplicitDbUrl() ? (isSupabasePooler ? 10 : 1) : 10;
   const max = asPositiveInt(process.env.DB_POOL_MAX, defaultPoolMax);
-  const idleTimeoutMillis = asPositiveInt(process.env.DB_IDLE_TIMEOUT_MS, 10_000);
-  const connectionTimeoutMillis = asPositiveInt(process.env.DB_CONNECTION_TIMEOUT_MS, 5_000);
+  const idleTimeoutMillis = asPositiveInt(process.env.DB_IDLE_TIMEOUT_MS, shouldRequireExplicitDbUrl() ? 30_000 : 10_000);
+  const connectionTimeoutMillis = asPositiveInt(
+    process.env.DB_CONNECTION_TIMEOUT_MS,
+    shouldRequireExplicitDbUrl() ? 15_000 : 5_000,
+  );
 
   globalDbState.smartPerumahanPgPool = new Pool({
     connectionString,
@@ -75,13 +99,21 @@ if (!globalDbState.smartPerumahanPgPool) {
     idleTimeoutMillis,
     connectionTimeoutMillis,
     allowExitOnIdle: true,
+    keepAlive: true,
+    keepAliveInitialDelayMillis: 10_000,
   });
 }
 
 export const pool = globalDbState.smartPerumahanPgPool;
 
 export async function query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]) {
-  return pool.query<T>(text, params);
+  try {
+    return await pool.query<T>(text, params);
+  } catch (error) {
+    if (!isTransientConnectionError(error) || !isReadOnlySelectQuery(text)) throw error;
+    await wait(250);
+    return pool.query<T>(text, params);
+  }
 }
 
 export type DbQueryResult<T extends QueryResultRow = QueryResultRow> = QueryResult<T>;
