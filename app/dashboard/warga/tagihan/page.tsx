@@ -592,7 +592,7 @@ export default function WargaTagihanPage() {
                       <p className="text-sm text-muted-foreground">Bukti transaksi belum tersedia.</p>
                     )}
                   </div>
-                ) : null}
+                )}
               </div>
             </SimpleModal>
           </div>
