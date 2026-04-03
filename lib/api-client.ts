@@ -81,6 +81,55 @@ export type ServerStatusRow = {
   }>;
 };
 
+export type OverviewFinanceNeedActionRow = {
+  id: string;
+  house_id: string;
+  unit: string;
+  periode: string;
+  amount: string;
+  status: BillRow["status"];
+  status_date: string;
+};
+
+export type OverviewFinanceLatestTransactionRow = {
+  id: string;
+  transaction_name: string;
+  transaction_type: TransactionRow["transaction_type"];
+  category: TransactionRow["category"];
+  amount: string;
+  payment_method: TransactionRow["payment_method"];
+  status: TransactionRow["status"];
+  status_date: string;
+};
+
+export type OverviewSnapshotRow = {
+  generated_at: string;
+  generated_by: string;
+  admin?: {
+    total_houses: number;
+    total_warga: number;
+    paid_count: number;
+    unpaid_count: number;
+  };
+  finance?: {
+    success_count: number;
+    success_total: number;
+    need_verification_count: number;
+    need_verification_total: number;
+    need_follow_up_count: number;
+    need_follow_up_total: number;
+    total_unit_count: number;
+    occupied_unit_count: number;
+    need_action_rows: OverviewFinanceNeedActionRow[];
+    latest_transactions: OverviewFinanceLatestTransactionRow[];
+  };
+  warga?: {
+    total_lunas: number;
+    total_menunggu_verifikasi: number;
+    total_belum_bayar: number;
+  };
+};
+
 function isTransientServerTimeoutMessage(message: string) {
   const lowered = message.toLowerCase();
   return lowered.includes("connection terminated due to connection timeout") || lowered.includes("timeout exceeded when trying to connect");
@@ -183,6 +232,14 @@ async function uploadRequest<T>(path: string, formData: FormData, options?: Muta
 }
 
 export const apiClient = {
+  getOverviewSnapshot: () =>
+    request<{ can_refresh: boolean; snapshot: OverviewSnapshotRow }>("/api/overview"),
+  refreshOverviewSnapshot: (options?: MutationOptions) =>
+    request<{ status: boolean; message: string; snapshot: OverviewSnapshotRow }>("/api/overview/refresh", {
+      method: "POST",
+      ...options,
+    }),
+
   getUsers: () => request<UserRow[]>("/api/users"),
   createUser: (payload: UserRow, options?: MutationOptions) =>
     request<UserRow>("/api/users", { method: "POST", body: JSON.stringify(payload), ...options }),

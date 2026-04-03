@@ -99,13 +99,64 @@ const userRoleValues = ["admin", "superadmin", "warga", "finance"] as const;
 const paymentMethodValues = ["Transfer Bank", "Cash", "QRIS", "E-wallet"] as const;
 const SCHEMA_META_KEY = "smart_api_schema_version";
 const SCHEMA_MIGRATION_LOCK_ID = 762430991;
+const OVERVIEW_SNAPSHOT_SCOPE = "global";
+const OVERVIEW_REFRESH_LOCK_ID = 762430992;
 
 type GlobalApiState = typeof globalThis & {
   smartPerumahanApiReadyPromise?: Promise<void>;
   smartPerumahanApiSchemaVersion?: number;
 };
 
-const API_SCHEMA_VERSION = 6;
+const API_SCHEMA_VERSION = 7;
+
+export type OverviewFinanceNeedActionRow = {
+  id: string;
+  house_id: string;
+  unit: string;
+  periode: string;
+  amount: string;
+  status: string;
+  status_date: string;
+};
+
+export type OverviewFinanceLatestTransactionRow = {
+  id: string;
+  transaction_name: string;
+  transaction_type: string;
+  category: string;
+  amount: string;
+  payment_method: string;
+  status: string;
+  status_date: string;
+};
+
+export type OverviewSnapshot = {
+  generated_at: string;
+  generated_by: string;
+  admin: {
+    total_houses: number;
+    total_warga: number;
+    paid_count: number;
+    unpaid_count: number;
+  };
+  finance: {
+    success_count: number;
+    success_total: number;
+    need_verification_count: number;
+    need_verification_total: number;
+    need_follow_up_count: number;
+    need_follow_up_total: number;
+    total_unit_count: number;
+    occupied_unit_count: number;
+    need_action_rows: OverviewFinanceNeedActionRow[];
+    latest_transactions: OverviewFinanceLatestTransactionRow[];
+  };
+  warga: {
+    total_lunas: number;
+    total_menunggu_verifikasi: number;
+    total_belum_bayar: number;
+  };
+};
 
 export class ApiHttpError extends Error {
   status: number;
@@ -299,6 +350,15 @@ function toPeriode(monthValue: string) {
   const [year, month] = String(monthValue).split("-");
   const index = Number(month) - 1;
   return `${monthNames[index]} ${year}`;
+}
+
+function toNumber(value: unknown) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
 }
 
 function mapBillStatusToTransactionStatus(status: string) {
@@ -839,6 +899,17 @@ async function ensurePerformanceIndexes() {
   );
 }
 
+async function ensureOverviewSnapshotsTable() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS overview_snapshots (
+      scope TEXT PRIMARY KEY,
+      payload JSONB NOT NULL,
+      generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      generated_by TEXT NOT NULL DEFAULT 'system@smart-cluster'
+    )
+  `);
+}
+
 function shouldAutoMigrateSchema() {
   const raw = (process.env.SMART_API_AUTO_MIGRATE || "").trim().toLowerCase();
   if (raw === "false" || raw === "0" || raw === "off") return false;
@@ -885,6 +956,7 @@ async function runSchemaMigrations() {
   await ensureBillColumns();
   await ensureTransactionColumns();
   await ensurePerformanceIndexes();
+  await ensureOverviewSnapshotsTable();
 }
 
 async function beginTransaction(client: PoolClient) {
@@ -945,6 +1017,259 @@ export async function ensureBackendReady() {
 
 export function getHealthStatus() {
   return { status: "ok", service: "smart-perumahan-api" };
+}
+
+type OverviewAdminStatsRow = {
+  total_houses: number | string;
+  total_warga: number | string;
+  paid_count: number | string;
+  unpaid_count: number | string;
+};
+
+type OverviewFinanceStatsRow = {
+  success_count: number | string;
+  success_total: number | string;
+  need_verification_count: number | string;
+  need_verification_total: number | string;
+  need_follow_up_count: number | string;
+  need_follow_up_total: number | string;
+  total_unit_count: number | string;
+  occupied_unit_count: number | string;
+};
+
+type OverviewWargaStatsRow = {
+  total_lunas: number | string;
+  total_menunggu_verifikasi: number | string;
+  total_belum_bayar: number | string;
+};
+
+type OverviewSnapshotStorageRow = {
+  scope: string;
+  payload: unknown;
+  generated_at: string;
+  generated_by: string;
+};
+
+function normalizeOverviewSnapshotPayload(payload: unknown): Omit<OverviewSnapshot, "generated_at" | "generated_by"> | null {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const source = payload as Record<string, unknown>;
+  const admin = source.admin as Record<string, unknown> | undefined;
+  const finance = source.finance as Record<string, unknown> | undefined;
+  const warga = source.warga as Record<string, unknown> | undefined;
+  if (!admin || !finance || !warga) return null;
+
+  const needActionRows = Array.isArray(finance.need_action_rows)
+    ? finance.need_action_rows.map((row) => {
+        const item = (row ?? {}) as Record<string, unknown>;
+        return {
+          id: asString(item.id),
+          house_id: asString(item.house_id),
+          unit: asString(item.unit),
+          periode: asString(item.periode),
+          amount: asString(item.amount),
+          status: asString(item.status),
+          status_date: asString(item.status_date),
+        };
+      })
+    : [];
+
+  const latestTransactions = Array.isArray(finance.latest_transactions)
+    ? finance.latest_transactions.map((row) => {
+        const item = (row ?? {}) as Record<string, unknown>;
+        return {
+          id: asString(item.id),
+          transaction_name: asString(item.transaction_name),
+          transaction_type: asString(item.transaction_type),
+          category: asString(item.category),
+          amount: asString(item.amount),
+          payment_method: asString(item.payment_method),
+          status: asString(item.status),
+          status_date: asString(item.status_date),
+        };
+      })
+    : [];
+
+  return {
+    admin: {
+      total_houses: toNumber(admin.total_houses),
+      total_warga: toNumber(admin.total_warga),
+      paid_count: toNumber(admin.paid_count),
+      unpaid_count: toNumber(admin.unpaid_count),
+    },
+    finance: {
+      success_count: toNumber(finance.success_count),
+      success_total: toNumber(finance.success_total),
+      need_verification_count: toNumber(finance.need_verification_count),
+      need_verification_total: toNumber(finance.need_verification_total),
+      need_follow_up_count: toNumber(finance.need_follow_up_count),
+      need_follow_up_total: toNumber(finance.need_follow_up_total),
+      total_unit_count: toNumber(finance.total_unit_count),
+      occupied_unit_count: toNumber(finance.occupied_unit_count),
+      need_action_rows: needActionRows,
+      latest_transactions: latestTransactions,
+    },
+    warga: {
+      total_lunas: toNumber(warga.total_lunas),
+      total_menunggu_verifikasi: toNumber(warga.total_menunggu_verifikasi),
+      total_belum_bayar: toNumber(warga.total_belum_bayar),
+    },
+  };
+}
+
+function mapOverviewSnapshotRow(row: OverviewSnapshotStorageRow | undefined): OverviewSnapshot | null {
+  if (!row) return null;
+  const normalized = normalizeOverviewSnapshotPayload(row.payload);
+  if (!normalized) return null;
+  return {
+    generated_at: row.generated_at,
+    generated_by: row.generated_by,
+    ...normalized,
+  };
+}
+
+export async function refreshOverviewSnapshot(actor: string) {
+  const transaction = await pool.connect();
+  try {
+    await beginTransaction(transaction);
+    await transaction.query("SELECT pg_advisory_xact_lock($1)", [OVERVIEW_REFRESH_LOCK_ID]);
+
+    const adminStatsResult = await transaction.query<OverviewAdminStatsRow>(`
+        SELECT
+          (SELECT COUNT(*) FROM houses)::bigint AS total_houses,
+          (SELECT COUNT(*) FROM users WHERE role = 'warga')::bigint AS total_warga,
+          (SELECT COUNT(*) FROM bills WHERE status = 'Lunas')::bigint AS paid_count,
+          (SELECT COUNT(*) FROM bills WHERE status <> 'Lunas')::bigint AS unpaid_count
+      `);
+    const financeStatsResult = await transaction.query<OverviewFinanceStatsRow>(`
+        SELECT
+          COUNT(*) FILTER (WHERE b.status = 'Lunas')::bigint AS success_count,
+          COALESCE(
+            SUM(COALESCE(NULLIF(regexp_replace(b.amount, '[^0-9-]', '', 'g'), ''), '0')::bigint)
+            FILTER (WHERE b.status = 'Lunas'),
+            0
+          )::bigint AS success_total,
+          COUNT(*) FILTER (WHERE b.status = 'Menunggu Verifikasi')::bigint AS need_verification_count,
+          COALESCE(
+            SUM(COALESCE(NULLIF(regexp_replace(b.amount, '[^0-9-]', '', 'g'), ''), '0')::bigint)
+            FILTER (WHERE b.status = 'Menunggu Verifikasi'),
+            0
+          )::bigint AS need_verification_total,
+          COUNT(*) FILTER (WHERE b.status = 'Belum bayar')::bigint AS need_follow_up_count,
+          COALESCE(
+            SUM(COALESCE(NULLIF(regexp_replace(b.amount, '[^0-9-]', '', 'g'), ''), '0')::bigint)
+            FILTER (WHERE b.status = 'Belum bayar'),
+            0
+          )::bigint AS need_follow_up_total,
+          (SELECT COUNT(*) FROM houses)::bigint AS total_unit_count,
+          (SELECT COUNT(*) FROM houses WHERE is_occupied = TRUE)::bigint AS occupied_unit_count
+        FROM bills b
+      `);
+    const wargaStatsResult = await transaction.query<OverviewWargaStatsRow>(`
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'Lunas')::bigint AS total_lunas,
+          COUNT(*) FILTER (WHERE status = 'Menunggu Verifikasi')::bigint AS total_menunggu_verifikasi,
+          COUNT(*) FILTER (WHERE status = 'Belum bayar')::bigint AS total_belum_bayar
+        FROM bills
+      `);
+    const needActionResult = await transaction.query<OverviewFinanceNeedActionRow>(`
+        SELECT
+          b.id,
+          b.house_id,
+          COALESCE(CONCAT('Blok ', h.blok, ' - No ', h.nomor), '-') AS unit,
+          b.periode,
+          b.amount,
+          b.status,
+          b.status_date
+        FROM bills b
+        LEFT JOIN houses h ON h.id = b.house_id
+        WHERE b.status = 'Menunggu Verifikasi'
+        ORDER BY b.status_date DESC, b.id DESC
+        LIMIT 10
+      `);
+    const latestTransactionsResult = await transaction.query<OverviewFinanceLatestTransactionRow>(`
+        SELECT
+          id,
+          transaction_name,
+          transaction_type,
+          category,
+          amount,
+          payment_method,
+          status,
+          status_date
+        FROM transactions
+        ORDER BY COALESCE(status_date, date) DESC, id DESC
+        LIMIT 5
+      `);
+
+    const adminStats = adminStatsResult.rows[0] ?? ({} as OverviewAdminStatsRow);
+    const financeStats = financeStatsResult.rows[0] ?? ({} as OverviewFinanceStatsRow);
+    const wargaStats = wargaStatsResult.rows[0] ?? ({} as OverviewWargaStatsRow);
+
+    const payloadWithoutMeta: Omit<OverviewSnapshot, "generated_at" | "generated_by"> = {
+      admin: {
+        total_houses: toNumber(adminStats.total_houses),
+        total_warga: toNumber(adminStats.total_warga),
+        paid_count: toNumber(adminStats.paid_count),
+        unpaid_count: toNumber(adminStats.unpaid_count),
+      },
+      finance: {
+        success_count: toNumber(financeStats.success_count),
+        success_total: toNumber(financeStats.success_total),
+        need_verification_count: toNumber(financeStats.need_verification_count),
+        need_verification_total: toNumber(financeStats.need_verification_total),
+        need_follow_up_count: toNumber(financeStats.need_follow_up_count),
+        need_follow_up_total: toNumber(financeStats.need_follow_up_total),
+        total_unit_count: toNumber(financeStats.total_unit_count),
+        occupied_unit_count: toNumber(financeStats.occupied_unit_count),
+        need_action_rows: needActionResult.rows,
+        latest_transactions: latestTransactionsResult.rows,
+      },
+      warga: {
+        total_lunas: toNumber(wargaStats.total_lunas),
+        total_menunggu_verifikasi: toNumber(wargaStats.total_menunggu_verifikasi),
+        total_belum_bayar: toNumber(wargaStats.total_belum_bayar),
+      },
+    };
+
+    const upsertResult = await transaction.query<OverviewSnapshotStorageRow>(
+      `
+        INSERT INTO overview_snapshots (scope, payload, generated_at, generated_by)
+        VALUES ($1, $2::jsonb, NOW(), $3)
+        ON CONFLICT (scope) DO UPDATE
+        SET payload = EXCLUDED.payload,
+            generated_at = EXCLUDED.generated_at,
+            generated_by = EXCLUDED.generated_by
+        RETURNING scope, payload, generated_at, generated_by
+      `,
+      [OVERVIEW_SNAPSHOT_SCOPE, JSON.stringify(payloadWithoutMeta), actor],
+    );
+
+    await commitTransaction(transaction);
+    const snapshot = mapOverviewSnapshotRow(upsertResult.rows[0]);
+    if (!snapshot) {
+      throw new ApiHttpError(500, "Server error", "Gagal membuat snapshot overview.");
+    }
+    return snapshot;
+  } catch (error) {
+    await rollbackTransaction(transaction).catch(() => null);
+    throwServerError(error);
+  } finally {
+    transaction.release();
+  }
+}
+
+export async function getOverviewSnapshot() {
+  try {
+    const result = await query<OverviewSnapshotStorageRow>(
+      "SELECT scope, payload, generated_at, generated_by FROM overview_snapshots WHERE scope = $1 LIMIT 1",
+      [OVERVIEW_SNAPSHOT_SCOPE],
+    );
+    const snapshot = mapOverviewSnapshotRow(result.rows[0]);
+    if (snapshot) return snapshot;
+    return refreshOverviewSnapshot("system@smart-cluster");
+  } catch (error) {
+    throwServerError(error);
+  }
 }
 
 export async function listAuditLogs(params: { table?: string | null; recordId?: string | null; limit?: number }) {

@@ -1,127 +1,73 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Home, NotebookText, Users, Wallet } from "lucide-react";
+import { AlertCircle, Home, NotebookText, RefreshCw, Users, Wallet } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { Badge } from "@/components/ui/badge";
 import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
+import { SuccessToast } from "@/components/ui/success-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuthSession } from "@/lib/auth-client";
-import { apiClient } from "@/lib/api-client";
-import { formatRupiah, formatRupiahFromAny, parseRupiahToNumber } from "@/lib/currency";
-import { BillRow, HouseRow, TransactionRow, UserRow } from "@/lib/mock-data";
+import { apiClient, emitDataChanged, OverviewSnapshotRow } from "@/lib/api-client";
+import { formatRupiah, formatRupiahFromAny } from "@/lib/currency";
+
+const EMPTY_SNAPSHOT: OverviewSnapshotRow = {
+  generated_at: "",
+  generated_by: "",
+  admin: {
+    total_houses: 0,
+    total_warga: 0,
+    paid_count: 0,
+    unpaid_count: 0,
+  },
+  finance: {
+    success_count: 0,
+    success_total: 0,
+    need_verification_count: 0,
+    need_verification_total: 0,
+    need_follow_up_count: 0,
+    need_follow_up_total: 0,
+    total_unit_count: 0,
+    occupied_unit_count: 0,
+    need_action_rows: [],
+    latest_transactions: [],
+  },
+  warga: {
+    total_lunas: 0,
+    total_menunggu_verifikasi: 0,
+    total_belum_bayar: 0,
+  },
+};
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { session } = useAuthSession();
-  const [users, setUsers] = useState<UserRow[]>([]);
-  const [houses, setHouses] = useState<HouseRow[]>([]);
-  const [bills, setBills] = useState<BillRow[]>([]);
-  const [transactions, setTransactions] = useState<TransactionRow[]>([]);
+  const actorEmail = session?.email ?? "system@smart-cluster";
+  const [snapshot, setSnapshot] = useState<OverviewSnapshotRow | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [successToast, setSuccessToast] = useState("");
   const [showServerStatus, setShowServerStatus] = useState(false);
   const [openedFromQuery, setOpenedFromQuery] = useState(false);
   const shouldLogTableData = process.env.NODE_ENV !== "production";
+
+  const isFinance = session?.role === "finance";
+  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
   useEffect(() => {
     void loadDashboardData();
     window.addEventListener("smart-perumahan-data-changed", loadDashboardData);
     return () => window.removeEventListener("smart-perumahan-data-changed", loadDashboardData);
   }, []);
-
-  async function loadDashboardData() {
-    try {
-      setLoading(true);
-      setLoadError("");
-      const [usersData, housesData, billsData, transactionsData] = await Promise.all([
-        apiClient.getUsers(),
-        apiClient.getHouses(),
-        apiClient.getBills(),
-        apiClient.getTransactions(),
-      ]);
-      setUsers(usersData);
-      setHouses(housesData);
-      setBills(billsData);
-      setTransactions(transactionsData);
-    } catch (error) {
-      setUsers([]);
-      setHouses([]);
-      setBills([]);
-      setTransactions([]);
-      setLoadError(error instanceof Error ? error.message : "Gagal memuat dashboard.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const isFinance = session?.role === "finance";
-  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
-
-  const houseById = useMemo(() => new Map(houses.map((house) => [house.id, house])), [houses]);
-
-  const adminMetrics = useMemo(() => {
-    const paid = bills.filter((item) => item.status === "Lunas").length;
-    const unpaid = bills.filter((item) => item.status !== "Lunas").length;
-    return { paid, unpaid };
-  }, [bills]);
-
-  const financeMetrics = useMemo(() => {
-    const successPayments = bills.filter((item) => item.status === "Lunas");
-    const needVerification = bills.filter((item) => item.status === "Menunggu Verifikasi");
-    const needFollowUp = bills.filter((item) => item.status === "Belum bayar");
-
-    return {
-      successCount: successPayments.length,
-      successTotal: successPayments.reduce((sum, item) => sum + parseRupiahToNumber(item.amount), 0),
-      needVerificationCount: needVerification.length,
-      needVerificationTotal: needVerification.reduce((sum, item) => sum + parseRupiahToNumber(item.amount), 0),
-      needFollowUpCount: needFollowUp.length,
-      needFollowUpTotal: needFollowUp.reduce((sum, item) => sum + parseRupiahToNumber(item.amount), 0),
-      totalUnitCount: houses.length,
-      occupiedUnitCount: houses.filter((item) => item.isOccupied).length,
-    };
-  }, [bills, houses]);
-
-  const financeBillsNeedAction = useMemo(() => {
-    return bills
-      .filter((item) => item.status === "Menunggu Verifikasi")
-      .sort((a, b) => new Date(b.status_date).getTime() - new Date(a.status_date).getTime())
-      .slice(0, 10);
-  }, [bills]);
-
-  const financeLatestTransactions = useMemo(() => {
-    return transactions
-      .slice()
-      .sort((a, b) => {
-        const timeA = new Date(a.status_date || a.date).getTime();
-        const timeB = new Date(b.status_date || b.date).getTime();
-        return timeB - timeA;
-      })
-      .slice(0, 5);
-  }, [transactions]);
-
-  useEffect(() => {
-    if (!shouldLogTableData) return;
-    console.log("[Table][Dashboard Admin] users:", users);
-    console.log("[Table][Dashboard Admin] houses:", houses);
-    console.log("[Table][Dashboard Admin] ipl:", bills);
-    console.log("[Table][Dashboard Admin] transactions:", transactions);
-  }, [shouldLogTableData, users, houses, bills, transactions]);
-
-  useEffect(() => {
-    if (!shouldLogTableData) return;
-    if (!isFinance) return;
-    console.log("[Table][Dashboard Finance] iplNeedAction:", financeBillsNeedAction);
-    console.log("[Table][Dashboard Finance] latestTransactions:", financeLatestTransactions);
-  }, [shouldLogTableData, isFinance, financeBillsNeedAction, financeLatestTransactions]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -146,6 +92,35 @@ export default function AdminDashboardPage() {
     };
   }, []);
 
+  async function loadDashboardData() {
+    try {
+      setLoading(true);
+      setLoadError("");
+      const response = await apiClient.getOverviewSnapshot();
+      setSnapshot(response.snapshot ?? EMPTY_SNAPSHOT);
+    } catch (error) {
+      setSnapshot(null);
+      setLoadError(error instanceof Error ? error.message : "Gagal memuat dashboard.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refreshSnapshotData() {
+    try {
+      setRefreshing(true);
+      setLoadError("");
+      const response = await apiClient.refreshOverviewSnapshot({ actorEmail });
+      setSnapshot(response.snapshot ?? EMPTY_SNAPSHOT);
+      setSuccessToast("Overview berhasil diperbarui.");
+      emitDataChanged();
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Gagal refresh data overview.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   function closeServerStatusModal() {
     setShowServerStatus(false);
     if (openedFromQuery) {
@@ -154,11 +129,32 @@ export default function AdminDashboardPage() {
     }
   }
 
-  function unitLabel(houseId: string) {
-    const house = houseById.get(houseId);
-    if (!house) return "-";
-    return `Blok ${house.blok} - No ${house.nomor}`;
-  }
+  const safeSnapshot = snapshot ?? EMPTY_SNAPSHOT;
+  const adminMetrics = safeSnapshot.admin ?? EMPTY_SNAPSHOT.admin!;
+  const financeMetrics = safeSnapshot.finance ?? EMPTY_SNAPSHOT.finance!;
+  const financeBillsNeedAction = financeMetrics.need_action_rows ?? [];
+  const financeLatestTransactions = financeMetrics.latest_transactions ?? [];
+
+  const snapshotGeneratedLabel = useMemo(() => {
+    if (!safeSnapshot.generated_at) return "";
+    return safeSnapshot.generated_by
+      ? `Snapshot: ${safeSnapshot.generated_by}`
+      : "Snapshot overview terbaru";
+  }, [safeSnapshot.generated_at, safeSnapshot.generated_by]);
+
+  useEffect(() => {
+    if (!shouldLogTableData) return;
+    console.log("[Table][Dashboard Overview Snapshot]:", safeSnapshot);
+  }, [shouldLogTableData, safeSnapshot]);
+
+  const headerActions = isAdmin
+    ? (
+        <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing..." onClick={refreshSnapshotData}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh Data
+        </Button>
+      )
+    : null;
 
   if (isFinance) {
     return (
@@ -166,7 +162,13 @@ export default function AdminDashboardPage() {
         <DashboardHeader
           title="Dashboard Finance"
           description="Ringkasan data verifikasi IPL, arus pemasukan, dan daftar unit yang perlu ditindak."
+          actions={headerActions}
         />
+        {safeSnapshot.generated_at ? (
+          <p className="mb-3 text-xs text-muted-foreground">
+            {snapshotGeneratedLabel} • <DateTimeText value={safeSnapshot.generated_at} />
+          </p>
+        ) : null}
         {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
         <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -174,8 +176,8 @@ export default function AdminDashboardPage() {
             <CardContent className="flex items-center justify-between p-4">
               <div>
                 <p className="text-xs text-muted-foreground">Success Payment</p>
-                <p className="font-heading text-xl">{financeMetrics.successCount}</p>
-                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.successTotal)}</p>
+                <p className="font-heading text-xl">{financeMetrics.success_count}</p>
+                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.success_total)}</p>
               </div>
               <NotebookText className="h-4 w-4 text-muted-foreground" />
             </CardContent>
@@ -184,8 +186,8 @@ export default function AdminDashboardPage() {
             <CardContent className="flex items-center justify-between p-4">
               <div>
                 <p className="text-xs text-muted-foreground">Need Verification</p>
-                <p className="font-heading text-xl">{financeMetrics.needVerificationCount}</p>
-                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.needVerificationTotal)}</p>
+                <p className="font-heading text-xl">{financeMetrics.need_verification_count}</p>
+                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.need_verification_total)}</p>
               </div>
               <AlertCircle className="h-4 w-4 text-muted-foreground" />
             </CardContent>
@@ -194,8 +196,8 @@ export default function AdminDashboardPage() {
             <CardContent className="flex items-center justify-between p-4">
               <div>
                 <p className="text-xs text-muted-foreground">Need Follow Up</p>
-                <p className="font-heading text-xl">{financeMetrics.needFollowUpCount}</p>
-                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.needFollowUpTotal)}</p>
+                <p className="font-heading text-xl">{financeMetrics.need_follow_up_count}</p>
+                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.need_follow_up_total)}</p>
               </div>
               <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardContent>
@@ -204,8 +206,8 @@ export default function AdminDashboardPage() {
             <CardContent className="flex items-center justify-between p-4">
               <div>
                 <p className="text-xs text-muted-foreground">Unit Summary</p>
-                <p className="font-heading text-xl">{`${financeMetrics.totalUnitCount} House`}</p>
-                <p className="text-xs text-muted-foreground">{`${financeMetrics.occupiedUnitCount} Dihuni`}</p>
+                <p className="font-heading text-xl">{`${financeMetrics.total_unit_count} House`}</p>
+                <p className="text-xs text-muted-foreground">{`${financeMetrics.occupied_unit_count} Dihuni`}</p>
               </div>
               <Home className="h-4 w-4 text-muted-foreground" />
             </CardContent>
@@ -226,7 +228,7 @@ export default function AdminDashboardPage() {
                   financeBillsNeedAction.map((item) => (
                     <div key={item.id} className="rounded-lg border border-border bg-background p-3">
                       <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm font-medium">{unitLabel(item.house_id)}</p>
+                        <p className="text-sm font-medium">{item.unit || "-"}</p>
                         <PaymentStatusBadge status={item.status} />
                       </div>
                       <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
@@ -264,7 +266,7 @@ export default function AdminDashboardPage() {
                         <TableRow key={item.id}>
                           <TableCell className="whitespace-normal">
                             <div className="space-y-1">
-                              <p>{unitLabel(item.house_id)}</p>
+                              <p>{item.unit || "-"}</p>
                               <p className="text-xs text-muted-foreground md:hidden">Periode: {item.periode}</p>
                               <p className="text-xs text-muted-foreground lg:hidden">
                                 Status Date: <DateTimeText value={item.status_date} />
@@ -389,13 +391,23 @@ export default function AdminDashboardPage() {
             </CardContent>
           </Card>
         </div>
+        <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
       </div>
     );
   }
 
   return (
     <div>
-      <DashboardHeader title="Dashboard Admin" description="Ringkasan operasional IPL: rumah, warga, dan status tagihan." />
+      <DashboardHeader
+        title="Dashboard Admin"
+        description="Ringkasan operasional IPL: rumah, warga, dan status tagihan."
+        actions={headerActions}
+      />
+      {safeSnapshot.generated_at ? (
+        <p className="mb-3 text-xs text-muted-foreground">
+          {snapshotGeneratedLabel} • <DateTimeText value={safeSnapshot.generated_at} />
+        </p>
+      ) : null}
       {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
       <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -403,7 +415,7 @@ export default function AdminDashboardPage() {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-xs text-muted-foreground">Total Rumah</p>
-              <p className="font-heading text-xl">{houses.length}</p>
+              <p className="font-heading text-xl">{adminMetrics.total_houses}</p>
             </div>
             <Home className="h-4 w-4 text-muted-foreground" />
           </CardContent>
@@ -412,7 +424,7 @@ export default function AdminDashboardPage() {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-xs text-muted-foreground">Total Warga</p>
-              <p className="font-heading text-xl">{users.filter((item) => item.role === "warga").length}</p>
+              <p className="font-heading text-xl">{adminMetrics.total_warga}</p>
             </div>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardContent>
@@ -421,7 +433,7 @@ export default function AdminDashboardPage() {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-xs text-muted-foreground">Tagihan Lunas</p>
-              <p className="font-heading text-xl">{adminMetrics.paid}</p>
+              <p className="font-heading text-xl">{adminMetrics.paid_count}</p>
             </div>
             <NotebookText className="h-4 w-4 text-muted-foreground" />
           </CardContent>
@@ -430,7 +442,7 @@ export default function AdminDashboardPage() {
           <CardContent className="flex items-center justify-between p-4">
             <div>
               <p className="text-xs text-muted-foreground">Belum Bayar</p>
-              <p className="font-heading text-xl">{adminMetrics.unpaid}</p>
+              <p className="font-heading text-xl">{adminMetrics.unpaid_count}</p>
             </div>
             <Wallet className="h-4 w-4 text-muted-foreground" />
           </CardContent>
@@ -438,6 +450,7 @@ export default function AdminDashboardPage() {
       </section>
 
       <ServerStatusModal open={showServerStatus} onClose={closeServerStatusModal} />
+      <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
     </div>
   );
 }
