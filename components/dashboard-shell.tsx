@@ -111,8 +111,8 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
 
             <Button
               type="button"
-              variant="destructive"
-              className="mt-4 w-full"
+              variant="outline"
+              className="mt-4 w-full border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
               onClick={onLogout}
               disabled={loggingOut}
             >
