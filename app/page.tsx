@@ -155,7 +155,7 @@ export default async function Page() {
 
         <section className="relative mb-6 overflow-visible pb-6 md:pb-8">
           <div className="relative z-10 pr-[110px] sm:pr-[170px] lg:pr-[260px]">
-            <h1 className="max-w-4xl font-heading text-4xl leading-[1.2] tracking-tight sm:text-5xl md:text-6xl">
+            <h1 className="max-w-4xl font-heading text-[2rem] leading-[1.28] tracking-tight sm:text-5xl sm:leading-[1.2] md:text-6xl">
               <span className="relative inline-block font-black after:absolute after:bottom-0 after:left-0 after:h-[0.2em] after:w-full after:rounded-full after:bg-[hsl(var(--primary)/0.26)]">
                 Solusi digital
               </span>{" "}
@@ -170,14 +170,14 @@ export default async function Page() {
             </p>
           </div>
 
-          <div className="pointer-events-none absolute right-[30px] top-1/2 z-0 w-full max-w-[180px] -translate-y-1/2 sm:right-3 sm:max-w-[250px] lg:right-6 lg:max-w-[325px]">
+          <div className="pointer-events-none absolute right-[30px] top-1/2 z-0 hidden w-full max-w-[180px] -translate-y-1/2 sm:block sm:right-3 sm:max-w-[250px] lg:right-6 lg:max-w-[325px]">
             <Image
               src="/brand/finance-hero-illustration.svg"
               alt="Ilustrasi transaksi keuangan"
               width={900}
               height={780}
               priority
-              className="animate-cloud-bounce relative mx-auto h-auto w-full drop-shadow-[0_14px_26px_hsl(var(--primary)/0.2)]"
+              className="relative mx-auto h-auto w-full drop-shadow-[0_14px_26px_hsl(var(--primary)/0.2)] sm:animate-cloud-bounce"
             />
           </div>
         </section>
