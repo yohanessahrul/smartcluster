@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
-import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { ApiTableLoadingHead, ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { RoleBadge } from "@/components/ui/role-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
@@ -512,23 +512,27 @@ export function UsersCrud() {
               </Button>
             </div>
           </div>
-          <Table className="min-w-[920px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[44px]">
-                  <input
-                    type="checkbox"
-                    checked={allPageSelected}
-                    onChange={(event) => togglePageSelection(event.target.checked)}
-                    aria-label="Pilih semua data pada halaman"
-                  />
-                </TableHead>
-                <TableHead>Pengguna</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="min-w-[132px]">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
+          <Table className={loading ? "" : "min-w-[920px]"}>
+            {loading ? (
+              <ApiTableLoadingHead colSpan={5} />
+            ) : (
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[44px]">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      onChange={(event) => togglePageSelection(event.target.checked)}
+                      aria-label="Pilih semua data pada halaman"
+                    />
+                  </TableHead>
+                  <TableHead>Pengguna</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="min-w-[132px]">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+            )}
             <TableBody>
               {loading ? (
                 <ApiTableLoadingRow colSpan={5} message="Memuat data pengguna..." />

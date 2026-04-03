@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
-import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { ApiTableLoadingHead, ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
@@ -1157,27 +1157,31 @@ export function BillsCrud() {
               </Button>
             </div>
           </div>
-          <Table className="min-w-[920px]">
-            <TableHeader>
-              <TableRow>
-                {isAdmin ? (
-                  <TableHead className="w-[44px]">
-                    <input
-                      type="checkbox"
-                      checked={allPageSelected}
-                      onChange={(event) => togglePageSelection(event.target.checked)}
-                      aria-label="Pilih semua data IPL pada halaman"
-                    />
-                  </TableHead>
-                ) : null}
-                <TableHead>Unit</TableHead>
-                <TableHead>Periode</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="min-w-[132px]">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
+          <Table className={loading ? "" : "min-w-[920px]"}>
+            {loading ? (
+              <ApiTableLoadingHead colSpan={listColSpan} />
+            ) : (
+              <TableHeader>
+                <TableRow>
+                  {isAdmin ? (
+                    <TableHead className="w-[44px]">
+                      <input
+                        type="checkbox"
+                        checked={allPageSelected}
+                        onChange={(event) => togglePageSelection(event.target.checked)}
+                        aria-label="Pilih semua data IPL pada halaman"
+                      />
+                    </TableHead>
+                  ) : null}
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Periode</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="min-w-[132px]">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+            )}
             <TableBody>
               {loading ? (
                 <ApiTableLoadingRow colSpan={listColSpan} message="Memuat data IPL..." />
@@ -1418,15 +1422,19 @@ export function BillsCrud() {
             </p>
           </div>
 
-          <Table className="min-w-[900px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Waktu Update</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Status Date</TableHead>
-              </TableRow>
-            </TableHeader>
+          <Table className={previewLoading ? "" : "min-w-[900px]"}>
+            {previewLoading ? (
+              <ApiTableLoadingHead colSpan={4} />
+            ) : (
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Waktu Update</TableHead>
+                  <TableHead>Author</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Status Date</TableHead>
+                </TableRow>
+              </TableHeader>
+            )}
             <TableBody>
               {previewLoading ? (
                 <ApiTableLoadingRow colSpan={4} message="Memuat detail perubahan status..." />

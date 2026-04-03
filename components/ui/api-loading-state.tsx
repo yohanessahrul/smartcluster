@@ -1,8 +1,7 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-
-import { TableCell, TableRow } from "@/components/ui/table";
+import { TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { BrandLoadingContent } from "@/components/ui/page-loading-screen";
 import { cn } from "@/lib/utils";
 
 type ApiLoadingStateProps = {
@@ -15,18 +14,22 @@ type ApiTableLoadingRowProps = {
   message?: string;
 };
 
-const DEFAULT_LOADING_MESSAGE = "Memuat data dari server...";
+type ApiTableLoadingHeadProps = {
+  colSpan: number;
+  label?: string;
+};
+
+const DEFAULT_LOADING_MESSAGE = "Loading...";
 
 export function ApiLoadingState({ message = DEFAULT_LOADING_MESSAGE, className }: ApiLoadingStateProps) {
   return (
     <div
       className={cn(
-        "flex min-h-[92px] items-center justify-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-4 py-5 text-sm text-muted-foreground",
+        "flex min-h-[120px] items-center justify-center rounded-lg border border-border/60 bg-muted/30 px-4 py-5",
         className
       )}
     >
-      <Loader2 className="h-4 w-4 animate-spin" />
-      <span>{message}</span>
+      <BrandLoadingContent label={message} logoClassName="h-10 w-10" />
     </div>
   );
 }
@@ -34,12 +37,21 @@ export function ApiLoadingState({ message = DEFAULT_LOADING_MESSAGE, className }
 export function ApiTableLoadingRow({ colSpan, message = DEFAULT_LOADING_MESSAGE }: ApiTableLoadingRowProps) {
   return (
     <TableRow>
-      <TableCell colSpan={colSpan} className="py-6 text-center text-muted-foreground">
-        <div className="flex items-center justify-center gap-2 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span>{message}</span>
-        </div>
+      <TableCell colSpan={colSpan} className="py-6 text-center text-muted-foreground whitespace-normal first:pl-0 last:pr-0">
+        <BrandLoadingContent label={message} logoClassName="h-10 w-10" />
       </TableCell>
     </TableRow>
+  );
+}
+
+export function ApiTableLoadingHead({ colSpan, label = "Loading..." }: ApiTableLoadingHeadProps) {
+  return (
+    <TableHeader>
+      <TableRow>
+        <TableHead colSpan={colSpan} className="text-center">
+          {label}
+        </TableHead>
+      </TableRow>
+    </TableHeader>
   );
 }

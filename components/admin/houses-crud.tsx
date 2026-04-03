@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
-import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { ApiTableLoadingHead, ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination, useTablePagination } from "@/components/ui/table-pagination";
@@ -730,24 +730,28 @@ export function HousesCrud() {
               </Button>
             </div>
           </div>
-          <Table className="min-w-[980px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[44px]">
-                  <input
-                    type="checkbox"
-                    checked={allPageSelected}
-                    onChange={(event) => togglePageSelection(event.target.checked)}
-                    aria-label="Pilih semua data rumah pada halaman"
-                  />
-                </TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Kepemilikan</TableHead>
-                <TableHead>Dihuni</TableHead>
-                <TableHead>Pengguna Terhubung</TableHead>
-                <TableHead className="min-w-[132px]">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
+          <Table className={loading ? "" : "min-w-[980px]"}>
+            {loading ? (
+              <ApiTableLoadingHead colSpan={6} />
+            ) : (
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[44px]">
+                    <input
+                      type="checkbox"
+                      checked={allPageSelected}
+                      onChange={(event) => togglePageSelection(event.target.checked)}
+                      aria-label="Pilih semua data rumah pada halaman"
+                    />
+                  </TableHead>
+                  <TableHead>Unit</TableHead>
+                  <TableHead>Kepemilikan</TableHead>
+                  <TableHead>Dihuni</TableHead>
+                  <TableHead>Pengguna Terhubung</TableHead>
+                  <TableHead className="min-w-[132px]">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+            )}
             <TableBody>
               {loading ? (
                 <ApiTableLoadingRow colSpan={6} message="Memuat data rumah..." />

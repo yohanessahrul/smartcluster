@@ -4,9 +4,9 @@ import Link from "next/link";
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
-import { ApiLoadingState } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLoadingScreen } from "@/components/ui/page-loading-screen";
 import { useAuthSession } from "@/lib/auth-client";
 
 type AdminAccessGuardProps = {
@@ -18,16 +18,7 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
   const pathname = usePathname();
 
   if (loading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Memuat sesi admin...</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ApiLoadingState message="Memuat sesi admin dari server..." />
-        </CardContent>
-      </Card>
-    );
+    return <PageLoadingScreen />;
   }
 
   if (!session?.email) {

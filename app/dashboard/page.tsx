@@ -5,9 +5,9 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, Users } from "lucide-react";
 
-import { ApiLoadingState } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageLoadingScreen } from "@/components/ui/page-loading-screen";
 import { useAuthSession } from "@/lib/auth-client";
 
 export default function DashboardPage() {
@@ -28,11 +28,7 @@ export default function DashboardPage() {
   }, [loading, router, session]);
 
   if (loading) {
-    return (
-      <div className="mx-auto max-w-4xl py-6">
-        <ApiLoadingState message="Memuat dashboard..." />
-      </div>
-    );
+    return <PageLoadingScreen />;
   }
 
   return (

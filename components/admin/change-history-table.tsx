@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { ApiTableLoadingHead, ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { SimpleModal } from "@/components/ui/simple-modal";
@@ -33,15 +33,19 @@ export function ChangeHistoryTable({ title, rows, loading }: ChangeHistoryTableP
           <CardTitle>{title}</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table className="min-w-[760px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal Update</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead>Table</TableHead>
-                <TableHead>Diff</TableHead>
-              </TableRow>
-            </TableHeader>
+          <Table className={loading ? "" : "min-w-[760px]"}>
+            {loading ? (
+              <ApiTableLoadingHead colSpan={4} />
+            ) : (
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tanggal Update</TableHead>
+                  <TableHead>Author</TableHead>
+                  <TableHead>Table</TableHead>
+                  <TableHead>Diff</TableHead>
+                </TableRow>
+              </TableHeader>
+            )}
             <TableBody>
               {loading ? (
                 <ApiTableLoadingRow colSpan={4} message="Memuat history perubahan..." />

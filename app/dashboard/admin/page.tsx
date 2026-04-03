@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { Badge } from "@/components/ui/badge";
-import { ApiTableLoadingRow } from "@/components/ui/api-loading-state";
+import { ApiTableLoadingHead, ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
@@ -254,16 +254,20 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Unit</TableHead>
-                      <TableHead className="hidden md:table-cell">Periode</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden lg:table-cell">Status Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                <Table className={loading ? "" : "min-w-[760px]"}>
+                  {loading ? (
+                    <ApiTableLoadingHead colSpan={5} />
+                  ) : (
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Unit</TableHead>
+                        <TableHead className="hidden md:table-cell">Periode</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="hidden lg:table-cell">Status Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                  )}
                   <TableBody>
                     {loading ? (
                       <ApiTableLoadingRow colSpan={5} message="Memuat data IPL..." />
@@ -342,17 +346,21 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="hidden md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="hidden md:table-cell">ID</TableHead>
-                      <TableHead>Detail Transaksi</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead className="hidden lg:table-cell">Payment Method</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden lg:table-cell">Status Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                <Table className={loading ? "" : "min-w-[920px]"}>
+                  {loading ? (
+                    <ApiTableLoadingHead colSpan={6} />
+                  ) : (
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="hidden md:table-cell">ID</TableHead>
+                        <TableHead>Detail Transaksi</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead className="hidden lg:table-cell">Payment Method</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="hidden lg:table-cell">Status Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                  )}
                   <TableBody>
                     {loading ? (
                       <ApiTableLoadingRow colSpan={6} message="Memuat data transaksi..." />
