@@ -64,9 +64,9 @@ export function WargaAccessGuard({ children }: WargaAccessGuardProps) {
   }
 
   const houseNotLinked = !data.house;
-  const isOverviewPage = pathname === "/dashboard/warga" || pathname === "/dashboard/warga/";
+  const isBerandaPage = pathname === "/dashboard/warga" || pathname === "/dashboard/warga/";
 
-  if (houseNotLinked && !isOverviewPage) {
+  if (houseNotLinked && !isBerandaPage) {
     return (
       <Card className="border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]">
         <CardHeader>
@@ -79,12 +79,12 @@ export function WargaAccessGuard({ children }: WargaAccessGuardProps) {
           </p>
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" />
-            Sementara ini hanya menu Overview yang tersedia. Reload berkala atau segera hubungi admin.
+            Sementara ini hanya menu Beranda yang tersedia. Reload berkala atau segera hubungi admin.
           </p>
           <Button asChild>
             <Link href="/dashboard/warga">
               <Home className="mr-1 h-4 w-4" />
-              Kembali ke Overview
+              Kembali ke Beranda
             </Link>
           </Button>
         </CardContent>

@@ -268,7 +268,7 @@ type CreateHouseModalProps = {
 
 function CreateHouseModal({ open, onClose, value, emailOptions, onChange, onSubmit, submitting, errorMessage }: CreateHouseModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Create House">
+    <SimpleModal open={open} onClose={onClose} title="Create Rumah">
       <HouseForm
         value={value}
         onChange={onChange}
@@ -297,7 +297,7 @@ type UpdateHouseModalProps = {
 
 function UpdateHouseModal({ open, onClose, value, onChange, onSubmit, emailOptions, submitting, errorMessage }: UpdateHouseModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Update House">
+    <SimpleModal open={open} onClose={onClose} title="Update Rumah">
       <HouseForm
         value={value}
         onChange={onChange}
@@ -371,7 +371,7 @@ export function HousesCrud() {
       setRows(housesData);
       setUserRows(usersData);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal memuat data houses.");
+      setMessage(error instanceof Error ? error.message : "Gagal memuat data rumah.");
     } finally {
       setLoading(false);
     }
@@ -379,7 +379,7 @@ export function HousesCrud() {
 
   function validateLinkedEmails(form: HouseFormState) {
     const emails = [form.primary_email.trim().toLowerCase(), form.secondary_email.trim().toLowerCase()].filter(Boolean);
-    if (emails.length > 2) return "Maksimal 2 email per house.";
+    if (emails.length > 2) return "Maksimal 2 email per rumah.";
     if (new Set(emails).size !== emails.length) return "Primary dan Secondary tidak boleh sama.";
     const unknown = emails.find((email) => !userByEmail.has(email));
     if (unknown) return `Email ${unknown} belum ada di tabel user.`;
@@ -412,9 +412,9 @@ export function HousesCrud() {
       setCreateOpen(false);
       setMessage("");
       setCreateError("");
-      setSuccessToast("House berhasil ditambahkan.");
+      setSuccessToast("Rumah berhasil ditambahkan.");
     } catch (error) {
-      setCreateError(error instanceof Error ? error.message : "Gagal menambah house.");
+      setCreateError(error instanceof Error ? error.message : "Gagal menambah rumah.");
     } finally {
       setCreateSubmitting(false);
     }
@@ -478,9 +478,9 @@ export function HousesCrud() {
       setUpdateOpen(false);
       setUpdateError("");
       setMessage("");
-      setSuccessToast("Data house berhasil diperbarui.");
+      setSuccessToast("Data rumah berhasil diperbarui.");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui house.";
+      const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui rumah.";
       setUpdateError(errorMessage);
     } finally {
       setUpdateSubmitting(false);
@@ -497,10 +497,10 @@ export function HousesCrud() {
         setUpdateOpen(false);
         setEditForm(emptyForm);
       }
-      setMessage("Data house berhasil dihapus.");
+      setMessage("Data rumah berhasil dihapus.");
       return true;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal menghapus house.");
+      setMessage(error instanceof Error ? error.message : "Gagal menghapus rumah.");
       return false;
     }
   }
@@ -547,7 +547,7 @@ export function HousesCrud() {
     try {
       const result = await deleteHousesByIds(selectedIds);
       if (!result.failedIds.length) {
-        setSuccessToast(`${result.total} house berhasil dihapus.`);
+        setSuccessToast(`${result.total} rumah berhasil dihapus.`);
       } else {
         setMessage(`Sebagian data gagal dihapus: ${result.failedIds.join(", ")}`);
       }
@@ -652,9 +652,9 @@ export function HousesCrud() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Data House</CardTitle>
+          <CardTitle>Data Rumah</CardTitle>
           <Button className="w-full sm:w-auto" onClick={openCreateModal}>
-            Create House
+            Create Rumah
           </Button>
         </CardHeader>
         <CardContent>
@@ -721,8 +721,8 @@ export function HousesCrud() {
                 type="button"
                 variant="outline"
                 className="h-10 w-10 p-0"
-                aria-label="Download report houses"
-                title="Download report houses"
+                aria-label="Download report rumah"
+                title="Download report rumah"
                 onClick={downloadFilteredReport}
                 disabled={!filteredRows.length}
               >
@@ -738,19 +738,19 @@ export function HousesCrud() {
                     type="checkbox"
                     checked={allPageSelected}
                     onChange={(event) => togglePageSelection(event.target.checked)}
-                    aria-label="Pilih semua data house pada halaman"
+                    aria-label="Pilih semua data rumah pada halaman"
                   />
                 </TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Kepemilikan</TableHead>
                 <TableHead>Dihuni</TableHead>
-                <TableHead>Linked Users</TableHead>
+                <TableHead>Pengguna Terhubung</TableHead>
                 <TableHead className="min-w-[132px]">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={6} message="Memuat data house..." />
+                <ApiTableLoadingRow colSpan={6} message="Memuat data rumah..." />
               ) : filteredRows.length ? (
                 pagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -759,7 +759,7 @@ export function HousesCrud() {
                         type="checkbox"
                         checked={selectedIds.includes(item.id)}
                         onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
-                        aria-label={`Pilih house ${item.id}`}
+                        aria-label={`Pilih rumah ${item.id}`}
                       />
                     </TableCell>
                     <TableCell>{`${item.blok}-${item.nomor}`}</TableCell>
@@ -783,8 +783,8 @@ export function HousesCrud() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          aria-label="Preview detail house"
-                          title="Preview detail house"
+                          aria-label="Preview detail rumah"
+                          title="Preview detail rumah"
                           onClick={() => openPreviewModal(item)}
                         >
                           <Eye className="h-4 w-4" />
@@ -793,8 +793,8 @@ export function HousesCrud() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          aria-label="Edit house"
-                          title="Edit house"
+                          aria-label="Edit rumah"
+                          title="Edit rumah"
                           onClick={() => openEditModal(item)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -803,8 +803,8 @@ export function HousesCrud() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
-                          aria-label="Delete house"
-                          title="Delete house"
+                          aria-label="Delete rumah"
+                          title="Delete rumah"
                           onClick={() => openDeleteModal(item.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -839,7 +839,7 @@ export function HousesCrud() {
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
-      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Houses" className="max-w-md">
+      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Rumah" className="max-w-md">
         <div className="space-y-3">
           <div>
             <label className={labelClass}>Blok</label>
@@ -910,7 +910,7 @@ export function HousesCrud() {
       <SimpleModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={`Preview Detail House${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
+        title={`Preview Detail Rumah${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
         className="w-[96vw] max-w-3xl"
       >
         <div className="space-y-3">
@@ -930,7 +930,7 @@ export function HousesCrud() {
             </p>
           </div>
           <div className="rounded-lg border border-border p-3 text-sm">
-            <p className="mb-2 text-muted-foreground">Linked Users</p>
+            <p className="mb-2 text-muted-foreground">Pengguna Terhubung</p>
             {previewRow ? linkedUsersList(previewRow).length ? (
               <div className="space-y-1">
                 {linkedUsersList(previewRow).map((itemUser) => (
@@ -955,8 +955,8 @@ export function HousesCrud() {
           setDeleteId(null);
         }}
         onConfirm={confirmDeleteHouse}
-        title="Delete House"
-        description="Data house akan dihapus permanen."
+        title="Delete Rumah"
+        description="Data rumah akan dihapus permanen."
         loading={deleting}
       />
       <DeleteConfirmModal
@@ -966,8 +966,8 @@ export function HousesCrud() {
           setBulkDeleteOpen(false);
         }}
         onConfirm={confirmBulkDeleteHouses}
-        title="Delete Multi House"
-        description={`${selectedIds.length} data house terpilih akan dihapus permanen.`}
+        title="Delete Multi Rumah"
+        description={`${selectedIds.length} data rumah terpilih akan dihapus permanen.`}
         loading={deleting}
       />
     </div>

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const snapshot = await refreshOverviewSnapshot(user.email.toLowerCase());
     return NextResponse.json({
       status: true,
-      message: "Overview berhasil diperbarui.",
+      message: "Beranda berhasil diperbarui.",
       snapshot,
     });
   } catch (error) {

@@ -149,7 +149,7 @@ export default function WargaTagihanPage() {
           <div>
             <DashboardHeader
               title="Tagihan IPL Saya"
-              description="Daftar tagihan per periode untuk house yang terhubung dengan email login."
+              description="Daftar tagihan per periode untuk rumah yang terhubung dengan email login."
             />
             <Card>
               <CardHeader>

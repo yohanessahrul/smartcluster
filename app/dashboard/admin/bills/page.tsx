@@ -6,7 +6,7 @@ export default function AdminBillsPage() {
     <div>
       <DashboardHeader
         title="IPL"
-        description="Tabel data Iuran Pemeliharaan Lingkungan (IPL)"
+        description="Tabel semua data Iuran Pemeliharaan Lingkungan (IPL)"
       />
       <BillsCrud />
     </div>

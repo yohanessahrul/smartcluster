@@ -9,10 +9,10 @@ import { UserMenuCta } from "@/components/user-menu-cta";
 import { useWargaResolvedData } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
-const overviewMenu = { href: "/dashboard/warga", label: "Overview", icon: Home } as const;
+const overviewMenu = { href: "/dashboard/warga", label: "Beranda", icon: Home } as const;
 
 const protectedMenus = [
-  { href: "/dashboard/warga", label: "Overview", icon: Home },
+  { href: "/dashboard/warga", label: "Beranda", icon: Home },
   { href: "/dashboard/warga/profile", label: "Profil", icon: UserRound },
   { href: "/dashboard/warga/tagihan", label: "IPL", icon: Receipt },
   { href: "/dashboard/warga/riwayat", label: "Riwayat Bayar", icon: ClipboardList },

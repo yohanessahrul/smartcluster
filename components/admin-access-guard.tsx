@@ -71,10 +71,10 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Role finance hanya bisa mengakses menu Overview, IPL, dan Transactions.
+              Role finance hanya bisa mengakses menu Beranda, IPL, dan Transaksi.
             </p>
             <Button asChild>
-              <Link href="/dashboard/admin">Buka Overview</Link>
+              <Link href="/dashboard/admin">Buka Beranda</Link>
             </Button>
           </CardContent>
         </Card>

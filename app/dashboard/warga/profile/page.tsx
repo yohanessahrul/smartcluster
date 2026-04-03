@@ -152,12 +152,12 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
 
   return (
     <div>
-      <DashboardHeader title="Profil House" description="Profile house otomatis berdasarkan email yang login." />
+      <DashboardHeader title="Profil Rumah" description="Profil rumah otomatis berdasarkan email yang login." />
 
       <section className="grid gap-4 xl:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Informasi House</CardTitle>
+            <CardTitle>Informasi Rumah</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
@@ -174,7 +174,7 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
 
         <Card>
           <CardHeader className="flex-row items-center justify-between pb-3">
-            <CardTitle>Akun Terhubung ke House</CardTitle>
+            <CardTitle>Akun Terhubung ke Rumah</CardTitle>
             {isPrimaryUser && hasSecondaryEmail ? (
               <Button
                 type="button"

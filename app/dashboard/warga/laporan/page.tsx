@@ -169,7 +169,7 @@ export default function WargaLaporanPage() {
         <div>
           <DashboardHeader
             title="Laporan Penggunaan Dana"
-            description={`Transparansi dana untuk house ${data.house?.id} berdasarkan data pada table transaction.`}
+            description={`Transparansi dana untuk rumah ${data.house?.id} berdasarkan data pada tabel transaksi.`}
           />
 
           <section className="mb-4 grid gap-3 md:grid-cols-3">

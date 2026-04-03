@@ -61,7 +61,7 @@ export default function WargaRiwayatPage() {
             columns: [
               { header: "ID", value: (row) => row.id },
               { header: "IPL ID", value: (row) => row.bill_id ?? "-" },
-              { header: "Transaction Type", value: (row) => row.transaction_type },
+              { header: "Tipe Transaksi", value: (row) => row.transaction_type },
               { header: "Category", value: (row) => row.category },
               { header: "Amount", value: (row) => formatRupiahFromAny(row.amount) },
               { header: "Date", value: (row) => formatDateTimeUnified(row.date) },
@@ -76,7 +76,7 @@ export default function WargaRiwayatPage() {
           <div>
             <DashboardHeader
               title="Riwayat Pembayaran"
-              description="Daftar transaksi pembayaran IPL berdasarkan house yang terhubung."
+              description="Daftar transaksi pembayaran IPL berdasarkan rumah yang terhubung."
             />
             <Card>
               <CardHeader>
@@ -125,7 +125,7 @@ export default function WargaRiwayatPage() {
                       <div key={item.id} className="rounded-lg border border-border bg-background p-3 sm:p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-xs text-muted-foreground">Transaction ID</p>
+                            <p className="text-xs text-muted-foreground">Transaksi ID</p>
                             <p className="font-medium">{item.id}</p>
                           </div>
                           <PaymentStatusBadge status={item.status} />

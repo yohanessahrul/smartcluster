@@ -203,7 +203,7 @@ function TransactionForm({
         </div>
       ) : null}
       <div>
-        <label className={labelClass}>Transaction Type</label>
+        <label className={labelClass}>Tipe Transaksi</label>
         <select
           className={inputClass}
           value={value.transaction_type}
@@ -222,7 +222,7 @@ function TransactionForm({
         </select>
       </div>
       <div>
-        <label className={labelClass}>Transaction Name</label>
+        <label className={labelClass}>Nama Transaksi</label>
         <input
           className={inputClass}
           value={value.transaction_name}
@@ -319,7 +319,7 @@ type CreateTransactionModalProps = {
 
 function CreateTransactionModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: CreateTransactionModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Create Transaction">
+    <SimpleModal open={open} onClose={onClose} title="Create Transaksi">
       <TransactionForm
         value={value}
         onChange={onChange}
@@ -348,7 +348,7 @@ type UpdateTransactionModalProps = {
 
 function UpdateTransactionModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: UpdateTransactionModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Update Transaction">
+    <SimpleModal open={open} onClose={onClose} title="Update Transaksi">
       <TransactionForm
         value={value}
         onChange={onChange}
@@ -441,7 +441,7 @@ export function TransactionsCrud() {
       const data = await apiClient.getTransactions();
       setRows(data.map(normalizeTransactionRow));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal memuat transactions.");
+      setMessage(error instanceof Error ? error.message : "Gagal memuat transaksi.");
     } finally {
       setLoading(false);
     }
@@ -451,7 +451,7 @@ export function TransactionsCrud() {
     event.preventDefault();
     setCreateError("");
     if (!createForm.status) {
-      setCreateError("Pilih status transaction terlebih dahulu.");
+      setCreateError("Pilih status transaksi terlebih dahulu.");
       return;
     }
     const transactionDate = new Date().toISOString();
@@ -474,9 +474,9 @@ export function TransactionsCrud() {
       setCreateOpen(false);
       setMessage("");
       setCreateError("");
-      setSuccessToast("Transaction berhasil ditambahkan.");
+      setSuccessToast("Transaksi berhasil ditambahkan.");
     } catch (error) {
-      setCreateError(error instanceof Error ? error.message : "Gagal menambah transaction.");
+      setCreateError(error instanceof Error ? error.message : "Gagal menambah transaksi.");
     } finally {
       setCreateSubmitting(false);
     }
@@ -514,7 +514,7 @@ export function TransactionsCrud() {
     if (!editingId) return;
     setUpdateError("");
     if (!editForm.status) {
-      const errorMessage = "Status transaction wajib dipilih.";
+      const errorMessage = "Status transaksi wajib dipilih.";
       setUpdateError(errorMessage);
       return;
     }
@@ -543,9 +543,9 @@ export function TransactionsCrud() {
       setUpdateOpen(false);
       setUpdateError("");
       setMessage("");
-      setSuccessToast("Data transaction berhasil diperbarui.");
+      setSuccessToast("Data transaksi berhasil diperbarui.");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui transaction.";
+      const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui transaksi.";
       setUpdateError(errorMessage);
     } finally {
       setUpdateSubmitting(false);
@@ -562,10 +562,10 @@ export function TransactionsCrud() {
         setUpdateOpen(false);
         setEditForm(emptyForm);
       }
-      setMessage("Data transaction berhasil dihapus.");
+      setMessage("Data transaksi berhasil dihapus.");
       return true;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal menghapus transaction.");
+      setMessage(error instanceof Error ? error.message : "Gagal menghapus transaksi.");
       return false;
     }
   }
@@ -612,7 +612,7 @@ export function TransactionsCrud() {
     try {
       const result = await deleteTransactionsByIds(selectedIds);
       if (!result.failedIds.length) {
-        setSuccessToast(`${result.total} transaction berhasil dihapus.`);
+        setSuccessToast(`${result.total} transaksi berhasil dihapus.`);
       } else {
         setMessage(`Sebagian data gagal dihapus: ${result.failedIds.join(", ")}`);
       }
@@ -658,7 +658,7 @@ export function TransactionsCrud() {
       const rows = await apiClient.getAuditLogs("transactions", 200, recordId);
       setPreviewHistoryRows(rows);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal memuat preview detail transaction.");
+      setMessage(error instanceof Error ? error.message : "Gagal memuat preview detail transaksi.");
     } finally {
       setPreviewLoading(false);
     }
@@ -691,8 +691,8 @@ export function TransactionsCrud() {
       rows: filteredRows,
       columns: [
         { header: "ID", value: (row) => row.id },
-        { header: "Transaction Name", value: (row) => row.transaction_name },
-        { header: "Transaction Type", value: (row) => row.transaction_type },
+        { header: "Nama Transaksi", value: (row) => row.transaction_name },
+        { header: "Tipe Transaksi", value: (row) => row.transaction_type },
         { header: "Category", value: (row) => row.category },
         { header: "Amount", value: (row) => formatRupiahFromAny(row.amount) },
         { header: "Status Date", value: (row) => formatDateTimeUnified(row.status_date) },
@@ -711,9 +711,9 @@ export function TransactionsCrud() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Data Transaction</CardTitle>
+          <CardTitle>Data Transaksi</CardTitle>
           <Button className="w-full sm:w-auto" onClick={openCreateModal}>
-            Create Transaction
+            Create Transaksi
           </Button>
         </CardHeader>
         <CardContent>
@@ -775,8 +775,8 @@ export function TransactionsCrud() {
                 type="button"
                 variant="outline"
                 className="h-10 w-10 p-0"
-                aria-label="Download report transactions"
-                title="Download report transactions"
+                aria-label="Download report transaksi"
+                title="Download report transaksi"
                 onClick={downloadFilteredReport}
                 disabled={!filteredRows.length}
               >
@@ -793,11 +793,11 @@ export function TransactionsCrud() {
                       type="checkbox"
                       checked={allPageSelected}
                       onChange={(event) => togglePageSelection(event.target.checked)}
-                      aria-label="Pilih semua data transaction pada halaman"
+                      aria-label="Pilih semua data transaksi pada halaman"
                     />
                   </TableHead>
                 ) : null}
-                <TableHead>Transaction Detail</TableHead>
+                <TableHead>Detail Transaksi</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status Date</TableHead>
                 <TableHead>Payment Method</TableHead>
@@ -807,7 +807,7 @@ export function TransactionsCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={listColSpan} message="Memuat data transaction..." />
+                <ApiTableLoadingRow colSpan={listColSpan} message="Memuat data transaksi..." />
               ) : filteredRows.length ? (
                 tablePagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -817,7 +817,7 @@ export function TransactionsCrud() {
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
                           onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
-                          aria-label={`Pilih transaction ${item.id}`}
+                          aria-label={`Pilih transaksi ${item.id}`}
                         />
                       </TableCell>
                     ) : null}
@@ -842,8 +842,8 @@ export function TransactionsCrud() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          aria-label="Preview detail transaction"
-                          title="Preview detail transaction"
+                          aria-label="Preview detail transaksi"
+                          title="Preview detail transaksi"
                           onClick={() => openPreviewModal(item)}
                         >
                           <Eye className="h-4 w-4" />
@@ -853,8 +853,8 @@ export function TransactionsCrud() {
                             size="sm"
                             variant="outline"
                             className="h-8 w-8 p-0"
-                            aria-label="Edit transaction"
-                            title="Edit transaction"
+                            aria-label="Edit transaksi"
+                            title="Edit transaksi"
                             onClick={() => openEditModal(item)}
                           >
                             <Pencil className="h-4 w-4" />
@@ -865,8 +865,8 @@ export function TransactionsCrud() {
                             size="sm"
                             variant="outline"
                             className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
-                            aria-label="Delete transaction"
-                            title="Delete transaction"
+                            aria-label="Delete transaksi"
+                            title="Delete transaksi"
                             onClick={() => openDeleteModal(item.id)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -900,7 +900,7 @@ export function TransactionsCrud() {
         </CardContent>
       </Card>
 
-      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Transactions" className="max-w-md">
+      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Transaksi" className="max-w-md">
         <div className="space-y-3">
           <div>
             <label className={labelClass}>Tipe Transaksi</label>
@@ -963,7 +963,7 @@ export function TransactionsCrud() {
       <SimpleModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={`Preview Detail Transaction${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
+        title={`Preview Detail Transaksi${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
         className="w-[96vw] max-w-6xl"
       >
         <div className="space-y-3">
@@ -1038,8 +1038,8 @@ export function TransactionsCrud() {
           setDeleteId(null);
         }}
         onConfirm={confirmDeleteTransaction}
-        title="Delete Transaction"
-        description="Data transaction akan dihapus permanen."
+        title="Delete Transaksi"
+        description="Data transaksi akan dihapus permanen."
         loading={deleting}
       />
       <DeleteConfirmModal
@@ -1049,8 +1049,8 @@ export function TransactionsCrud() {
           setBulkDeleteOpen(false);
         }}
         onConfirm={confirmBulkDeleteTransactions}
-        title="Delete Multi Transaction"
-        description={`${selectedIds.length} data transaction terpilih akan dihapus permanen.`}
+        title="Delete Multi Transaksi"
+        description={`${selectedIds.length} data transaksi terpilih akan dihapus permanen.`}
         loading={deleting}
       />
     </div>

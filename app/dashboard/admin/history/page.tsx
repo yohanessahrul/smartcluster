@@ -96,8 +96,8 @@ export default function AdminGlobalHistoryPage() {
     return (
       <div>
         <DashboardHeader
-          title="History Perubahan"
-          description="Role finance tidak memiliki akses ke history global."
+          title="Riwayat Perubahan"
+          description="Role finance tidak memiliki akses ke riwayat global."
         />
       </div>
     );
@@ -106,12 +106,12 @@ export default function AdminGlobalHistoryPage() {
   return (
     <div className="space-y-4">
       <DashboardHeader
-        title="History Perubahan Global"
+        title="Riwayat Perubahan Global"
         description="Riwayat perubahan halaman terpusat."
         actions={
           <Button type="button" variant="outline" loading={loading} loadingText="Memuat..." onClick={loadHistory}>
             <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh History
+            Refresh Riwayat
           </Button>
         }
       />
@@ -187,9 +187,9 @@ export default function AdminGlobalHistoryPage() {
       </div>
 
       {message ? <p className="text-sm text-destructive">{message}</p> : null}
-      <ChangeHistoryTable title="History Perubahan Global" rows={filteredRows} loading={loading} />
+      <ChangeHistoryTable title="Riwayat Perubahan Global" rows={filteredRows} loading={loading} />
 
-      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter History" className="max-w-md">
+      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Riwayat" className="max-w-md">
         <div className="space-y-3">
           <div className="w-full">
             <label className={labelClass}>Table</label>

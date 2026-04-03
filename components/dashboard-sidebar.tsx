@@ -10,12 +10,12 @@ import { UserMenuCta } from "@/components/user-menu-cta";
 import { cn } from "@/lib/utils";
 
 const adminMenus = [
-  { href: "/dashboard/admin", label: "Overview", icon: Home },
-  { href: "/dashboard/admin/history", label: "History", icon: History },
-  { href: "/dashboard/admin/users", label: "Users", icon: Users },
-  { href: "/dashboard/admin/houses", label: "Houses", icon: House },
+  { href: "/dashboard/admin", label: "Beranda", icon: Home },
+  { href: "/dashboard/admin/history", label: "Riwayat", icon: History },
+  { href: "/dashboard/admin/users", label: "Pengguna", icon: Users },
+  { href: "/dashboard/admin/houses", label: "Rumah", icon: House },
   { href: "/dashboard/admin/bills", label: "IPL", icon: ReceiptText },
-  { href: "/dashboard/admin/transactions", label: "Transactions", icon: WalletCards },
+  { href: "/dashboard/admin/transactions", label: "Transaksi", icon: WalletCards },
 ] as const;
 
 const financeMenus = adminMenus.filter(

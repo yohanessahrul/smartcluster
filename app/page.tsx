@@ -43,7 +43,7 @@ const adminMetrics: Metric[] = [
 const financeMetrics: Metric[] = [
   { label: "Success Payment", value: "212 • Rp31,8 Jt", icon: Wallet },
   { label: "Pending Payment", value: "48 • Rp7,2 Jt", icon: BellRing, tone: "warning" },
-  { label: "Unit Active", value: "248 House", icon: Home },
+  { label: "Unit Active", value: "248 Rumah", icon: Home },
 ];
 
 const bills = [
@@ -163,12 +163,12 @@ export default async function Page() {
                       <CardTitle className="text-sm text-[hsl(var(--menu-muted))]">Menu Admin</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2 pt-0 text-sm">
-                      <div className="rounded-lg bg-[hsl(var(--menu-active))] px-3 py-2 font-medium">Overview</div>
+                      <div className="rounded-lg bg-[hsl(var(--menu-active))] px-3 py-2 font-medium">Beranda</div>
                       <div className="rounded-lg px-3 py-2">Status Server</div>
-                      <div className="rounded-lg px-3 py-2">Users</div>
-                      <div className="rounded-lg px-3 py-2">Houses</div>
+                      <div className="rounded-lg px-3 py-2">Pengguna</div>
+                      <div className="rounded-lg px-3 py-2">Rumah</div>
                       <div className="rounded-lg px-3 py-2">IPL</div>
-                      <div className="rounded-lg px-3 py-2">Transactions</div>
+                      <div className="rounded-lg px-3 py-2">Transaksi</div>
                     </CardContent>
                   </Card>
 
@@ -230,9 +230,9 @@ export default async function Page() {
                       <CardTitle className="text-sm text-[hsl(var(--menu-muted))]">Menu Finance</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2 pt-0 text-sm">
-                      <div className="rounded-lg bg-[hsl(var(--menu-active))] px-3 py-2 font-medium">Overview</div>
+                      <div className="rounded-lg bg-[hsl(var(--menu-active))] px-3 py-2 font-medium">Beranda</div>
                       <div className="rounded-lg px-3 py-2">IPL</div>
-                      <div className="rounded-lg px-3 py-2">Transactions</div>
+                      <div className="rounded-lg px-3 py-2">Transaksi</div>
                     </CardContent>
                   </Card>
 

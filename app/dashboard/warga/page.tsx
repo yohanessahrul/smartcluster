@@ -46,7 +46,7 @@ export default function WargaDashboardPage() {
                     <div className="space-y-2 rounded-lg border border-[hsl(var(--warning-border))] bg-white/70 p-3 text-sm">
                       <p className="flex items-start gap-2">
                         <ShieldCheck className="mt-0.5 h-4 w-4 text-[hsl(var(--warning-ink))]" />
-                        Selama verifikasi berlangsung, akses menu dibatasi hanya ke Overview.
+                        Selama verifikasi berlangsung, akses menu dibatasi hanya ke Beranda.
                       </p>
                       <p className="flex items-start gap-2">
                         <RefreshCw className="mt-0.5 h-4 w-4 text-[hsl(var(--warning-ink))]" />

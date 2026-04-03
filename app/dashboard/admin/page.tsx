@@ -112,7 +112,7 @@ export default function AdminDashboardPage() {
       setLoadError("");
       const response = await apiClient.refreshOverviewSnapshot({ actorEmail });
       setSnapshot(response.snapshot ?? EMPTY_SNAPSHOT);
-      setSuccessToast("Overview berhasil diperbarui.");
+      setSuccessToast("Beranda berhasil diperbarui.");
       emitDataChanged();
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Gagal refresh data overview.");
@@ -139,7 +139,7 @@ export default function AdminDashboardPage() {
 
   const snapshotGeneratedLabel = useMemo(() => {
     if (!safeSnapshot.generated_at) return "";
-    return "Snapshot overview terbaru";
+    return "Snapshot beranda terbaru";
   }, [safeSnapshot.generated_at]);
 
   useEffect(() => {
@@ -212,7 +212,7 @@ export default function AdminDashboardPage() {
             <CardContent className="flex items-center justify-between p-4">
               <div>
                 <p className="text-xs text-muted-foreground">Unit Summary</p>
-                <p className="font-heading text-xl">{`${financeMetrics.total_unit_count} House`}</p>
+                <p className="font-heading text-xl">{`${financeMetrics.total_unit_count} Rumah`}</p>
                 <p className="text-xs text-muted-foreground">{`${financeMetrics.occupied_unit_count} Dihuni`}</p>
               </div>
               <Home className="h-4 w-4 text-muted-foreground" />
@@ -346,7 +346,7 @@ export default function AdminDashboardPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="hidden md:table-cell">ID</TableHead>
-                      <TableHead>Transaction Detail</TableHead>
+                      <TableHead>Detail Transaksi</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead className="hidden lg:table-cell">Payment Method</TableHead>
                       <TableHead>Status</TableHead>

@@ -127,7 +127,7 @@ type CreateUserModalProps = {
 
 function CreateUserModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: CreateUserModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Create User">
+    <SimpleModal open={open} onClose={onClose} title="Create Pengguna">
       <UserForm
         value={value}
         onChange={onChange}
@@ -153,7 +153,7 @@ type UpdateUserModalProps = {
 
 function UpdateUserModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: UpdateUserModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Update User">
+    <SimpleModal open={open} onClose={onClose} title="Update Pengguna">
       <UserForm
         value={value}
         onChange={onChange}
@@ -238,7 +238,7 @@ export function UsersCrud() {
       const data = await apiClient.getUsers();
       setRows(data);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal memuat users.");
+      setMessage(error instanceof Error ? error.message : "Gagal memuat data pengguna.");
     } finally {
       setLoading(false);
     }
@@ -256,9 +256,9 @@ export function UsersCrud() {
       setCreateOpen(false);
       setMessage("");
       setCreateError("");
-      setSuccessToast("User berhasil ditambahkan.");
+      setSuccessToast("Pengguna berhasil ditambahkan.");
     } catch (error) {
-      setCreateError(error instanceof Error ? error.message : "Gagal menambah user.");
+      setCreateError(error instanceof Error ? error.message : "Gagal menambah pengguna.");
     } finally {
       setCreateSubmitting(false);
     }
@@ -310,9 +310,9 @@ export function UsersCrud() {
       setUpdateOpen(false);
       setUpdateError("");
       setMessage("");
-      setSuccessToast("Data user berhasil diperbarui.");
+      setSuccessToast("Data pengguna berhasil diperbarui.");
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui user.";
+      const errorMessage = error instanceof Error ? error.message : "Gagal memperbarui pengguna.";
       setUpdateError(errorMessage);
     } finally {
       setUpdateSubmitting(false);
@@ -329,10 +329,10 @@ export function UsersCrud() {
         setUpdateOpen(false);
         setEditForm(emptyForm);
       }
-      setMessage("Data user berhasil dihapus.");
+      setMessage("Data pengguna berhasil dihapus.");
       return true;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Gagal menghapus user.");
+      setMessage(error instanceof Error ? error.message : "Gagal menghapus pengguna.");
       return false;
     }
   }
@@ -379,7 +379,7 @@ export function UsersCrud() {
     try {
       const result = await deleteUsersByIds(selectedIds);
       if (!result.failedIds.length) {
-        setSuccessToast(`${result.total} user berhasil dihapus.`);
+        setSuccessToast(`${result.total} pengguna berhasil dihapus.`);
       } else {
         setMessage(`Sebagian data gagal dihapus: ${result.failedIds.join(", ")}`);
       }
@@ -446,9 +446,9 @@ export function UsersCrud() {
     <div className="space-y-4">
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>Data User</CardTitle>
+          <CardTitle>Data Pengguna</CardTitle>
           <Button className="w-full sm:w-auto" onClick={openCreateModal}>
-            Create User
+            Create Pengguna
           </Button>
         </CardHeader>
         <CardContent>
@@ -503,8 +503,8 @@ export function UsersCrud() {
                 type="button"
                 variant="outline"
                 className="h-10 w-10 p-0"
-                aria-label="Download report users"
-                title="Download report users"
+                aria-label="Download report pengguna"
+                title="Download report pengguna"
                 onClick={downloadFilteredReport}
                 disabled={!filteredRows.length}
               >
@@ -523,7 +523,7 @@ export function UsersCrud() {
                     aria-label="Pilih semua data pada halaman"
                   />
                 </TableHead>
-                <TableHead>User</TableHead>
+                <TableHead>Pengguna</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead className="min-w-[132px]">Aksi</TableHead>
@@ -531,7 +531,7 @@ export function UsersCrud() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={5} message="Memuat data user..." />
+                <ApiTableLoadingRow colSpan={5} message="Memuat data pengguna..." />
               ) : filteredRows.length ? (
                 pagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
@@ -540,7 +540,7 @@ export function UsersCrud() {
                         type="checkbox"
                         checked={selectedIds.includes(item.id)}
                         onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
-                        aria-label={`Pilih user ${item.name}`}
+                        aria-label={`Pilih pengguna ${item.name}`}
                       />
                     </TableCell>
                     <TableCell className="align-top">
@@ -557,8 +557,8 @@ export function UsersCrud() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          aria-label="Preview detail user"
-                          title="Preview detail user"
+                          aria-label="Preview detail pengguna"
+                          title="Preview detail pengguna"
                           onClick={() => openPreviewModal(item)}
                         >
                           <Eye className="h-4 w-4" />
@@ -567,8 +567,8 @@ export function UsersCrud() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 p-0"
-                          aria-label="Edit user"
-                          title="Edit user"
+                          aria-label="Edit pengguna"
+                          title="Edit pengguna"
                           onClick={() => openEditModal(item)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -577,8 +577,8 @@ export function UsersCrud() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
-                          aria-label="Delete user"
-                          title="Delete user"
+                          aria-label="Delete pengguna"
+                          title="Delete pengguna"
                           onClick={() => openDeleteModal(item.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -613,7 +613,7 @@ export function UsersCrud() {
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
-      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Users" className="max-w-md">
+      <SimpleModal open={filterModalOpen} onClose={() => setFilterModalOpen(false)} title="Filter Pengguna" className="max-w-md">
         <div className="space-y-3">
           <div>
             <label className={labelClass}>Pencarian</label>
@@ -670,7 +670,7 @@ export function UsersCrud() {
       <SimpleModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={`Preview Detail User${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
+        title={`Preview Detail Pengguna${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
         className="w-[96vw] max-w-2xl"
       >
         <div className="space-y-2 rounded-lg border border-border p-3 text-sm">
@@ -698,8 +698,8 @@ export function UsersCrud() {
           setDeleteId(null);
         }}
         onConfirm={confirmDeleteUser}
-        title="Delete User"
-        description="Data user akan dihapus permanen."
+        title="Delete Pengguna"
+        description="Data pengguna akan dihapus permanen."
         loading={deleting}
       />
       <DeleteConfirmModal
@@ -709,8 +709,8 @@ export function UsersCrud() {
           setBulkDeleteOpen(false);
         }}
         onConfirm={confirmBulkDeleteUsers}
-        title="Delete Multi User"
-        description={`${selectedIds.length} data user terpilih akan dihapus permanen.`}
+        title="Delete Multi Pengguna"
+        description={`${selectedIds.length} data pengguna terpilih akan dihapus permanen.`}
         loading={deleting}
       />
     </div>

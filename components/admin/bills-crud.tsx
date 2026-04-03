@@ -196,7 +196,7 @@ function BillForm({
         <input className={inputClass} value={value.id} readOnly={readOnlyId} disabled={readOnlyId} />
       </div>
       <div>
-        <label className={labelClass}>House</label>
+        <label className={labelClass}>Rumah</label>
         <select
           className={inputClass}
           value={value.house_id}
@@ -204,7 +204,7 @@ function BillForm({
           required
         >
           <option value="" disabled>
-            Pilih House
+            Pilih Rumah
           </option>
           {houses.map((house) => (
             <option key={house.id} value={house.id}>
@@ -727,7 +727,7 @@ export function BillsCrud() {
     event.preventDefault();
     setCreateError("");
     if (!createForm.house_id) {
-      setCreateError("Pilih house terlebih dulu.");
+      setCreateError("Pilih rumah terlebih dulu.");
       return;
     }
 
@@ -738,7 +738,7 @@ export function BillsCrud() {
 
     const existedPeriode = rows.some((item) => item.house_id === createForm.house_id && item.periode === createForm.periode);
     if (existedPeriode) {
-      setCreateError("House ini sudah punya IPL di periode tersebut.");
+      setCreateError("Rumah ini sudah punya IPL di periode tersebut.");
       return;
     }
 
@@ -799,7 +799,7 @@ export function BillsCrud() {
       (item) => item.id !== editingId && item.house_id === editForm.house_id && item.periode === editForm.periode
     );
     if (existedPeriode) {
-      const errorMessage = "Kombinasi house dan periode sudah digunakan IPL lain.";
+      const errorMessage = "Kombinasi rumah dan periode sudah digunakan IPL lain.";
       setUpdateError(errorMessage);
       return;
     }

@@ -5,8 +5,8 @@ export default function AdminHousesPage() {
   return (
     <div>
       <DashboardHeader
-        title="Houses"
-        description="Tabel data rumah: unit, residential_status, isOccupied, dan linked_users (maks 2 email per house)."
+        title="Rumah"
+        description="Tabel semua data rumah"
       />
       <HousesCrud />
     </div>

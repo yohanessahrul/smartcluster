@@ -5,8 +5,8 @@ export default function AdminTransactionsPage() {
   return (
     <div>
       <DashboardHeader
-        title="Transactions"
-        description="Tabel data transaksi."
+        title="Transaksi"
+        description="Tabel semua data transaksi"
       />
       <TransactionsCrud />
     </div>
