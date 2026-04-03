@@ -1,10 +1,7 @@
 import {
   BellRing,
-  Building2,
   CalendarClock,
-  Database,
   FileCheck2,
-  HardDrive,
   Home,
   NotebookText,
   ReceiptText,
@@ -72,33 +69,6 @@ const financeLatestTransactions = [
     amount: "Rp300.000",
     method: "QRIS",
     status: "Menunggu Verifikasi",
-  },
-] as const;
-
-const features = [
-  {
-    title: "Timeline Status IPL Transparan",
-    copy: "Status pembayaran terlihat runtut dari ditagihkan, upload bukti, sampai diverifikasi finance.",
-  },
-  {
-    title: "Dashboard Role-Based",
-    copy: "Admin/Superadmin, Finance, dan Warga memiliki menu serta hak akses yang dipisah sesuai tanggung jawab.",
-  },
-  {
-    title: "Generate IPL Massal",
-    copy: "Satu CTA untuk generate IPL semua rumah per bulan, dan tombol otomatis nonaktif jika periode sudah pernah digenerate.",
-  },
-  {
-    title: "Verifikasi Pembayaran",
-    copy: "Finance memproses alur status pembayaran sampai Lunas dengan histori perubahan yang jelas.",
-  },
-  {
-    title: "Riwayat Global Terpusat",
-    copy: "Riwayat perubahan dipusatkan pada menu Riwayat khusus admin/superadmin agar loading halaman data utama tetap ringan.",
-  },
-  {
-    title: "Status Server + Refresh Widget",
-    copy: "Di Beranda admin/superadmin tersedia CTA Status Server dan Refresh widget untuk monitoring server serta pembaruan snapshot.",
   },
 ] as const;
 
@@ -428,19 +398,6 @@ export default async function Page() {
         </Card>
 
         <section className="mb-6 grid gap-4 lg:grid-cols-3">
-          {features.map((feature) => (
-            <Card key={feature.title}>
-              <CardHeader className="pb-2">
-                <CardTitle>{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{feature.copy}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
-
-        <section className="mb-6 grid gap-4 lg:grid-cols-3">
           <Card className="flex h-full w-full flex-col border-border/90 bg-card/95 lg:col-span-1">
             <CardHeader>
               <CardTitle>Generate tagihan otomatis</CardTitle>
@@ -453,7 +410,51 @@ export default async function Page() {
 
           <Card className="flex h-full w-full flex-col border-border/90 bg-card/95 lg:col-span-1">
             <CardHeader>
-              <CardTitle>Riwayat tagihan tertata</CardTitle>
+              <CardTitle>To the point aja</CardTitle>
+              <CardDescription>Hargai waktu orang lain, kita langsung tagih aja lah! 😁</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <div className="h-full rounded-lg border border-border/70 bg-background p-4">
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Tagihan Aktif</p>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Periode</p>
+                    <p className="text-lg font-semibold">Mei 2026</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Nominal IPL</p>
+                    <p className="text-3xl font-semibold text-primary">Rp150.000</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <PaymentStatusBadge status="Belum bayar" />
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                      <CalendarClock className="h-3.5 w-3.5" />
+                      Jatuh tempo tanggal 10
+                    </span>
+                  </div>
+                </div>
+                <div className="relative mt-4 w-full max-w-[190px]">
+                  <svg
+                    className="pointer-events-none absolute inset-0 h-full w-full"
+                    viewBox="0 0 190 44"
+                    aria-hidden
+                  >
+                    <rect x="1.5" y="1.5" width="187" height="41" rx="21" className="cta-dash-stroke-flow" />
+                  </svg>
+                  <Button
+                    type="button"
+                    className="cta-touch-idle relative z-10 h-11 w-full rounded-full transition-all duration-150 active:translate-y-0 active:scale-[0.98]"
+                  >
+                    Bayar
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="flex h-full w-full flex-col border-border/90 bg-card/95 lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Suguhkan transparansi</CardTitle>
               <CardDescription>Tenang saja, setiap proses tercatat rapih disini. Kamu juga bisa memantaunya 👀</CardDescription>
             </CardHeader>
             <CardContent className="flex-1">
