@@ -82,27 +82,27 @@ const paymentStages = [
 const features = [
   {
     title: "Dashboard Role-Based",
-    copy: "Admin, Finance, dan Warga memiliki menu dan hak akses berbeda sesuai kebutuhan operasional.",
+    copy: "Admin/Superadmin, Finance, dan Warga memiliki menu serta hak akses yang dipisah sesuai tanggung jawab.",
   },
   {
     title: "Generate IPL Massal",
-    copy: "Satu CTA untuk generate IPL semua rumah per bulan dengan status default Belum bayar.",
+    copy: "Satu CTA untuk generate IPL semua rumah per bulan, dan tombol otomatis nonaktif jika periode sudah pernah digenerate.",
   },
   {
     title: "Verifikasi Pembayaran",
     copy: "Finance memproses alur status pembayaran sampai Lunas dengan histori perubahan yang jelas.",
   },
   {
-    title: "Jurnal Umum Warga",
-    copy: "Warga melihat ringkasan jurnal dari transaksi yang sudah lunas per periode.",
+    title: "Tagihan Warga Card-Based",
+    copy: "Dashboard warga difokuskan ke kartu tagihan per periode dengan aksi bayar, upload bukti, dan preview detail yang responsif.",
   },
   {
-    title: "Status Server + Refresh",
-    copy: "Di Beranda admin tersedia CTA Status Server dan Refresh Data untuk monitoring dan update snapshot.",
+    title: "Status Server + Refresh Widget",
+    copy: "Di Beranda admin/superadmin tersedia CTA Status Server dan Refresh widget untuk monitoring server serta pembaruan snapshot.",
   },
   {
-    title: "Riwayat Global",
-    copy: "Riwayat perubahan dipusatkan pada menu Riwayat agar loading halaman data utama tetap ringan.",
+    title: "Riwayat Global Terpusat",
+    copy: "Riwayat perubahan dipusatkan pada menu Riwayat khusus admin/superadmin agar loading halaman data utama tetap ringan.",
   },
 ] as const;
 
@@ -170,7 +170,7 @@ export default async function Page() {
             </p>
           </div>
 
-          <div className="pointer-events-none absolute right-2 top-1/2 z-0 w-full max-w-[180px] -translate-x-[100px] -translate-y-1/2 sm:right-3 sm:max-w-[250px] lg:right-6 lg:max-w-[325px]">
+          <div className="pointer-events-none absolute right-[30px] top-1/2 z-0 w-full max-w-[180px] -translate-y-1/2 sm:right-3 sm:max-w-[250px] lg:right-6 lg:max-w-[325px]">
             <Image
               src="/brand/finance-hero-illustration.svg"
               alt="Ilustrasi transaksi keuangan"
@@ -246,7 +246,7 @@ export default async function Page() {
                             CTA: Status Server
                           </Badge>
                           <Badge variant="outline" className="rounded-full">
-                            CTA: Refresh Data
+                            CTA: Refresh widget
                           </Badge>
                         </div>
                       </CardContent>
@@ -269,7 +269,7 @@ export default async function Page() {
                   </Card>
 
                   <div className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       {financeMetrics.map((metric) => (
                         <Card
                           key={metric.label}
@@ -288,7 +288,7 @@ export default async function Page() {
 
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle>Antrian Verifikasi IPL</CardTitle>
+                        <CardTitle>IPL Perlu Tindakan</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="w-full overflow-x-auto">
@@ -318,7 +318,7 @@ export default async function Page() {
 
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle>5 Transaksi Terakhir</CardTitle>
+                        <CardTitle>5 Transaksi Terakhir (Menunggu Verifikasi)</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="w-full overflow-x-auto">
@@ -359,12 +359,13 @@ export default async function Page() {
                         <h3 className="font-heading text-lg">Halo, Budi</h3>
                       </div>
                       <div className="rounded-lg bg-white p-4 text-[hsl(var(--phone-card-ink))]">
-                        <p className="text-xs text-[hsl(var(--phone-card-muted))]">Tagihan IPL April 2026</p>
-                        <p className="my-1 font-heading text-2xl">Rp150.000</p>
-                        <p className="text-xs text-[hsl(var(--phone-card-muted))]">Status: Menunggu Verifikasi (bukti sudah diupload)</p>
+                        <p className="text-xs text-[hsl(var(--phone-card-muted))]">Periode</p>
+                        <p className="text-sm font-medium">April 2026</p>
+                        <p className="mt-2 font-heading text-3xl">Rp150.000</p>
+                        <p className="mt-2 text-xs text-[hsl(var(--phone-card-muted))]">Status: Menunggu Verifikasi</p>
                       </div>
                       <Button variant="secondary" className="w-full rounded-lg bg-primary text-primary-foreground hover:bg-primary/90">
-                        Bayar / Upload Bukti
+                        Bayar
                       </Button>
                       <div className="rounded-lg border border-[hsl(var(--phone-chip-border))] p-3 text-sm">
                         <p className="mb-2 text-xs text-[hsl(var(--phone-muted))]">Riwayat Tagihan</p>
