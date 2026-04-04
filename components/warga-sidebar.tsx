@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, ClipboardList, Home, Receipt, ShieldCheck, UserRound } from "lucide-react";
+import { BarChart3, Home, Receipt, ShieldCheck, UserRound } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
 import { useWargaResolvedData } from "@/lib/auth-client";
@@ -14,7 +14,6 @@ const protectedMenus = [
   { href: "/dashboard/warga", label: "Beranda", icon: Home },
   { href: "/dashboard/warga/profile", label: "Profil", icon: UserRound },
   { href: "/dashboard/warga/tagihan", label: "IPL", icon: Receipt },
-  { href: "/dashboard/warga/riwayat", label: "Riwayat Bayar", icon: ClipboardList },
   { href: "/dashboard/warga/laporan", label: "Laporan Dana", icon: BarChart3 },
 ] as const;
 
