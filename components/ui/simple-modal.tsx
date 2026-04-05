@@ -41,7 +41,7 @@ export function SimpleModal({ open, onClose, title, children, className }: Simpl
   if (!open || !mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 backdrop-blur-sm px-3 py-4 sm:px-4 sm:py-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 backdrop-blur-sm backdrop-grayscale px-3 py-4 sm:px-4 sm:py-8">
       <div
         className={cn("w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-background shadow-soft max-h-[92vh]", className)}
       >

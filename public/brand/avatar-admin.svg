@@ -1,0 +1,19 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="adminBg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#DDF5EC" />
+      <stop offset="1" stop-color="#C1ECDC" />
+    </linearGradient>
+  </defs>
+  <circle cx="128" cy="128" r="124" fill="url(#adminBg)" />
+  <ellipse cx="128" cy="218" rx="74" ry="20" fill="#B7D9CD" />
+  <path d="M90 98C94 68 162 68 166 98V116H90V98Z" fill="#1F2937" />
+  <circle cx="128" cy="106" r="34" fill="#F5C8A8" />
+  <circle cx="116" cy="105" r="3.5" fill="#1F2937" />
+  <circle cx="140" cy="105" r="3.5" fill="#1F2937" />
+  <path d="M117 121C123 128 133 128 139 121" stroke="#8A4B3A" stroke-width="4" stroke-linecap="round" />
+  <path d="M70 224C70 184 95 158 128 158C161 158 186 184 186 224V232H70V224Z" fill="#17886D" />
+  <path d="M120 176H136L144 210H112L120 176Z" fill="#F5F7FA" />
+  <path d="M112 210H144V232H112V210Z" fill="#E9EEF4" />
+  <path d="M94 153C106 161 150 161 162 153" stroke="#E5B58E" stroke-width="4" stroke-linecap="round" />
+</svg>

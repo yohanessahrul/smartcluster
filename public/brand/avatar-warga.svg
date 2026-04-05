@@ -1,0 +1,18 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wargaBg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3D8" />
+      <stop offset="1" stop-color="#FFE6B8" />
+    </linearGradient>
+  </defs>
+  <circle cx="128" cy="128" r="124" fill="url(#wargaBg)" />
+  <ellipse cx="128" cy="220" rx="70" ry="18" fill="#EFD5A0" />
+  <path d="M88 106C94 74 162 74 168 106V120H88V106Z" fill="#1F2937" />
+  <circle cx="128" cy="114" r="32" fill="#F5C9A8" />
+  <circle cx="116" cy="112" r="3.2" fill="#1F2937" />
+  <circle cx="139" cy="112" r="3.2" fill="#1F2937" />
+  <path d="M114 126C121 136 135 136 142 126" stroke="#8A4B3A" stroke-width="4" stroke-linecap="round" />
+  <path d="M74 224C74 188 97 164 128 164C159 164 182 188 182 224V232H74V224Z" fill="#0F766E" />
+  <path d="M128 169L136 188L157 191L141 206L145 226L128 216L111 226L115 206L99 191L120 188L128 169Z" fill="#F7D86A" />
+  <path d="M97 160C108 169 148 169 159 160" stroke="#E5B58E" stroke-width="4" stroke-linecap="round" />
+</svg>

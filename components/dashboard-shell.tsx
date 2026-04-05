@@ -100,19 +100,16 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
             </div>
 
             <div className="flex-1">
-              <div className="mb-3 rounded-lg border border-[hsl(var(--menu-border))] bg-white/80 px-3 py-2 text-black">
-                <p className="truncate text-sm font-medium">Hi, {displayName}</p>
-                <p className="truncate text-xs text-muted-foreground">{displayRole}</p>
+              <div className="mb-3 px-1">
+                <p className="truncate text-sm font-medium text-[hsl(var(--menu-fg))]">Hi, {displayName}</p>
+                <p className="truncate text-xs text-[hsl(var(--menu-muted))]">{displayRole}</p>
               </div>
-              <div className="rounded-lg bg-white/45 p-3 shadow-sm [&>aside]:h-full [&>aside]:rounded-none [&>aside]:border-0 [&>aside]:bg-transparent [&>aside]:p-0">
-                {sidebar}
-              </div>
+              {sidebar}
             </div>
 
             <Button
               type="button"
-              variant="outline"
-              className="mt-4 w-full border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
+              className="mt-4 w-full bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90"
               onClick={onLogout}
               disabled={loggingOut}
             >

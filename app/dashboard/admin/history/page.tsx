@@ -116,7 +116,7 @@ export default function AdminGlobalHistoryPage() {
         }
       />
 
-      <div className="flex w-full items-end gap-2 sm:w-auto">
+      <div className="flex w-full items-end gap-2 sm:hidden">
         <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
           <SlidersHorizontal className="mr-2 h-4 w-4" />
           Filter
@@ -124,7 +124,11 @@ export default function AdminGlobalHistoryPage() {
       </div>
 
       <div className="hidden sm:flex sm:justify-end">
-        <div className="ml-auto flex items-end">
+        <div className="ml-auto flex items-end gap-2">
+          <Button type="button" variant="outline" className="h-10" onClick={() => setFilterModalOpen(true)}>
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
+            Filter
+          </Button>
           <Button
             type="button"
             variant="outline"

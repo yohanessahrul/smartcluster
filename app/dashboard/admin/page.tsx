@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Home, NotebookText, RefreshCw, Server, Users, Wallet } from "lucide-react";
+import { RefreshCw, Server } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
 import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,8 @@ import { SuccessToast } from "@/components/ui/success-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuthSession } from "@/lib/auth-client";
 import { apiClient, emitDataChanged, OverviewSnapshotRow } from "@/lib/api-client";
-import { formatRupiah, formatRupiahFromAny } from "@/lib/currency";
+import { formatRupiahFromAny } from "@/lib/currency";
+import { buildAdminWidgets, buildFinanceWidgets } from "@/lib/master-widgets";
 
 const EMPTY_SNAPSHOT: OverviewSnapshotRow = {
   generated_at: "",
@@ -130,12 +132,13 @@ export default function AdminDashboardPage() {
   }
 
   const safeSnapshot = snapshot ?? EMPTY_SNAPSHOT;
-  const adminMetrics = safeSnapshot.admin ?? EMPTY_SNAPSHOT.admin!;
   const financeMetrics = safeSnapshot.finance ?? EMPTY_SNAPSHOT.finance!;
   const financeBillsNeedAction = financeMetrics.need_action_rows ?? [];
   const financeLatestTransactions = (financeMetrics.latest_transactions ?? []).filter(
     (item) => item.status === "Menunggu Verifikasi"
   );
+  const adminWidgets = useMemo(() => buildAdminWidgets(safeSnapshot.admin), [safeSnapshot.admin]);
+  const financeWidgets = useMemo(() => buildFinanceWidgets(financeMetrics), [financeMetrics]);
 
   const snapshotGeneratedLabel = useMemo(() => {
     if (!safeSnapshot.generated_at) return "";
@@ -177,48 +180,7 @@ export default function AdminDashboardPage() {
         ) : null}
         {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
-        <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Success Payment</p>
-                <p className="font-heading text-xl">{financeMetrics.success_count}</p>
-                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.success_total)}</p>
-              </div>
-              <NotebookText className="h-4 w-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Need Verification</p>
-                <p className="font-heading text-xl">{financeMetrics.need_verification_count}</p>
-                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.need_verification_total)}</p>
-              </div>
-              <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-          <Card className="border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]">
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Need Follow Up</p>
-                <p className="font-heading text-xl">{financeMetrics.need_follow_up_count}</p>
-                <p className="text-xs text-muted-foreground">{formatRupiah(financeMetrics.need_follow_up_total)}</p>
-              </div>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center justify-between p-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Unit Summary</p>
-                <p className="font-heading text-xl">{`${financeMetrics.total_unit_count} Rumah`}</p>
-                <p className="text-xs text-muted-foreground">{`${financeMetrics.occupied_unit_count} Dihuni`}</p>
-              </div>
-              <Home className="h-4 w-4 text-muted-foreground" />
-            </CardContent>
-          </Card>
-        </section>
+        <MasterWidgetGrid widgets={financeWidgets} />
 
         <div className="space-y-4">
           <Card>
@@ -424,44 +386,7 @@ export default function AdminDashboardPage() {
       ) : null}
       {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
-      <section className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Total Rumah</p>
-              <p className="font-heading text-xl">{adminMetrics.total_houses}</p>
-            </div>
-            <Home className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Total Warga</p>
-              <p className="font-heading text-xl">{adminMetrics.total_warga}</p>
-            </div>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Tagihan Lunas</p>
-              <p className="font-heading text-xl">{adminMetrics.paid_count}</p>
-            </div>
-            <NotebookText className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-        <Card className="border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]">
-          <CardContent className="flex items-center justify-between p-4">
-            <div>
-              <p className="text-xs text-muted-foreground">Belum Bayar</p>
-              <p className="font-heading text-xl">{adminMetrics.unpaid_count}</p>
-            </div>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardContent>
-        </Card>
-      </section>
+      <MasterWidgetGrid widgets={adminWidgets} />
 
       <ServerStatusModal open={showServerStatus} onClose={closeServerStatusModal} />
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />

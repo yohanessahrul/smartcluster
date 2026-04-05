@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CalendarClock, RefreshCw, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 
+import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
+import { buildWargaWidgets } from "@/lib/master-widgets";
 
 export default function WargaDashboardPage() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
@@ -78,6 +80,7 @@ export default function WargaDashboardPage() {
         }
 
         const latestBill = [...data.houseBills].sort((a, b) => b.id.localeCompare(a.id))[0];
+        const wargaWidgets = buildWargaWidgets(data.houseBills);
 
         return (
           <div>
@@ -85,6 +88,8 @@ export default function WargaDashboardPage() {
               title="Dashboard Warga"
               description={`Profil rumah Blok ${data.house.blok} No ${data.house.nomor}`}
             />
+
+            <MasterWidgetGrid widgets={wargaWidgets} />
 
             <section className="mb-4">
               <Card>

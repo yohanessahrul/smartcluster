@@ -25,7 +25,7 @@ export function WargaSidebar() {
   const menus = loading ? [] : isWarga ? (hasHouse ? protectedMenus : [overviewMenu]) : [];
 
   return (
-    <aside className="h-full overflow-y-auto rounded-lg border border-border bg-[hsl(var(--menu-bg))] p-4 text-[hsl(var(--menu-fg))] lg:rounded-none">
+    <aside className="h-full overflow-y-auto bg-[hsl(var(--menu-bg))] p-0 text-[hsl(var(--menu-fg))] lg:rounded-none lg:border lg:border-border lg:p-4">
       <div className="mb-6 hidden items-center gap-3 rounded-lg bg-[hsl(var(--menu-note))] p-3 lg:flex">
         <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/85 p-1">
           <BrandMark className="h-7 w-7" />

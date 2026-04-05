@@ -55,7 +55,7 @@ export function DeveloperErrorModal() {
   if (!currentError) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-rose-950/30 px-4 py-6">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-rose-950/30 backdrop-grayscale px-4 py-6">
       <div className="w-full max-w-2xl overflow-hidden border border-rose-300 bg-rose-50 shadow-xl">
         <div className="flex items-center justify-between border-b border-rose-200 bg-rose-100 px-4 py-3">
           <div className="flex items-center gap-2">
