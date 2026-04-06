@@ -179,17 +179,7 @@ function TransactionForm({
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <FormErrorAlert message={errorMessage} />
-      <div>
-        <label className={labelClass}>ID</label>
-        <input
-          className={inputClass}
-          value={value.id}
-          onChange={(event) => onChange({ ...value, id: event.target.value })}
-          placeholder="TRX010"
-          required
-          disabled={disableId}
-        />
-      </div>
+      <input type="hidden" value={value.id} readOnly />
       {showBillId ? (
         <div>
           <label className={labelClass}>IPL ID (Optional)</label>

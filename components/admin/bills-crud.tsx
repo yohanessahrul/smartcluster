@@ -195,10 +195,7 @@ function BillForm({
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <FormErrorAlert message={errorMessage} />
-      <div>
-        <label className={labelClass}>ID</label>
-        <input className={inputClass} value={value.id} readOnly={readOnlyId} disabled={readOnlyId} />
-      </div>
+      <input type="hidden" value={value.id} readOnly />
       <div>
         <label className={labelClass}>Rumah</label>
         <select

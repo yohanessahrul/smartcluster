@@ -20,6 +20,7 @@ export type MasterWidget = {
   title: string;
   value: string;
   note?: string;
+  noteLines?: string[];
   icon: LucideIcon;
   tone?: MasterWidgetTone;
 };
@@ -39,27 +40,29 @@ export function buildAdminWidgets(admin: OverviewSnapshotRow["admin"]): MasterWi
       id: "admin-total-houses",
       title: "Total Rumah",
       value: String(admin?.total_houses ?? 0),
+      noteLines: [`Pemilik: ${admin?.owner_count ?? 0}`, `Ngontrak: ${admin?.contract_count ?? 0}`],
       icon: Home,
     },
     {
       id: "admin-total-warga",
-      title: "Total Warga",
+      title: "Total Pengguna",
       value: String(admin?.total_warga ?? 0),
+      noteLines: [
+        `Terkoneksi rumah: ${admin?.connected_users ?? 0}`,
+        `Data pengurus: ${admin?.manager_count ?? 0}`,
+      ],
       icon: Users,
     },
     {
-      id: "admin-paid-count",
-      title: "Tagihan Lunas",
-      value: String(admin?.paid_count ?? 0),
+      id: "admin-total-ipl-bills",
+      title: "Tagihan IPL",
+      value: String(admin?.total_bills ?? 0),
+      noteLines: [
+        `Belum dibayar: ${admin?.unpaid_count ?? 0}`,
+        `Nunggu verifikasi: ${admin?.pending_verification_count ?? 0}`,
+        `Lunas: ${admin?.paid_count ?? 0}`,
+      ],
       icon: NotebookText,
-      tone: "success",
-    },
-    {
-      id: "admin-unpaid-count",
-      title: "Belum Bayar",
-      value: String(admin?.unpaid_count ?? 0),
-      icon: Wallet,
-      tone: "warning",
     },
   ];
 }
@@ -68,33 +71,33 @@ export function buildFinanceWidgets(finance: OverviewSnapshotRow["finance"]): Ma
   return [
     {
       id: "finance-success-payment",
-      title: "Success Payment",
+      title: "IPL Terbayar",
       value: String(finance?.success_count ?? 0),
-      note: formatRupiah(finance?.success_total ?? 0),
+      noteLines: [`Nominal: ${formatRupiah(finance?.success_total ?? 0)}`],
       icon: CheckCircle2,
       tone: "success",
     },
     {
       id: "finance-need-verification",
-      title: "Need Verification",
+      title: "IPL Butuh Verifikasi",
       value: String(finance?.need_verification_count ?? 0),
-      note: formatRupiah(finance?.need_verification_total ?? 0),
+      noteLines: [`Nominal: ${formatRupiah(finance?.need_verification_total ?? 0)}`],
       icon: Clock3,
       tone: "warning",
     },
     {
       id: "finance-need-follow-up",
-      title: "Need Follow Up",
+      title: "Segera Tagihkan",
       value: String(finance?.need_follow_up_count ?? 0),
-      note: formatRupiah(finance?.need_follow_up_total ?? 0),
+      noteLines: [`Nominal: ${formatRupiah(finance?.need_follow_up_total ?? 0)}`],
       icon: AlertCircle,
       tone: "danger",
     },
     {
       id: "finance-unit-summary",
-      title: "Unit Summary",
-      value: `${finance?.total_unit_count ?? 0} Rumah`,
-      note: `${finance?.occupied_unit_count ?? 0} Dihuni`,
+      title: "Ringkasan Rumah",
+      value: `${finance?.total_unit_count ?? 0} Rmh`,
+      noteLines: [`Dihuni: ${finance?.occupied_unit_count ?? 0}`],
       icon: Home,
     },
   ];

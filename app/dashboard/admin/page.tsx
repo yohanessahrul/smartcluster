@@ -26,7 +26,13 @@ const EMPTY_SNAPSHOT: OverviewSnapshotRow = {
   generated_by: "",
   admin: {
     total_houses: 0,
+    owner_count: 0,
+    contract_count: 0,
     total_warga: 0,
+    connected_users: 0,
+    manager_count: 0,
+    total_bills: 0,
+    pending_verification_count: 0,
     paid_count: 0,
     unpaid_count: 0,
   },
@@ -155,20 +161,25 @@ export default function AdminDashboardPage() {
     console.log("[Table][Dashboard Overview Snapshot]:", safeSnapshot);
   }, [shouldLogTableData, safeSnapshot]);
 
-  const headerActions = isAdmin
-    ? (
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="outline" onClick={() => setShowServerStatus(true)}>
-            <Server className="mr-2 h-4 w-4" />
-            Status Server
-          </Button>
-          <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh widget
-          </Button>
-        </div>
-      )
-    : null;
+  const headerActions = isAdmin ? (
+    <div className="flex items-center gap-2">
+      <Button type="button" variant="outline" onClick={() => setShowServerStatus(true)}>
+        <Server className="mr-2 h-4 w-4" />
+        Status Server
+      </Button>
+      <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
+        <RefreshCw className="mr-2 h-4 w-4" />
+        Refresh widget
+      </Button>
+    </div>
+  ) : isFinance ? (
+    <div className="flex items-center gap-2">
+      <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
+        <RefreshCw className="mr-2 h-4 w-4" />
+        Refresh widget
+      </Button>
+    </div>
+  ) : null;
 
   if (isFinance) {
     return (

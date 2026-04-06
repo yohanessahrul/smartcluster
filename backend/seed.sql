@@ -9,10 +9,10 @@ INSERT INTO users (id, name, email, phone, role) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO houses (id, blok, nomor, residential_status, is_occupied) VALUES
-('H001', 'A', '12', 'Owner', TRUE),
-('H002', 'B', '03', 'Contract', TRUE),
-('H003', 'C', '21', 'Owner', FALSE),
-('H004', 'A', '07', 'Contract', TRUE)
+('H001', 'A', '12', 'Pemilik', TRUE),
+('H002', 'B', '03', 'Ngontrak', TRUE),
+('H003', 'C', '21', 'Pemilik', FALSE),
+('H004', 'A', '07', 'Ngontrak', TRUE)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO house_users (house_id, user_email, user_order) VALUES

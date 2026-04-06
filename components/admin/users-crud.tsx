@@ -57,17 +57,7 @@ function UserForm({ value, onChange, disableId, errorMessage, submitLabel, submi
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <FormErrorAlert message={errorMessage} />
-      <div>
-        <label className={labelClass}>ID</label>
-        <input
-          className={inputClass}
-          value={value.id}
-          onChange={(event) => onChange({ ...value, id: event.target.value })}
-          placeholder="U010"
-          required
-          disabled={disableId}
-        />
-      </div>
+      <input type="hidden" value={value.id} readOnly />
       <div>
         <label className={labelClass}>Name</label>
         <input
@@ -170,6 +160,7 @@ export function UsersCrud() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
   const { session } = useAuthSession();
   const canEditDelete = session?.role === "admin" || session?.role === "superadmin";
+  const isLockedForAdmin = (row: UserRow) => session?.role === "admin" && row.role === "superadmin";
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
@@ -219,8 +210,8 @@ export function UsersCrud() {
   }, [search, roleFilter, pagination.setPage]);
 
   useEffect(() => {
-    setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id)));
-  }, [rows]);
+    setSelectedIds((prev) => prev.filter((id) => rows.some((row) => row.id === id && !isLockedForAdmin(row))));
+  }, [rows, session?.role]);
 
   useEffect(() => {
     if (!selectedIds.length && bulkAction) {
@@ -395,6 +386,8 @@ export function UsersCrud() {
   }
 
   function toggleRowSelection(id: string, checked: boolean) {
+    const target = rows.find((row) => row.id === id);
+    if (target && isLockedForAdmin(target)) return;
     setSelectedIds((prev) => {
       if (checked) return prev.includes(id) ? prev : [...prev, id];
       return prev.filter((item) => item !== id);
@@ -402,7 +395,7 @@ export function UsersCrud() {
   }
 
   function togglePageSelection(checked: boolean) {
-    const pageIds = pagination.pagedRows.map((row) => row.id);
+    const pageIds = pagination.pagedRows.filter((row) => !isLockedForAdmin(row)).map((row) => row.id);
     setSelectedIds((prev) => {
       if (checked) return Array.from(new Set([...prev, ...pageIds]));
       return prev.filter((id) => !pageIds.includes(id));
@@ -423,7 +416,7 @@ export function UsersCrud() {
     }
   }
 
-  const pageIds = pagination.pagedRows.map((row) => row.id);
+  const pageIds = pagination.pagedRows.filter((row) => !isLockedForAdmin(row)).map((row) => row.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
   function downloadFilteredReport() {
@@ -529,6 +522,7 @@ export function UsersCrud() {
                         type="checkbox"
                         checked={allPageSelected}
                         onChange={(event) => togglePageSelection(event.target.checked)}
+                        disabled={!pageIds.length}
                         aria-label="Pilih semua data pada halaman"
                       />
                     </TableHead>
@@ -552,6 +546,7 @@ export function UsersCrud() {
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
                           onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
+                          disabled={isLockedForAdmin(item)}
                           aria-label={`Pilih pengguna ${item.name}`}
                         />
                       </TableCell>
@@ -576,7 +571,7 @@ export function UsersCrud() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {canEditDelete ? (
+                        {canEditDelete && !isLockedForAdmin(item) ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -588,7 +583,7 @@ export function UsersCrud() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         ) : null}
-                        {canEditDelete ? (
+                        {canEditDelete && !isLockedForAdmin(item) ? (
                           <Button
                             size="sm"
                             variant="outline"

@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS houses (
   id VARCHAR(16) PRIMARY KEY,
   blok VARCHAR(16) NOT NULL,
   nomor VARCHAR(16) NOT NULL,
-  residential_status TEXT NOT NULL DEFAULT 'Owner' CHECK (residential_status IN ('Owner', 'Contract')),
+  residential_status TEXT NOT NULL DEFAULT 'Pemilik' CHECK (residential_status IN ('Pemilik', 'Ngontrak')),
   is_occupied BOOLEAN NOT NULL DEFAULT FALSE
 );
 

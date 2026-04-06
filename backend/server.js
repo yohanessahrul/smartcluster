@@ -29,7 +29,7 @@ const transactionTypeValues = ["Pemasukan", "Pengeluaran"];
 const transactionCategoryValues = ["IPL Warga", "IPL Cluster", "Barang Inventaris", "Other"];
 const billStatusValues = ["Lunas", "Belum Dibayar", "Verifikasi"];
 const transactionStatusValues = ["Lunas", "Verifikasi", "Pending"];
-const residentialStatusValues = ["Owner", "Contract"];
+const residentialStatusValues = ["Pemilik", "Ngontrak"];
 const userRoleValues = ["admin", "superadmin", "warga", "finance"];
 const paymentMethodValues = ["Transfer Bank", "Cash", "QRIS", "E-wallet"];
 
@@ -155,9 +155,12 @@ function normalizeOptionalDateOnly(value) {
   return dateTime.slice(0, 10);
 }
 
-function normalizeResidentialStatus(value, defaultValue = "Owner") {
+function normalizeResidentialStatus(value, defaultValue = "Pemilik") {
   const status = typeof value === "string" ? value.trim() : "";
   if (residentialStatusValues.includes(status)) return status;
+  const lowered = status.toLowerCase();
+  if (lowered === "owner" || lowered === "pemilik") return "Pemilik";
+  if (lowered === "contract" || lowered === "ngontrak") return "Ngontrak";
   return defaultValue;
 }
 
@@ -309,7 +312,7 @@ async function getHouseSnapshot(queryFn, id) {
         h.id,
         h.blok,
         h.nomor,
-        COALESCE(h.residential_status, 'Owner') AS residential_status,
+        COALESCE(h.residential_status, 'Pemilik') AS residential_status,
         COALESCE(h.is_occupied, FALSE) AS "isOccupied",
         COALESCE(array_agg(hu.user_email ORDER BY hu.user_order ASC, hu.user_email ASC) FILTER (WHERE hu.user_email IS NOT NULL), '{}') AS linked_emails
       FROM houses h
@@ -340,15 +343,17 @@ async function ensureAuditTable() {
 async function ensureHouseColumns() {
   await query("ALTER TABLE houses ADD COLUMN IF NOT EXISTS residential_status TEXT");
   await query("ALTER TABLE houses ADD COLUMN IF NOT EXISTS is_occupied BOOLEAN");
-  await query("UPDATE houses SET residential_status = 'Owner' WHERE residential_status IS NULL");
+  await query("UPDATE houses SET residential_status = 'Pemilik' WHERE residential_status IS NULL");
+  await query("UPDATE houses SET residential_status = 'Pemilik' WHERE LOWER(residential_status) = 'owner'");
+  await query("UPDATE houses SET residential_status = 'Ngontrak' WHERE LOWER(residential_status) = 'contract'");
   await query("UPDATE houses SET is_occupied = FALSE WHERE is_occupied IS NULL");
-  await query("ALTER TABLE houses ALTER COLUMN residential_status SET DEFAULT 'Owner'");
+  await query("ALTER TABLE houses ALTER COLUMN residential_status SET DEFAULT 'Pemilik'");
   await query("ALTER TABLE houses ALTER COLUMN residential_status SET NOT NULL");
   await query("ALTER TABLE houses ALTER COLUMN is_occupied SET DEFAULT FALSE");
   await query("ALTER TABLE houses ALTER COLUMN is_occupied SET NOT NULL");
   await query("ALTER TABLE houses DROP CONSTRAINT IF EXISTS houses_residential_status_check");
   await query(
-    "ALTER TABLE houses ADD CONSTRAINT houses_residential_status_check CHECK (residential_status IN ('Owner', 'Contract'))"
+    "ALTER TABLE houses ADD CONSTRAINT houses_residential_status_check CHECK (residential_status IN ('Pemilik', 'Ngontrak'))"
   );
 }
 
@@ -776,7 +781,7 @@ app.get("/api/houses", async (_, res) => {
         h.id,
         h.blok,
         h.nomor,
-        COALESCE(h.residential_status, 'Owner') AS residential_status,
+        COALESCE(h.residential_status, 'Pemilik') AS residential_status,
         COALESCE(h.is_occupied, FALSE) AS "isOccupied",
         COALESCE(array_agg(hu.user_email ORDER BY hu.user_order ASC, hu.user_email ASC) FILTER (WHERE hu.user_email IS NOT NULL), '{}') AS linked_emails
       FROM houses h

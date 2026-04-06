@@ -107,7 +107,13 @@ export type OverviewSnapshotRow = {
   generated_by: string;
   admin?: {
     total_houses: number;
+    owner_count: number;
+    contract_count: number;
     total_warga: number;
+    connected_users: number;
+    manager_count: number;
+    total_bills: number;
+    pending_verification_count: number;
     paid_count: number;
     unpaid_count: number;
   };

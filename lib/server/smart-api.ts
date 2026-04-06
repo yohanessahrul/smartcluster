@@ -94,7 +94,7 @@ const transactionTypeValues = ["Pemasukan", "Pengeluaran"] as const;
 const transactionCategoryValues = ["IPL Warga", "IPL Cluster", "Barang Inventaris", "Other"] as const;
 const billStatusValues = ["Lunas", "Belum bayar", "Menunggu Verifikasi", "Verifikasi"] as const;
 const transactionStatusValues = ["Lunas", "Belum bayar", "Verifikasi", "Menunggu Verifikasi"] as const;
-const residentialStatusValues = ["Owner", "Contract"] as const;
+const residentialStatusValues = ["Pemilik", "Ngontrak"] as const;
 const userRoleValues = ["admin", "superadmin", "warga", "finance"] as const;
 const paymentMethodValues = ["Transfer Bank", "Cash", "QRIS", "E-wallet"] as const;
 const SCHEMA_META_KEY = "smart_api_schema_version";
@@ -135,7 +135,13 @@ export type OverviewSnapshot = {
   generated_by: string;
   admin: {
     total_houses: number;
+    owner_count: number;
+    contract_count: number;
     total_warga: number;
+    connected_users: number;
+    manager_count: number;
+    total_bills: number;
+    pending_verification_count: number;
     paid_count: number;
     unpaid_count: number;
   };
@@ -334,10 +340,21 @@ function normalizeOptionalUrl(value: unknown) {
   return trimmed ? trimmed : null;
 }
 
-function normalizeResidentialStatus(value: unknown, defaultValue = "Owner") {
+function normalizeResidentialStatus(value: unknown, defaultValue = "Pemilik") {
   const status = asString(value).trim();
   if (residentialStatusValues.includes(status as (typeof residentialStatusValues)[number])) return status;
+  const lowered = status.toLowerCase();
+  if (lowered === "owner" || lowered === "pemilik") return "Pemilik";
+  if (lowered === "contract" || lowered === "ngontrak") return "Ngontrak";
   return defaultValue;
+}
+
+function normalizeHouseNomor(value: unknown) {
+  const digits = asString(value).replace(/\D/g, "");
+  if (!digits) return null;
+  const parsed = Number(digits);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 99) return null;
+  return String(parsed).padStart(2, "0");
 }
 
 function normalizeUserRole(value: unknown, defaultValue = "warga") {
@@ -375,6 +392,46 @@ function validateHouseEmails(linkedEmails: unknown) {
   const uniqueEmails = Array.from(new Set(emails));
   if (uniqueEmails.length > 2) return { ok: false as const, message: "linked_emails maksimal 2 email." };
   return { ok: true as const, emails: uniqueEmails };
+}
+
+async function ensureHouseEmailsNotUsedInOtherHouses(
+  queryFn: QueryFn,
+  emails: string[],
+  excludeHouseId?: string,
+) {
+  if (!emails.length) return;
+
+  const result = excludeHouseId
+    ? await queryFn(
+        `
+          SELECT hu.user_email, h.blok, h.nomor
+          FROM house_users hu
+          JOIN houses h ON h.id = hu.house_id
+          WHERE hu.user_email = ANY($1::text[])
+            AND hu.house_id <> $2
+          ORDER BY hu.house_id ASC, hu.user_order ASC
+          LIMIT 1
+        `,
+        [emails, excludeHouseId],
+      )
+    : await queryFn(
+        `
+          SELECT hu.user_email, h.blok, h.nomor
+          FROM house_users hu
+          JOIN houses h ON h.id = hu.house_id
+          WHERE hu.user_email = ANY($1::text[])
+          ORDER BY hu.house_id ASC, hu.user_order ASC
+          LIMIT 1
+        `,
+        [emails],
+      );
+
+  if (!result.rowCount) return;
+  const row = result.rows[0] as { user_email?: string; blok?: string; nomor?: string };
+  const email = asString(row.user_email);
+  const blok = asString(row.blok);
+  const nomor = asString(row.nomor);
+  throw new ApiHttpError(409, `Email ${email} sudah dipakai di rumah ${blok}-${nomor}.`);
 }
 
 export function getActorFromHeaders(headers: Headers) {
@@ -476,7 +533,7 @@ async function getHouseSnapshot(queryFn: QueryFn, id: string) {
         h.id,
         h.blok,
         h.nomor,
-        COALESCE(h.residential_status, 'Owner') AS residential_status,
+        COALESCE(h.residential_status, 'Pemilik') AS residential_status,
         COALESCE(h.is_occupied, FALSE) AS "isOccupied",
         COALESCE(array_agg(hu.user_email ORDER BY hu.user_order ASC, hu.user_email ASC) FILTER (WHERE hu.user_email IS NOT NULL), '{}') AS linked_emails
       FROM houses h
@@ -507,9 +564,11 @@ async function ensureAuditTable() {
 async function ensureHouseColumns() {
   await query("ALTER TABLE houses ADD COLUMN IF NOT EXISTS residential_status TEXT");
   await query("ALTER TABLE houses ADD COLUMN IF NOT EXISTS is_occupied BOOLEAN");
-  await query("UPDATE houses SET residential_status = 'Owner' WHERE residential_status IS NULL");
+  await query("UPDATE houses SET residential_status = 'Pemilik' WHERE residential_status IS NULL");
+  await query("UPDATE houses SET residential_status = 'Pemilik' WHERE LOWER(residential_status) = 'owner'");
+  await query("UPDATE houses SET residential_status = 'Ngontrak' WHERE LOWER(residential_status) = 'contract'");
   await query("UPDATE houses SET is_occupied = FALSE WHERE is_occupied IS NULL");
-  await query("ALTER TABLE houses ALTER COLUMN residential_status SET DEFAULT 'Owner'");
+  await query("ALTER TABLE houses ALTER COLUMN residential_status SET DEFAULT 'Pemilik'");
   await query("ALTER TABLE houses ALTER COLUMN residential_status SET NOT NULL");
   await query("ALTER TABLE houses ALTER COLUMN is_occupied SET DEFAULT FALSE");
   await query("ALTER TABLE houses ALTER COLUMN is_occupied SET NOT NULL");
@@ -519,7 +578,7 @@ async function ensureHouseColumns() {
     BEGIN
       ALTER TABLE houses
       ADD CONSTRAINT houses_residential_status_check
-      CHECK (residential_status IN ('Owner', 'Contract'));
+      CHECK (residential_status IN ('Pemilik', 'Ngontrak'));
     EXCEPTION
       WHEN duplicate_object OR duplicate_table THEN NULL;
     END $$;
@@ -1021,7 +1080,13 @@ export function getHealthStatus() {
 
 type OverviewAdminStatsRow = {
   total_houses: number | string;
+  owner_count: number | string;
+  contract_count: number | string;
   total_warga: number | string;
+  connected_users: number | string;
+  manager_count: number | string;
+  total_bills: number | string;
+  pending_verification_count: number | string;
   paid_count: number | string;
   unpaid_count: number | string;
 };
@@ -1092,7 +1157,13 @@ function normalizeOverviewSnapshotPayload(payload: unknown): Omit<OverviewSnapsh
   return {
     admin: {
       total_houses: toNumber(admin.total_houses),
+      owner_count: toNumber(admin.owner_count),
+      contract_count: toNumber(admin.contract_count),
       total_warga: toNumber(admin.total_warga),
+      connected_users: toNumber(admin.connected_users),
+      manager_count: toNumber(admin.manager_count),
+      total_bills: toNumber(admin.total_bills),
+      pending_verification_count: toNumber(admin.pending_verification_count),
       paid_count: toNumber(admin.paid_count),
       unpaid_count: toNumber(admin.unpaid_count),
     },
@@ -1136,9 +1207,15 @@ export async function refreshOverviewSnapshot(actor: string) {
     const adminStatsResult = await transaction.query<OverviewAdminStatsRow>(`
         SELECT
           (SELECT COUNT(*) FROM houses)::bigint AS total_houses,
-          (SELECT COUNT(*) FROM users WHERE role = 'warga')::bigint AS total_warga,
+          (SELECT COUNT(*) FROM houses WHERE residential_status = 'Pemilik')::bigint AS owner_count,
+          (SELECT COUNT(*) FROM houses WHERE residential_status = 'Ngontrak')::bigint AS contract_count,
+          (SELECT COUNT(*) FROM users WHERE role <> 'superadmin')::bigint AS total_warga,
+          (SELECT COUNT(DISTINCT hu.user_email) FROM house_users hu)::bigint AS connected_users,
+          (SELECT COUNT(*) FROM users WHERE role IN ('admin', 'finance'))::bigint AS manager_count,
+          (SELECT COUNT(*) FROM bills)::bigint AS total_bills,
+          (SELECT COUNT(*) FROM bills WHERE status = 'Menunggu Verifikasi')::bigint AS pending_verification_count,
           (SELECT COUNT(*) FROM bills WHERE status = 'Lunas')::bigint AS paid_count,
-          (SELECT COUNT(*) FROM bills WHERE status <> 'Lunas')::bigint AS unpaid_count
+          (SELECT COUNT(*) FROM bills WHERE status = 'Belum bayar')::bigint AS unpaid_count
       `);
     const financeStatsResult = await transaction.query<OverviewFinanceStatsRow>(`
         SELECT
@@ -1208,7 +1285,13 @@ export async function refreshOverviewSnapshot(actor: string) {
     const payloadWithoutMeta: Omit<OverviewSnapshot, "generated_at" | "generated_by"> = {
       admin: {
         total_houses: toNumber(adminStats.total_houses),
+        owner_count: toNumber(adminStats.owner_count),
+        contract_count: toNumber(adminStats.contract_count),
         total_warga: toNumber(adminStats.total_warga),
+        connected_users: toNumber(adminStats.connected_users),
+        manager_count: toNumber(adminStats.manager_count),
+        total_bills: toNumber(adminStats.total_bills),
+        pending_verification_count: toNumber(adminStats.pending_verification_count),
         paid_count: toNumber(adminStats.paid_count),
         unpaid_count: toNumber(adminStats.unpaid_count),
       },
@@ -1419,7 +1502,7 @@ export async function listHouses() {
         h.id,
         h.blok,
         h.nomor,
-        COALESCE(h.residential_status, 'Owner') AS residential_status,
+        COALESCE(h.residential_status, 'Pemilik') AS residential_status,
         COALESCE(h.is_occupied, FALSE) AS "isOccupied",
         COALESCE(array_agg(hu.user_email ORDER BY hu.user_order ASC, hu.user_email ASC) FILTER (WHERE hu.user_email IS NOT NULL), '{}') AS linked_emails
       FROM houses h
@@ -1444,6 +1527,10 @@ export async function createHouse(payload: HousePayload, actor: string) {
 
     const residentialStatus = normalizeResidentialStatus(payload.residential_status ?? payload.status);
     const isOccupied = normalizeBoolean(payload.isOccupied ?? payload.is_occupied, false);
+    const houseNomor = normalizeHouseNomor(payload.nomor);
+    if (!houseNomor) {
+      throw new ApiHttpError(400, "Nomor rumah harus format 2 digit antara 01 sampai 99.");
+    }
 
     await beginTransaction(transaction);
 
@@ -1452,10 +1539,11 @@ export async function createHouse(payload: HousePayload, actor: string) {
       await rollbackTransaction(transaction);
       throw new ApiHttpError(400, "Ada email house yang belum terdaftar di users.");
     }
+    await ensureHouseEmailsNotUsedInOtherHouses((text, params) => transaction.query(text, params), validation.emails);
 
     await transaction.query(
       "INSERT INTO houses (id, blok, nomor, residential_status, is_occupied) VALUES ($1,$2,$3,$4,$5)",
-      [payload.id, payload.blok, payload.nomor, residentialStatus, isOccupied],
+      [payload.id, payload.blok, houseNomor, residentialStatus, isOccupied],
     );
 
     for (const [index, email] of validation.emails.entries()) {
@@ -1501,6 +1589,10 @@ export async function updateHouse(id: string, payload: HousePayload, actor: stri
 
     const residentialStatus = normalizeResidentialStatus(payload.residential_status ?? payload.status);
     const isOccupied = normalizeBoolean(payload.isOccupied ?? payload.is_occupied, false);
+    const houseNomor = normalizeHouseNomor(payload.nomor);
+    if (!houseNomor) {
+      throw new ApiHttpError(400, "Nomor rumah harus format 2 digit antara 01 sampai 99.");
+    }
 
     await beginTransaction(transaction);
 
@@ -1515,10 +1607,11 @@ export async function updateHouse(id: string, payload: HousePayload, actor: stri
       await rollbackTransaction(transaction);
       throw new ApiHttpError(400, "Ada email house yang belum terdaftar di users.");
     }
+    await ensureHouseEmailsNotUsedInOtherHouses((text, params) => transaction.query(text, params), validation.emails, id);
 
     await transaction.query("UPDATE houses SET blok=$1, nomor=$2, residential_status=$3, is_occupied=$4 WHERE id=$5", [
       payload.blok,
-      payload.nomor,
+      houseNomor,
       residentialStatus,
       isOccupied,
       id,

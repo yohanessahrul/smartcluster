@@ -3,10 +3,13 @@
   "version": "1.0.0",
   "description": "Hunita - Sistem Management Perumahan yang transparan.",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
-    "dev": "next dev --webpack",
-    "dev:frontend": "next dev --webpack",
-    "build": "next build --webpack",
+    "dev": "next dev",
+    "dev:frontend": "next dev",
+    "build": "next build",
     "start": "next start",
     "test:unit": "vitest run tests/unit",
     "test:functional": "vitest run tests/functional",

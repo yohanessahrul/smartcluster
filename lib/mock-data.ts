@@ -10,7 +10,7 @@ export type HouseRow = {
   id: string;
   blok: string;
   nomor: string;
-  residential_status: "Owner" | "Contract";
+  residential_status: "Pemilik" | "Ngontrak";
   isOccupied: boolean;
   linked_emails: string[];
 };
@@ -98,13 +98,13 @@ export const houses: HouseRow[] = [
     id: "H001",
     blok: "A",
     nomor: "12",
-    residential_status: "Owner",
+    residential_status: "Pemilik",
     isOccupied: true,
     linked_emails: ["budi.a12@mail.com", "sari.a12@mail.com"],
   },
-  { id: "H002", blok: "B", nomor: "03", residential_status: "Contract", isOccupied: true, linked_emails: ["sri.b03@mail.com"] },
-  { id: "H003", blok: "C", nomor: "21", residential_status: "Owner", isOccupied: false, linked_emails: ["agus.c21@mail.com"] },
-  { id: "H004", blok: "A", nomor: "07", residential_status: "Contract", isOccupied: true, linked_emails: ["nadia.a07@mail.com"] },
+  { id: "H002", blok: "B", nomor: "03", residential_status: "Ngontrak", isOccupied: true, linked_emails: ["sri.b03@mail.com"] },
+  { id: "H003", blok: "C", nomor: "21", residential_status: "Pemilik", isOccupied: false, linked_emails: ["agus.c21@mail.com"] },
+  { id: "H004", blok: "A", nomor: "07", residential_status: "Ngontrak", isOccupied: true, linked_emails: ["nadia.a07@mail.com"] },
 ];
 
 export const bills: BillRow[] = [

@@ -24,6 +24,10 @@ const inputClass =
 const filterSelectClass =
   "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
+const blokSelectGroupButtonClass =
+  "flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 text-sm font-medium outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring";
+const blokSelectGroupButtonActiveClass = "border-primary bg-primary text-primary-foreground hover:bg-primary/90";
+const blokOptions = ["AM1", "AM2", "AM3", "AM4", "AM5"] as const;
 
 type HouseFormState = {
   id: string;
@@ -37,9 +41,9 @@ type HouseFormState = {
 
 const emptyForm: HouseFormState = {
   id: "",
-  blok: "",
+  blok: "AM1",
   nomor: "",
-  residential_status: "Owner",
+  residential_status: "Pemilik",
   isOccupied: false,
   primary_email: "",
   secondary_email: "",
@@ -54,12 +58,25 @@ function getNextHouseId(rows: HouseRow[]) {
   return `H${String(max + 1).padStart(3, "0")}`;
 }
 
+function normalizeHouseNomor(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return null;
+  const parsed = Number(digits);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 99) return null;
+  return String(parsed).padStart(2, "0");
+}
+
+function sanitizeHouseNomorInput(value: string) {
+  return value.replace(/\D/g, "").slice(0, 2);
+}
+
 function mapToForm(row: HouseRow): HouseFormState {
+  const normalizedNomor = normalizeHouseNomor(row.nomor);
   return {
     id: row.id,
     blok: row.blok,
-    nomor: row.nomor,
-    residential_status: row.residential_status ?? "Owner",
+    nomor: normalizedNomor ?? row.nomor,
+    residential_status: row.residential_status ?? "Pemilik",
     isOccupied: row.isOccupied ?? false,
     primary_email: row.linked_emails[0] ?? "",
     secondary_email: row.linked_emails[1] ?? "",
@@ -81,7 +98,6 @@ function mapToHouseRow(form: HouseFormState): HouseRow {
 type HouseFormProps = {
   value: HouseFormState;
   onChange: (value: HouseFormState) => void;
-  disableId?: boolean;
   emailFieldMode?: "select" | "combobox";
   emailOptions?: Array<{ email: string; label: string }>;
   errorMessage?: string;
@@ -93,7 +109,6 @@ type HouseFormProps = {
 function HouseForm({
   value,
   onChange,
-  disableId,
   emailFieldMode = "select",
   emailOptions,
   errorMessage,
@@ -109,63 +124,72 @@ function HouseForm({
   return (
     <form className="space-y-3" onSubmit={onSubmit}>
       <FormErrorAlert message={errorMessage} />
+      <input type="hidden" value={value.id} readOnly />
       <div>
-        <label className={labelClass}>ID</label>
+        <label className={labelClass}>Blok</label>
+        <div role="radiogroup" aria-label="Pilih Blok" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {blokOptions.map((blok) => {
+            const selected = value.blok === blok;
+            return (
+              <button
+                key={blok}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={`${blokSelectGroupButtonClass} ${selected ? blokSelectGroupButtonActiveClass : ""}`}
+                onClick={() => onChange({ ...value, blok })}
+              >
+                <span>{blok}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div>
+        <label className={labelClass}>Nomor</label>
         <input
           className={inputClass}
-          value={value.id}
-          onChange={(event) => onChange({ ...value, id: event.target.value })}
-          placeholder="H010"
+          value={value.nomor}
+          onChange={(event) => onChange({ ...value, nomor: sanitizeHouseNomorInput(event.target.value) })}
+          onBlur={() => {
+            const normalized = normalizeHouseNomor(value.nomor);
+            onChange({ ...value, nomor: normalized ?? value.nomor });
+          }}
+          placeholder="01"
+          inputMode="numeric"
+          minLength={2}
+          maxLength={2}
+          pattern="^(0[1-9]|[1-9][0-9])$"
+          title="Nomor rumah harus 2 digit antara 01 sampai 99"
           required
-          disabled={disableId}
         />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={labelClass}>Blok</label>
-          <input
+          <label className={labelClass}>Kepemilikan</label>
+          <select
             className={inputClass}
-            value={value.blok}
-            onChange={(event) => onChange({ ...value, blok: event.target.value })}
-            placeholder="A"
-            required
-          />
+            value={value.residential_status}
+            onChange={(event) => onChange({ ...value, residential_status: event.target.value as HouseRow["residential_status"] })}
+          >
+            <option value="Pemilik">Pemilik</option>
+            <option value="Ngontrak">Ngontrak</option>
+          </select>
         </div>
         <div>
-          <label className={labelClass}>Nomor</label>
-          <input
+          <label className={labelClass}>Dihuni</label>
+          <select
             className={inputClass}
-            value={value.nomor}
-            onChange={(event) => onChange({ ...value, nomor: event.target.value })}
-            placeholder="12"
-            required
-          />
+            value={value.isOccupied ? "true" : "false"}
+            onChange={(event) => onChange({ ...value, isOccupied: event.target.value === "true" })}
+          >
+            <option value="false">Tidak</option>
+            <option value="true">Ya</option>
+          </select>
         </div>
       </div>
       <div>
-        <label className={labelClass}>Kepemilikan</label>
-        <select
-          className={inputClass}
-          value={value.residential_status}
-          onChange={(event) => onChange({ ...value, residential_status: event.target.value as HouseRow["residential_status"] })}
-        >
-          <option value="Owner">Owner</option>
-          <option value="Contract">Contract</option>
-        </select>
-      </div>
-      <div>
-        <label className={labelClass}>Dihuni</label>
-        <select
-          className={inputClass}
-          value={value.isOccupied ? "true" : "false"}
-          onChange={(event) => onChange({ ...value, isOccupied: event.target.value === "true" })}
-        >
-          <option value="false">Tidak</option>
-          <option value="true">Ya</option>
-        </select>
-      </div>
-      <div>
-        <label className={labelClass}>Primary</label>
+        <label className={labelClass}>Email Utama</label>
         {emailFieldMode === "combobox" ? (
           <>
             <input
@@ -215,7 +239,7 @@ function HouseForm({
         )}
       </div>
       <div>
-        <label className={labelClass}>Secondary (Optional)</label>
+        <label className={labelClass}>Email Tambahan (Optional)</label>
         {emailFieldMode === "combobox" ? (
           <>
             <input
@@ -275,7 +299,6 @@ function CreateHouseModal({ open, onClose, value, emailOptions, onChange, onSubm
         submitLabel="Create"
         submitting={submitting}
         onSubmit={onSubmit}
-        disableId
         emailOptions={emailOptions}
         emailFieldMode="combobox"
         errorMessage={errorMessage}
@@ -304,8 +327,8 @@ function UpdateHouseModal({ open, onClose, value, onChange, onSubmit, emailOptio
         submitLabel="Update"
         submitting={submitting}
         onSubmit={onSubmit}
-        disableId
         emailOptions={emailOptions}
+        emailFieldMode="combobox"
         errorMessage={errorMessage}
       />
     </SimpleModal>
@@ -381,18 +404,41 @@ export function HousesCrud() {
     }
   }
 
-  function validateLinkedEmails(form: HouseFormState) {
+  function validateLinkedEmails(form: HouseFormState, currentHouseId?: string | null) {
     const emails = [form.primary_email.trim().toLowerCase(), form.secondary_email.trim().toLowerCase()].filter(Boolean);
     if (emails.length > 2) return "Maksimal 2 email per rumah.";
     if (new Set(emails).size !== emails.length) return "Primary dan Secondary tidak boleh sama.";
     const unknown = emails.find((email) => !userByEmail.has(email));
     if (unknown) return `Email ${unknown} belum ada di tabel user.`;
+    const duplicateEmail = emails.find((email) =>
+      rows.some(
+        (row) =>
+          row.id !== currentHouseId &&
+          row.linked_emails.some((linkedEmail) => linkedEmail.toLowerCase() === email)
+      )
+    );
+    if (duplicateEmail) {
+      const houseOwner = rows.find(
+        (row) =>
+          row.id !== currentHouseId &&
+          row.linked_emails.some((linkedEmail) => linkedEmail.toLowerCase() === duplicateEmail)
+      );
+      if (houseOwner) {
+        return `Email ${duplicateEmail} sudah dipakai di rumah ${houseOwner.blok}-${houseOwner.nomor}.`;
+      }
+      return `Email ${duplicateEmail} sudah dipakai di data rumah lain.`;
+    }
     return null;
   }
 
   async function createHouse(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError("");
+    const normalizedNomor = normalizeHouseNomor(createForm.nomor);
+    if (!normalizedNomor) {
+      setCreateError("Nomor rumah harus 2 digit antara 01 sampai 99.");
+      return;
+    }
     const validate = validateLinkedEmails(createForm);
     if (validate) {
       setCreateError(validate);
@@ -400,7 +446,7 @@ export function HousesCrud() {
     }
     setCreateSubmitting(true);
     try {
-      const nextRow = mapToHouseRow(createForm);
+      const nextRow = mapToHouseRow({ ...createForm, nomor: normalizedNomor });
       await apiClient.createHouse(
         {
           ...nextRow,
@@ -427,9 +473,9 @@ export function HousesCrud() {
   function openCreateModal() {
     setCreateForm({
       id: getNextHouseId(rows),
-      blok: "",
+      blok: "AM1",
       nomor: "",
-      residential_status: "Owner",
+      residential_status: "Pemilik",
       isOccupied: false,
       primary_email: "",
       secondary_email: "",
@@ -457,12 +503,17 @@ export function HousesCrud() {
     event.preventDefault();
     if (!editingId) return;
     setUpdateError("");
-    const validate = validateLinkedEmails(editForm);
+    const normalizedNomor = normalizeHouseNomor(editForm.nomor);
+    if (!normalizedNomor) {
+      setUpdateError("Nomor rumah harus 2 digit antara 01 sampai 99.");
+      return;
+    }
+    const validate = validateLinkedEmails(editForm, editingId);
     if (validate) {
       setUpdateError(validate);
       return;
     }
-    const nextRow = mapToHouseRow(editForm);
+    const nextRow = mapToHouseRow({ ...editForm, nomor: normalizedNomor });
     setUpdateSubmitting(true);
     try {
       await apiClient.updateHouse(editingId, {
@@ -882,8 +933,8 @@ export function HousesCrud() {
               onChange={(event) => setDraftStatusFilter(event.target.value as "all" | HouseRow["residential_status"])}
             >
               <option value="all">Semua Kepemilikan</option>
-              <option value="Owner">Owner</option>
-              <option value="Contract">Contract</option>
+              <option value="Pemilik">Pemilik</option>
+              <option value="Ngontrak">Ngontrak</option>
             </select>
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
