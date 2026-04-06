@@ -6,6 +6,7 @@ import { FileSpreadsheet, RefreshCw, SlidersHorizontal } from "lucide-react";
 import { ChangeHistoryTable } from "@/components/admin/change-history-table";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { Button } from "@/components/ui/button";
+import { PageLoadingScreen } from "@/components/ui/page-loading-screen";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { apiClient, AuditLogRow } from "@/lib/api-client";
 import { useAuthSession } from "@/lib/auth-client";
@@ -16,7 +17,7 @@ const filterSelectClass =
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 
 export default function AdminGlobalHistoryPage() {
-  const { session } = useAuthSession();
+  const { loading: sessionLoading, session } = useAuthSession();
   const [rows, setRows] = useState<AuditLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -110,6 +111,10 @@ export default function AdminGlobalHistoryPage() {
         { header: "After", value: (row) => JSON.stringify(row.after_value ?? {}) },
       ],
     });
+  }
+
+  if (sessionLoading) {
+    return <PageLoadingScreen />;
   }
 
   if (isFinance) {

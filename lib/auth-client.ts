@@ -18,9 +18,69 @@ type AuthSessionApiResponse = {
   session: SessionData;
 };
 
+const AUTH_CHANGED_EVENT = "smart-perumahan-auth-changed";
+const AUTH_SESSION_UPDATED_EVENT = "smart-perumahan-auth-session-updated";
+
+let cachedSession: SessionData | null = null;
+let cachedSessionLoading = false;
+let hasLoadedCachedSession = false;
+let inFlightSessionRequest: Promise<void> | null = null;
+
+function emitAuthSessionUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(AUTH_SESSION_UPDATED_EVENT));
+}
+
 function emitAuthChanged() {
   if (typeof window === "undefined") return;
-  window.dispatchEvent(new Event("smart-perumahan-auth-changed"));
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+async function syncSessionCache(force = false) {
+  if (!force && hasLoadedCachedSession) {
+    return;
+  }
+
+  if (inFlightSessionRequest) {
+    await inFlightSessionRequest;
+    return;
+  }
+
+  cachedSessionLoading = true;
+  emitAuthSessionUpdated();
+
+  const request = (async () => {
+    try {
+      const response = await fetch("/api/auth/session", { method: "GET", cache: "no-store" });
+      if (response.status === 401) {
+        cachedSession = null;
+        return;
+      }
+
+      const body = (await response.json().catch(() => null)) as AuthSessionApiResponse | { message?: string } | null;
+      if (!response.ok || !body || !("session" in body) || !body.session) {
+        cachedSession = null;
+        return;
+      }
+
+      cachedSession = body.session;
+    } catch {
+      cachedSession = null;
+    } finally {
+      hasLoadedCachedSession = true;
+      cachedSessionLoading = false;
+    }
+  })();
+
+  inFlightSessionRequest = request;
+  try {
+    await request;
+  } finally {
+    if (inFlightSessionRequest === request) {
+      inFlightSessionRequest = null;
+    }
+    emitAuthSessionUpdated();
+  }
 }
 
 export function signInWithGoogle() {
@@ -30,48 +90,49 @@ export function signInWithGoogle() {
 
 export async function logout() {
   await fetch("/api/auth/logout", { method: "POST" });
+  cachedSession = null;
+  hasLoadedCachedSession = true;
+  cachedSessionLoading = false;
+  emitAuthSessionUpdated();
   emitAuthChanged();
 }
 
 export function useAuthSession() {
-  const [session, setSession] = useState<SessionData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<SessionData | null>(() => (hasLoadedCachedSession ? cachedSession : null));
+  const [loading, setLoading] = useState<boolean>(() => (hasLoadedCachedSession ? cachedSessionLoading : true));
 
-  const loadSession = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch("/api/auth/session", { method: "GET", cache: "no-store" });
-
-      if (response.status === 401) {
-        setSession(null);
-        return;
-      }
-
-      const body = (await response.json().catch(() => null)) as AuthSessionApiResponse | { message?: string } | null;
-      if (!response.ok || !body || !("session" in body) || !body.session) {
-        setSession(null);
-        return;
-      }
-
-      setSession(body.session);
-    } catch {
-      setSession(null);
-    } finally {
-      setLoading(false);
-    }
+  const syncHookStateFromCache = useCallback(() => {
+    setSession(cachedSession);
+    setLoading(hasLoadedCachedSession ? cachedSessionLoading : true);
   }, []);
 
   useEffect(() => {
-    void loadSession();
-    window.addEventListener("smart-perumahan-auth-changed", loadSession);
-    return () => window.removeEventListener("smart-perumahan-auth-changed", loadSession);
-  }, [loadSession]);
+    function onSessionUpdated() {
+      syncHookStateFromCache();
+    }
+
+    function onAuthChanged() {
+      void syncSessionCache(true);
+    }
+
+    syncHookStateFromCache();
+    if (!hasLoadedCachedSession) {
+      void syncSessionCache(false);
+    }
+
+    window.addEventListener(AUTH_SESSION_UPDATED_EVENT, onSessionUpdated);
+    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_UPDATED_EVENT, onSessionUpdated);
+      window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+    };
+  }, [syncHookStateFromCache]);
 
   return {
     loading,
     session,
     authUser: session ? { id: session.userId, email: session.email } : null,
-    refetch: loadSession,
+    refetch: () => syncSessionCache(true),
     refreshUsers: async () => {},
   };
 }

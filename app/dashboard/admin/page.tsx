@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
 import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
+import { PageLoadingScreen } from "@/components/ui/page-loading-screen";
 import { Badge } from "@/components/ui/badge";
 import { ApiTableLoadingHead, ApiTableLoadingRow } from "@/components/ui/api-loading-state";
 import { Button } from "@/components/ui/button";
@@ -58,7 +59,7 @@ const EMPTY_SNAPSHOT: OverviewSnapshotRow = {
 export default function AdminDashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
-  const { session } = useAuthSession();
+  const { loading: sessionLoading, session } = useAuthSession();
   const actorEmail = session?.email ?? "system@smart-cluster";
   const [snapshot, setSnapshot] = useState<OverviewSnapshotRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,6 +181,10 @@ export default function AdminDashboardPage() {
       </Button>
     </div>
   ) : null;
+
+  if (sessionLoading) {
+    return <PageLoadingScreen />;
+  }
 
   if (isFinance) {
     return (

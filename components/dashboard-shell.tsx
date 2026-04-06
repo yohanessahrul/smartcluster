@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { PageLoadingScreen } from "@/components/ui/page-loading-screen";
 import { logout, useAuthSession } from "@/lib/auth-client";
 import type { AppRole } from "@/lib/role-access";
 import { isAdminLikeRole, isFinanceRole } from "@/lib/role-access";
@@ -28,7 +29,7 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const { session } = useAuthSession();
+  const { loading, session } = useAuthSession();
   const displayName = session?.name?.trim() || "User";
   const displayRole = session?.role || roleLabel;
   const panelLabel = resolvePanelLabel(session?.role, roleLabel);
@@ -57,6 +58,10 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
     } finally {
       setLoggingOut(false);
     }
+  }
+
+  if (loading) {
+    return <PageLoadingScreen />;
   }
 
   return (
