@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { logout, useAuthSession } from "@/lib/auth-client";
+import type { AppRole } from "@/lib/role-access";
 import { isAdminLikeRole, isFinanceRole } from "@/lib/role-access";
 
 type DashboardShellProps = {
@@ -15,7 +16,7 @@ type DashboardShellProps = {
   children: ReactNode;
 };
 
-function resolvePanelLabel(role: string | null | undefined, fallback: string) {
+function resolvePanelLabel(role: AppRole, fallback: string) {
   if (isFinanceRole(role)) return "Finance Panel";
   if (role === "warga") return "Portal Warga";
   if (isAdminLikeRole(role)) return "Admin Panel";
