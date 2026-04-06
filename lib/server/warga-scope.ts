@@ -12,12 +12,16 @@ export type WargaScopedData = {
 export async function getWargaScopedDataByEmail(emailValue: string): Promise<WargaScopedData> {
   const email = emailValue.trim().toLowerCase();
 
-  const [users, houses, bills, transactions] = await Promise.all([
+  const [usersRaw, housesRaw, billsRaw, transactionsRaw] = await Promise.all([
     listUsers(),
     listHouses(),
     listBills(),
     listTransactions(),
   ]);
+  const users = usersRaw as UserRow[];
+  const houses = housesRaw as HouseRow[];
+  const bills = billsRaw as BillRow[];
+  const transactions = transactionsRaw as TransactionRow[];
 
   const house = houses.find((item) => item.linked_emails.map((value) => value.toLowerCase()).includes(email)) ?? null;
   const user = users.find((item) => item.email.toLowerCase() === email && item.role === "warga") ?? null;
