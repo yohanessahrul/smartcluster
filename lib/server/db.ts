@@ -1,4 +1,4 @@
-import { Pool, QueryResult, QueryResultRow, types } from "pg";
+import { Pool, PoolClient, QueryResult, QueryResultRow, types } from "pg";
 
 type GlobalDbState = typeof globalThis & {
   smartPerumahanPgPool?: Pool;
@@ -26,6 +26,52 @@ function getConnectionString() {
   }:${process.env.PGPORT || "5432"}/${process.env.PGDATABASE || "smart_perumahan"}`;
 }
 
+function normalizeConnectionString(raw: string) {
+  try {
+    const url = new URL(raw);
+    const isSupabasePooler = /pooler\.supabase\.com/i.test(url.hostname);
+    let changed = false;
+
+    // In Supabase pooler, port 5432 is session mode (easy to hit connection limits on serverless).
+    // Force transaction mode (6543) for safer fan-out behavior.
+    if (isSupabasePooler && (!url.port || url.port === "5432")) {
+      url.port = "6543";
+      changed = true;
+    }
+
+    if (isSupabasePooler && url.port === "6543" && !url.searchParams.has("pgbouncer")) {
+      url.searchParams.set("pgbouncer", "true");
+      changed = true;
+    }
+
+    if (/supabase\.co$/i.test(url.hostname) && !url.searchParams.has("sslmode")) {
+      url.searchParams.set("sslmode", "require");
+      changed = true;
+    }
+
+    return {
+      connectionString: changed ? url.toString() : raw,
+      isSupabasePooler,
+    };
+  } catch {
+    const isSupabasePooler = /pooler\.supabase\.com/i.test(raw);
+    let connectionString = raw;
+    if (isSupabasePooler) {
+      connectionString = connectionString.replace(/pooler\.supabase\.com:5432/i, "pooler.supabase.com:6543");
+      if (!/[?&]pgbouncer=/i.test(connectionString)) {
+        connectionString += connectionString.includes("?") ? "&pgbouncer=true" : "?pgbouncer=true";
+      }
+      if (!/[?&]sslmode=/i.test(connectionString)) {
+        connectionString += connectionString.includes("?") ? "&sslmode=require" : "?sslmode=require";
+      }
+    }
+    return {
+      connectionString,
+      isSupabasePooler,
+    };
+  }
+}
+
 function shouldRequireExplicitDbUrl() {
   const nodeEnv = (process.env.NODE_ENV || "").toLowerCase();
   const vercelEnv = (process.env.VERCEL_ENV || "").toLowerCase();
@@ -43,14 +89,21 @@ function wait(ms: number) {
 }
 
 function isTransientConnectionError(error: unknown) {
-  if (!(error instanceof Error)) return false;
-  const message = error.message.toLowerCase();
+  if (!error || typeof error !== "object") return false;
+  const err = error as { message?: unknown; code?: unknown };
+  const message = typeof err.message === "string" ? err.message.toLowerCase() : "";
+  const code = typeof err.code === "string" ? err.code : "";
+
+  if (code === "53300" || code === "57P03") return true;
+
   return (
     message.includes("connection terminated due to connection timeout") ||
     message.includes("timeout exceeded when trying to connect") ||
     message.includes("connection terminated unexpectedly") ||
     message.includes("ecconnreset") ||
-    message.includes("econnrefused")
+    message.includes("econnrefused") ||
+    message.includes("maxclientsinsessionmode") ||
+    message.includes("too many clients")
   );
 }
 
@@ -79,17 +132,22 @@ if (!globalDbState.smartPerumahanPgPool) {
       "[next-api] DATABASE_URL/SUPABASE_DB_URL tidak ditemukan. Menggunakan fallback PGUSER/PGPASSWORD/PGHOST/PGPORT/PGDATABASE.",
     );
   }
-  const connectionString = getConnectionString();
+  const normalized = normalizeConnectionString(getConnectionString());
+  const connectionString = normalized.connectionString;
   const useSsl =
     process.env.DB_SSL === "true" ||
     (process.env.DB_SSL !== "false" && /supabase\.co/i.test(connectionString));
-  const isSupabasePooler = /pooler\.supabase\.com/i.test(connectionString);
-  const defaultPoolMax = shouldRequireExplicitDbUrl() ? (isSupabasePooler ? 10 : 1) : 10;
-  const max = asPositiveInt(process.env.DB_POOL_MAX, defaultPoolMax);
-  const idleTimeoutMillis = asPositiveInt(process.env.DB_IDLE_TIMEOUT_MS, shouldRequireExplicitDbUrl() ? 30_000 : 10_000);
+  const isProductionRuntime = shouldRequireExplicitDbUrl();
+  const defaultPoolMax = isProductionRuntime ? 1 : 10;
+  const requestedMax = asPositiveInt(process.env.DB_POOL_MAX, defaultPoolMax);
+  const max = isProductionRuntime ? Math.min(requestedMax, 1) : requestedMax;
+  const requestedIdleTimeoutMillis = asPositiveInt(process.env.DB_IDLE_TIMEOUT_MS, isProductionRuntime ? 1_000 : 10_000);
+  const idleTimeoutMillis = isProductionRuntime
+    ? Math.min(Math.max(requestedIdleTimeoutMillis, 500), 5_000)
+    : requestedIdleTimeoutMillis;
   const connectionTimeoutMillis = asPositiveInt(
     process.env.DB_CONNECTION_TIMEOUT_MS,
-    shouldRequireExplicitDbUrl() ? 15_000 : 5_000,
+    isProductionRuntime ? 10_000 : 5_000,
   );
 
   globalDbState.smartPerumahanPgPool = new Pool({
@@ -101,19 +159,44 @@ if (!globalDbState.smartPerumahanPgPool) {
     allowExitOnIdle: true,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10_000,
+    maxLifetimeSeconds: isProductionRuntime ? 60 : 0,
   });
 }
 
 export const pool = globalDbState.smartPerumahanPgPool;
 
 export async function query<T extends QueryResultRow = QueryResultRow>(text: string, params?: unknown[]) {
-  try {
-    return await pool.query<T>(text, params);
-  } catch (error) {
-    if (!isTransientConnectionError(error) || !isReadOnlySelectQuery(text)) throw error;
-    await wait(250);
-    return pool.query<T>(text, params);
+  const isReadQuery = isReadOnlySelectQuery(text);
+  const maxAttempts = isReadQuery ? 3 : 1;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await pool.query<T>(text, params);
+    } catch (error) {
+      if (!isReadQuery || !isTransientConnectionError(error) || attempt >= maxAttempts) {
+        throw error;
+      }
+      await wait(200 * attempt);
+    }
   }
+
+  // Unreachable, keeps TS happy.
+  return pool.query<T>(text, params);
+}
+
+export async function connect() {
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await pool.connect();
+    } catch (error) {
+      if (!isTransientConnectionError(error) || attempt >= maxAttempts) {
+        throw error;
+      }
+      await wait(250 * attempt);
+    }
+  }
+  return pool.connect();
 }
 
 export type DbQueryResult<T extends QueryResultRow = QueryResultRow> = QueryResult<T>;

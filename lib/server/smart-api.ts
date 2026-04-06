@@ -1,6 +1,6 @@
 import { PoolClient, QueryResult, QueryResultRow } from "pg";
 
-import { pool, query } from "@/lib/server/db";
+import { connect, query } from "@/lib/server/db";
 import { deletePaymentProofFromSupabase } from "@/lib/server/supabase";
 
 type JsonRecord = Record<string, unknown>;
@@ -1199,7 +1199,7 @@ function mapOverviewSnapshotRow(row: OverviewSnapshotStorageRow | undefined): Ov
 }
 
 export async function refreshOverviewSnapshot(actor: string) {
-  const transaction = await pool.connect();
+  const transaction = await connect();
   try {
     await beginTransaction(transaction);
     await transaction.query("SELECT pg_advisory_xact_lock($1)", [OVERVIEW_REFRESH_LOCK_ID]);
@@ -1517,7 +1517,7 @@ export async function listHouses() {
 }
 
 export async function createHouse(payload: HousePayload, actor: string) {
-  const transaction = await pool.connect();
+  const transaction = await connect();
   try {
     const linkedEmailsInput = Array.isArray(payload.linked_emails)
       ? payload.linked_emails
@@ -1579,7 +1579,7 @@ export async function createHouse(payload: HousePayload, actor: string) {
 }
 
 export async function updateHouse(id: string, payload: HousePayload, actor: string) {
-  const transaction = await pool.connect();
+  const transaction = await connect();
   try {
     const linkedEmailsInput = Array.isArray(payload.linked_emails)
       ? payload.linked_emails
@@ -1646,7 +1646,7 @@ export async function updateHouse(id: string, payload: HousePayload, actor: stri
 }
 
 export async function deleteHouse(id: string, actor: string) {
-  const transaction = await pool.connect();
+  const transaction = await connect();
   try {
     await beginTransaction(transaction);
 
@@ -1688,7 +1688,7 @@ export async function listBills() {
 }
 
 export async function createBill(payload: JsonRecord, actor: string) {
-  const transaction = await pool.connect();
+  const transaction = await connect();
   let paymentProofToDeleteAfterCommit: string | null = null;
   try {
     const status = normalizeBillStatus(payload.status) ?? "Belum bayar";
@@ -1751,7 +1751,7 @@ export async function createBill(payload: JsonRecord, actor: string) {
 }
 
 export async function updateBill(id: string, payload: UpdateBillPayload, actor: string) {
-  const transaction = await pool.connect();
+  const transaction = await connect();
   let paymentProofToDeleteAfterCommit: string | null = null;
   try {
     const status = normalizeBillStatus(payload.status) ?? "Belum bayar";
@@ -1861,7 +1861,7 @@ export async function deleteBill(id: string, actor: string) {
 }
 
 export async function generateBills(payload: GenerateBillsPayload, actor: string) {
-  const transaction = await pool.connect();
+  const transaction = await connect();
   try {
     const month = asString(payload.month);
     const amount = asString(payload.amount);
@@ -2120,7 +2120,7 @@ export async function payBillWithQris(
   payload: { billId?: unknown; payment_method?: unknown; payment_proof_url?: unknown },
   actor: string,
 ) {
-  const transaction = await pool.connect();
+  const transaction = await connect();
   try {
     const billId = asString(payload.billId);
     if (!billId) throw new ApiHttpError(400, "billId wajib diisi.");

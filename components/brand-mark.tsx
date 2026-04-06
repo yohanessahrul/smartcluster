@@ -2,7 +2,7 @@ import Image from "next/image";
 
 import { cn } from "@/lib/utils";
 
-const BRAND_MARK_SRC = "/brand/brand-mark-green.png";
+const BRAND_MARK_SRC = "/brand/brand-mark-ui.png";
 
 type BrandMarkProps = {
   className?: string;
