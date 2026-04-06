@@ -7,6 +7,7 @@ import { LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { signInWithGoogle, useAuthSession } from "@/lib/auth-client";
+import { resolveDashboardPathByRole } from "@/lib/role-access";
 
 export function LoginForm() {
   const router = useRouter();
@@ -17,15 +18,7 @@ export function LoginForm() {
 
   useEffect(() => {
     if (!session?.role) return;
-    if (session.role === "finance") {
-      router.replace("/dashboard/admin");
-      return;
-    }
-    if (session.role === "admin" || session.role === "superadmin") {
-      router.replace("/dashboard/admin");
-      return;
-    }
-    router.replace("/dashboard/warga");
+    router.replace(resolveDashboardPathByRole(session.role));
   }, [router, session?.role]);
 
   useEffect(() => {

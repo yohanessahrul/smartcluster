@@ -184,11 +184,15 @@ export default async function Page() {
                   </Card>
 
                   <div className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                       {adminMetrics.map((metric) => (
                         <Card
                           key={metric.label}
-                          className={metric.tone === "warning" ? "border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]" : ""}
+                          className={
+                            metric.tone === "warning"
+                              ? "border border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]"
+                              : "border border-border"
+                          }
                         >
                           <CardContent className="flex items-start justify-between p-4">
                             <div>
@@ -235,11 +239,15 @@ export default async function Page() {
                   </Card>
 
                   <div className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                       {financeMetrics.map((metric) => (
                         <Card
                           key={metric.label}
-                          className={metric.tone === "warning" ? "border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]" : ""}
+                          className={
+                            metric.tone === "warning"
+                              ? "border border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))]"
+                              : "border border-border"
+                          }
                         >
                           <CardContent className="flex items-start justify-between p-4">
                             <div>

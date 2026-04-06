@@ -19,7 +19,6 @@ import {
   formatDateTimeUnified,
   getNowDateTimeLocalInput,
   toDateTimeLocalInput,
-  toIsoFromDateTimeLocal,
 } from "@/lib/date-time";
 import { formatRupiahFromAny } from "@/lib/currency";
 import { TransactionRow } from "@/lib/mock-data";
@@ -356,6 +355,7 @@ function UpdateTransactionModal({ open, onClose, value, onChange, onSubmit, subm
         submitting={submitting}
         onSubmit={onSubmit}
         disableId
+        showDateField={false}
         errorMessage={errorMessage}
       />
     </SimpleModal>
@@ -365,10 +365,13 @@ function UpdateTransactionModal({ open, onClose, value, onChange, onSubmit, subm
 export function TransactionsCrud() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
   const { session } = useAuthSession();
+  const canEditDelete = session?.role === "admin" || session?.role === "superadmin";
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<TransactionRow[]>([]);
   const [typeFilter, setTypeFilter] = useState<"all" | TransactionRow["transaction_type"]>("all");
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
+  const [draftTypeFilter, setDraftTypeFilter] = useState<"all" | TransactionRow["transaction_type"]>("all");
+  const [draftMethodFilter, setDraftMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<TransactionFormValue>(emptyForm);
   const [editForm, setEditForm] = useState<TransactionFormValue>(emptyForm);
@@ -395,7 +398,6 @@ export function TransactionsCrud() {
   useEffect(() => {
     loadTransactions();
   }, []);
-  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
 
   const filteredRows = useMemo(() => {
     return rows.filter((row) => {
@@ -407,7 +409,7 @@ export function TransactionsCrud() {
   const tablePagination = useTablePagination(filteredRows);
   const pageIds = tablePagination.pagedRows.map((row) => row.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
-  const listColSpan = isAdmin ? 7 : 6;
+  const listColSpan = canEditDelete ? 7 : 6;
 
   const previewTimelineRows = useMemo(() => buildStatusTimeline(previewHistoryRows), [previewHistoryRows]);
   const previewPagination = useTablePagination(previewTimelineRows);
@@ -518,12 +520,6 @@ export function TransactionsCrud() {
       setUpdateError(errorMessage);
       return;
     }
-    const transactionDate = toIsoFromDateTimeLocal(editForm.date);
-    if (!transactionDate) {
-      const errorMessage = "Format tanggal transaksi tidak valid.";
-      setUpdateError(errorMessage);
-      return;
-    }
     setUpdateSubmitting(true);
     try {
       await apiClient.updateTransaction(editingId, {
@@ -532,7 +528,6 @@ export function TransactionsCrud() {
         transaction_name: editForm.transaction_name,
         category: editForm.category,
         amount: editForm.amount,
-        date: transactionDate,
         payment_method: editForm.payment_method,
         status: editForm.status as TransactionRow["status"],
       }, { actorEmail });
@@ -702,9 +697,21 @@ export function TransactionsCrud() {
     });
   }
 
-  function resetFilters() {
-    setTypeFilter("all");
-    setMethodFilter("all");
+  function openFilterModal() {
+    setDraftTypeFilter(typeFilter);
+    setDraftMethodFilter(methodFilter);
+    setFilterModalOpen(true);
+  }
+
+  function resetDraftFilters() {
+    setDraftTypeFilter("all");
+    setDraftMethodFilter("all");
+  }
+
+  function applyFilters() {
+    setTypeFilter(draftTypeFilter);
+    setMethodFilter(draftMethodFilter);
+    setFilterModalOpen(false);
   }
 
   return (
@@ -712,15 +719,15 @@ export function TransactionsCrud() {
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data Transaksi</CardTitle>
-          <Button className="w-full sm:hidden" onClick={openCreateModal}>
-            <Plus className="mr-2 h-4 w-4" />
-            Tambah Transaksi
-          </Button>
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
             <div className="flex w-full items-end gap-2 sm:hidden">
-              <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
+              <Button className="h-10" onClick={openCreateModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Transaksi
+              </Button>
+              <Button type="button" variant="outline" className="ml-auto h-10 sm:flex-none" onClick={openFilterModal}>
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filter
               </Button>
@@ -731,7 +738,7 @@ export function TransactionsCrud() {
                 Tambah Transaksi
               </Button>
             </div>
-            {isAdmin && selectedIds.length ? (
+            {canEditDelete && selectedIds.length ? (
               <>
                 <div className="w-full sm:w-[180px]">
                   <label className={labelClass}>Multi Action</label>
@@ -752,7 +759,7 @@ export function TransactionsCrud() {
               </>
             ) : null}
             <div className="ml-auto hidden items-end gap-2 sm:flex">
-              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={() => setFilterModalOpen(true)}>
+              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
                 <SlidersHorizontal className="h-4 w-4" />
                 <span className="text-sm">Filter</span>
               </Button>
@@ -770,13 +777,14 @@ export function TransactionsCrud() {
               </Button>
             </div>
           </div>
-          <Table className={loading ? "" : "min-w-[980px]"}>
+          <div className="mt-[10px]">
+            <Table className={loading ? "" : "min-w-[980px]"}>
             {loading ? (
               <ApiTableLoadingHead colSpan={listColSpan} />
             ) : (
               <TableHeader>
                 <TableRow>
-                  {isAdmin ? (
+                  {canEditDelete ? (
                     <TableHead className="w-[44px]">
                       <input
                         type="checkbox"
@@ -801,7 +809,7 @@ export function TransactionsCrud() {
               ) : filteredRows.length ? (
                 tablePagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
-                    {isAdmin ? (
+                    {canEditDelete ? (
                       <TableCell>
                         <input
                           type="checkbox"
@@ -838,7 +846,7 @@ export function TransactionsCrud() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {isAdmin ? (
+                        {canEditDelete ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -850,7 +858,7 @@ export function TransactionsCrud() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         ) : null}
-                        {isAdmin ? (
+                        {canEditDelete ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -874,7 +882,8 @@ export function TransactionsCrud() {
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
           {!loading ? (
             <TablePagination
               page={tablePagination.page}
@@ -896,8 +905,8 @@ export function TransactionsCrud() {
             <label className={labelClass}>Tipe Transaksi</label>
             <select
               className={filterSelectClass}
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value as "all" | TransactionRow["transaction_type"])}
+              value={draftTypeFilter}
+              onChange={(event) => setDraftTypeFilter(event.target.value as "all" | TransactionRow["transaction_type"])}
             >
               <option value="all">Semua tipe</option>
               <option value="Pemasukan">Pemasukan</option>
@@ -908,8 +917,8 @@ export function TransactionsCrud() {
             <label className={labelClass}>Metode Pembayaran</label>
             <select
               className={filterSelectClass}
-              value={methodFilter}
-              onChange={(event) => setMethodFilter(event.target.value as "all" | TransactionRow["payment_method"])}
+              value={draftMethodFilter}
+              onChange={(event) => setDraftMethodFilter(event.target.value as "all" | TransactionRow["payment_method"])}
             >
               <option value="all">Semua metode</option>
               <option value="Transfer Bank">Transfer Bank</option>
@@ -919,10 +928,10 @@ export function TransactionsCrud() {
             </select>
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={resetFilters}>
+            <Button type="button" variant="outline" onClick={resetDraftFilters}>
               Reset
             </Button>
-            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+            <Button type="button" onClick={applyFilters}>
               Terapkan
             </Button>
           </div>

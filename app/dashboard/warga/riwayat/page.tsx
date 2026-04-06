@@ -22,6 +22,7 @@ const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 export default function WargaRiwayatPage() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
+  const [draftMethodFilter, setDraftMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -31,7 +32,17 @@ export default function WargaRiwayatPage() {
   }, [methodFilter]);
 
   function resetFilters() {
-    setMethodFilter("all");
+    setDraftMethodFilter("all");
+  }
+
+  function openFilterModal() {
+    setDraftMethodFilter(methodFilter);
+    setFilterModalOpen(true);
+  }
+
+  function applyFilters() {
+    setMethodFilter(draftMethodFilter);
+    setFilterModalOpen(false);
   }
 
   return (
@@ -84,13 +95,17 @@ export default function WargaRiwayatPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="flex w-full items-end gap-2 sm:w-auto">
-                    <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
+                  <div className="flex w-full items-end justify-end gap-2 sm:hidden">
+                    <Button type="button" variant="outline" className="h-10 sm:flex-none" onClick={openFilterModal}>
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
                       Filter
                     </Button>
                   </div>
-                  <div className="ml-auto hidden items-end sm:flex">
+                  <div className="ml-auto hidden items-end gap-2 sm:flex">
+                    <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
+                      <SlidersHorizontal className="h-4 w-4" />
+                      <span className="text-sm">Filter</span>
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -172,8 +187,8 @@ export default function WargaRiwayatPage() {
                   <label className={filterLabelClass}>Metode Pembayaran</label>
                   <select
                     className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    value={methodFilter}
-                    onChange={(event) => setMethodFilter(event.target.value as "all" | TransactionRow["payment_method"])}
+                    value={draftMethodFilter}
+                    onChange={(event) => setDraftMethodFilter(event.target.value as "all" | TransactionRow["payment_method"])}
                   >
                     <option value="all">Semua metode</option>
                     <option value="Transfer Bank">Transfer Bank</option>
@@ -186,7 +201,7 @@ export default function WargaRiwayatPage() {
                   <Button type="button" variant="outline" onClick={resetFilters}>
                     Reset
                   </Button>
-                  <Button type="button" onClick={() => setFilterModalOpen(false)}>
+                  <Button type="button" onClick={applyFilters}>
                     Terapkan
                   </Button>
                 </div>

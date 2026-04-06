@@ -24,6 +24,10 @@ export default function AdminGlobalHistoryPage() {
   const [actionFilter, setActionFilter] = useState<"all" | "CREATE" | "UPDATE" | "DELETE">("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [draftTableFilter, setDraftTableFilter] = useState<"all" | "users" | "houses" | "bills" | "transactions">("all");
+  const [draftActionFilter, setDraftActionFilter] = useState<"all" | "CREATE" | "UPDATE" | "DELETE">("all");
+  const [draftStartDate, setDraftStartDate] = useState("");
+  const [draftEndDate, setDraftEndDate] = useState("");
   const [filterModalOpen, setFilterModalOpen] = useState(false);
 
   const isFinance = session?.role === "finance";
@@ -69,11 +73,27 @@ export default function AdminGlobalHistoryPage() {
     });
   }, [rows, tableFilter, actionFilter, startDate, endDate]);
 
-  function resetFilters() {
-    setTableFilter("all");
-    setActionFilter("all");
-    setStartDate("");
-    setEndDate("");
+  function openFilterModal() {
+    setDraftTableFilter(tableFilter);
+    setDraftActionFilter(actionFilter);
+    setDraftStartDate(startDate);
+    setDraftEndDate(endDate);
+    setFilterModalOpen(true);
+  }
+
+  function resetDraftFilters() {
+    setDraftTableFilter("all");
+    setDraftActionFilter("all");
+    setDraftStartDate("");
+    setDraftEndDate("");
+  }
+
+  function applyFilters() {
+    setTableFilter(draftTableFilter);
+    setActionFilter(draftActionFilter);
+    setStartDate(draftStartDate);
+    setEndDate(draftEndDate);
+    setFilterModalOpen(false);
   }
 
   function downloadFilteredReport() {
@@ -116,8 +136,8 @@ export default function AdminGlobalHistoryPage() {
         }
       />
 
-      <div className="flex w-full items-end gap-2 sm:hidden">
-        <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
+      <div className="flex w-full items-end justify-end gap-2 sm:hidden">
+        <Button type="button" variant="outline" className="h-10 sm:flex-none" onClick={openFilterModal}>
           <SlidersHorizontal className="mr-2 h-4 w-4" />
           Filter
         </Button>
@@ -125,7 +145,7 @@ export default function AdminGlobalHistoryPage() {
 
       <div className="hidden sm:flex sm:justify-end">
         <div className="ml-auto flex items-end gap-2">
-          <Button type="button" variant="outline" className="h-10" onClick={() => setFilterModalOpen(true)}>
+          <Button type="button" variant="outline" className="h-10" onClick={openFilterModal}>
             <SlidersHorizontal className="mr-2 h-4 w-4" />
             Filter
           </Button>
@@ -153,9 +173,9 @@ export default function AdminGlobalHistoryPage() {
             <label className={labelClass}>Table</label>
             <select
               className={filterSelectClass}
-              value={tableFilter}
+              value={draftTableFilter}
               onChange={(event) =>
-                setTableFilter(event.target.value as "all" | "users" | "houses" | "bills" | "transactions")
+                setDraftTableFilter(event.target.value as "all" | "users" | "houses" | "bills" | "transactions")
               }
             >
               <option value="all">Semua table</option>
@@ -169,8 +189,8 @@ export default function AdminGlobalHistoryPage() {
             <label className={labelClass}>Action</label>
             <select
               className={filterSelectClass}
-              value={actionFilter}
-              onChange={(event) => setActionFilter(event.target.value as "all" | "CREATE" | "UPDATE" | "DELETE")}
+              value={draftActionFilter}
+              onChange={(event) => setDraftActionFilter(event.target.value as "all" | "CREATE" | "UPDATE" | "DELETE")}
             >
               <option value="all">Semua action</option>
               <option value="CREATE">CREATE</option>
@@ -183,8 +203,8 @@ export default function AdminGlobalHistoryPage() {
             <input
               type="date"
               className={filterSelectClass}
-              value={startDate}
-              onChange={(event) => setStartDate(event.target.value)}
+              value={draftStartDate}
+              onChange={(event) => setDraftStartDate(event.target.value)}
             />
           </div>
           <div className="w-full">
@@ -192,16 +212,16 @@ export default function AdminGlobalHistoryPage() {
             <input
               type="date"
               className={filterSelectClass}
-              value={endDate}
-              onChange={(event) => setEndDate(event.target.value)}
+              value={draftEndDate}
+              onChange={(event) => setDraftEndDate(event.target.value)}
             />
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={resetFilters}>
+            <Button type="button" variant="outline" onClick={resetDraftFilters}>
               Reset
             </Button>
-            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+            <Button type="button" onClick={applyFilters}>
               Terapkan
             </Button>
           </div>

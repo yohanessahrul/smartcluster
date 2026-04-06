@@ -15,6 +15,7 @@ const badgeVariants = cva(
         info: "border-transparent bg-sky-100 text-sky-700",
         success: "border-transparent bg-[hsl(var(--success-soft))] text-[hsl(var(--success-ink))]",
         warning: "border-transparent bg-[hsl(var(--warning-soft))] text-[hsl(var(--warning-ink))]",
+        danger: "border-transparent bg-destructive/15 text-destructive",
       },
     },
     defaultVariants: {

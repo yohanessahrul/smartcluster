@@ -24,7 +24,7 @@ function variantByStatus(status: PaymentStatus) {
   if (status === "Lunas") return "success" as const;
   if (status === "Menunggu Verifikasi") return "warning" as const;
   if (status === "Verifikasi") return "info" as const;
-  return "neutral" as const;
+  return "danger" as const;
 }
 
 export function PaymentStatusBadge({ status }: PaymentStatusBadgeProps) {

@@ -13,7 +13,7 @@ import { OverviewSnapshotRow } from "@/lib/api-client";
 import { formatRupiah } from "@/lib/currency";
 import { BillRow } from "@/lib/mock-data";
 
-export type MasterWidgetTone = "default" | "warning" | "success" | "info";
+export type MasterWidgetTone = "default" | "warning" | "success" | "info" | "danger";
 
 export type MasterWidget = {
   id: string;
@@ -80,7 +80,7 @@ export function buildFinanceWidgets(finance: OverviewSnapshotRow["finance"]): Ma
       value: String(finance?.need_verification_count ?? 0),
       note: formatRupiah(finance?.need_verification_total ?? 0),
       icon: Clock3,
-      tone: "info",
+      tone: "warning",
     },
     {
       id: "finance-need-follow-up",
@@ -88,7 +88,7 @@ export function buildFinanceWidgets(finance: OverviewSnapshotRow["finance"]): Ma
       value: String(finance?.need_follow_up_count ?? 0),
       note: formatRupiah(finance?.need_follow_up_total ?? 0),
       icon: AlertCircle,
-      tone: "warning",
+      tone: "danger",
     },
     {
       id: "finance-unit-summary",

@@ -7,12 +7,20 @@ import { usePathname, useRouter } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { logout, useAuthSession } from "@/lib/auth-client";
+import { isAdminLikeRole, isFinanceRole } from "@/lib/role-access";
 
 type DashboardShellProps = {
   roleLabel: string;
   sidebar: ReactNode;
   children: ReactNode;
 };
+
+function resolvePanelLabel(role: string | null | undefined, fallback: string) {
+  if (isFinanceRole(role)) return "Finance Panel";
+  if (role === "warga") return "Portal Warga";
+  if (isAdminLikeRole(role)) return "Admin Panel";
+  return fallback;
+}
 
 export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellProps) {
   const router = useRouter();
@@ -22,6 +30,7 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
   const { session } = useAuthSession();
   const displayName = session?.name?.trim() || "User";
   const displayRole = session?.role || roleLabel;
+  const panelLabel = resolvePanelLabel(session?.role, roleLabel);
 
   useEffect(() => {
     setOpen(false);
@@ -58,7 +67,7 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
           </div>
           <div>
             <p className="font-heading text-base">Hunita</p>
-            <p className="text-xs text-muted-foreground">{roleLabel}</p>
+            <p className="text-xs text-muted-foreground">{panelLabel}</p>
           </div>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
@@ -69,7 +78,9 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
 
       <div className="relative lg:min-h-screen">
         <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[260px]">
-          <div className="h-full">{sidebar}</div>
+          <div className="h-full" key={`desktop-sidebar-${session?.role ?? "guest"}`}>
+            {sidebar}
+          </div>
         </div>
         <main className="min-w-0 lg:ml-[272px]">{children}</main>
       </div>
@@ -84,7 +95,7 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
                 </div>
                 <div>
                   <p className="font-heading text-base">Hunita</p>
-                  <p className="text-xs text-[hsl(var(--menu-muted))]">{roleLabel}</p>
+                  <p className="text-xs text-[hsl(var(--menu-muted))]">{panelLabel}</p>
                 </div>
               </div>
               <Button
@@ -104,7 +115,7 @@ export function DashboardShell({ roleLabel, sidebar, children }: DashboardShellP
                 <p className="truncate text-sm font-medium text-[hsl(var(--menu-fg))]">Hi, {displayName}</p>
                 <p className="truncate text-xs text-[hsl(var(--menu-muted))]">{displayRole}</p>
               </div>
-              {sidebar}
+              <div key={`mobile-sidebar-${session?.role ?? "guest"}`}>{sidebar}</div>
             </div>
 
             <Button

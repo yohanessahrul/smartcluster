@@ -21,6 +21,7 @@ import { BillRow, HouseRow } from "@/lib/mock-data";
 import { apiClient, AuditLogRow, emitDataChanged } from "@/lib/api-client";
 import { useAuthSession } from "@/lib/auth-client";
 import { downloadRowsAsExcel } from "@/lib/download-excel";
+import { isAdminLikeRole, isFinanceRole } from "@/lib/role-access";
 
 const inputClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
@@ -558,6 +559,9 @@ export function BillsCrud() {
   const [statusFilter, setStatusFilter] = useState<"all" | BillRow["status"]>("all");
   const [blokFilter, setBlokFilter] = useState("all");
   const [periodeFilter, setPeriodeFilter] = useState("all");
+  const [draftStatusFilter, setDraftStatusFilter] = useState<"all" | BillRow["status"]>("all");
+  const [draftBlokFilter, setDraftBlokFilter] = useState("all");
+  const [draftPeriodeFilter, setDraftPeriodeFilter] = useState("all");
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<BillRow>(emptyForm);
   const [editForm, setEditForm] = useState<BillRow>(emptyForm);
@@ -611,10 +615,13 @@ export function BillsCrud() {
     };
   }, []);
 
-  const hasFullAccess = session?.role === "admin" || session?.role === "superadmin" || session?.role === "finance";
-  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
-  const isFinance = session?.role === "finance";
+  const isAdminLike = isAdminLikeRole(session?.role);
+  const canEditDelete = session?.role === "admin" || session?.role === "superadmin";
+  const isFinance = isFinanceRole(session?.role);
+  const hasFullAccess = isAdminLike || isFinance;
   const verifyBillId = searchParams.get("verifyBill")?.trim() ?? "";
+  const focusMode = searchParams.get("focus")?.trim() ?? "";
+  const shouldFocusPendingVerification = focusMode === "pending-verification";
 
   const houseById = useMemo(() => {
     return new Map(houses.map((house) => [house.id, house]));
@@ -655,7 +662,7 @@ export function BillsCrud() {
   const tablePagination = useTablePagination(filteredRows);
   const pageIds = tablePagination.pagedRows.map((row) => row.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
-  const listColSpan = isAdmin ? 7 : 6;
+  const listColSpan = canEditDelete ? 7 : 6;
 
   const previewTimelineRows = useMemo(() => buildStatusTimeline(previewHistoryRows), [previewHistoryRows]);
   const previewPagination = useTablePagination(previewTimelineRows);
@@ -704,14 +711,25 @@ export function BillsCrud() {
       return;
     }
 
+    if (shouldFocusPendingVerification) {
+      setStatusFilter("Menunggu Verifikasi");
+      setDraftStatusFilter("Menunggu Verifikasi");
+      setBlokFilter("all");
+      setDraftBlokFilter("all");
+      setPeriodeFilter("all");
+      setDraftPeriodeFilter("all");
+      tablePagination.setPage(1);
+    }
+
     openVerifyModal(targetBill);
     clearVerifyBillQuery();
-  }, [verifyBillId, isFinance, loading, rows]);
+  }, [verifyBillId, isFinance, loading, rows, shouldFocusPendingVerification, tablePagination.setPage]);
 
   function clearVerifyBillQuery() {
     if (!verifyBillId) return;
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.delete("verifyBill");
+    nextParams.delete("focus");
     const query = nextParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }
@@ -1095,10 +1113,24 @@ export function BillsCrud() {
     });
   }
 
-  function resetFilters() {
-    setStatusFilter("all");
-    setBlokFilter("all");
-    setPeriodeFilter("all");
+  function openFilterModal() {
+    setDraftStatusFilter(statusFilter);
+    setDraftBlokFilter(blokFilter);
+    setDraftPeriodeFilter(periodeFilter);
+    setFilterModalOpen(true);
+  }
+
+  function resetDraftFilters() {
+    setDraftStatusFilter("all");
+    setDraftBlokFilter("all");
+    setDraftPeriodeFilter("all");
+  }
+
+  function applyFilters() {
+    setStatusFilter(draftStatusFilter);
+    setBlokFilter(draftBlokFilter);
+    setPeriodeFilter(draftPeriodeFilter);
+    setFilterModalOpen(false);
   }
 
   return (
@@ -1106,21 +1138,17 @@ export function BillsCrud() {
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data IPL</CardTitle>
-          {hasFullAccess ? (
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              {hasFullAccess ? (
-                <Button className="w-full sm:hidden" onClick={openCreateModal}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Tambah IPL
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
             <div className="flex w-full items-end gap-2 sm:hidden">
-              <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
+              {hasFullAccess ? (
+                <Button className="h-10" onClick={openCreateModal}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Tambah IPL
+                </Button>
+              ) : null}
+              <Button type="button" variant="outline" className="ml-auto h-10 sm:flex-none" onClick={openFilterModal}>
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filter
               </Button>
@@ -1133,7 +1161,7 @@ export function BillsCrud() {
                 </Button>
               </div>
             ) : null}
-            {isAdmin && selectedIds.length ? (
+            {canEditDelete && selectedIds.length ? (
               <>
                 <div className="w-full sm:w-[180px]">
                   <label className={labelClass}>Multi Action</label>
@@ -1154,7 +1182,7 @@ export function BillsCrud() {
               </>
             ) : null}
             <div className="ml-auto hidden items-end gap-2 sm:flex">
-              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={() => setFilterModalOpen(true)}>
+              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
                 <SlidersHorizontal className="h-4 w-4" />
                 <span className="text-sm">Filter</span>
               </Button>
@@ -1172,13 +1200,14 @@ export function BillsCrud() {
               </Button>
             </div>
           </div>
-          <Table className={loading ? "" : "min-w-[920px]"}>
+          <div className="mt-[10px]">
+            <Table className={loading ? "" : "min-w-[920px]"}>
             {loading ? (
               <ApiTableLoadingHead colSpan={listColSpan} />
             ) : (
               <TableHeader>
                 <TableRow>
-                  {isAdmin ? (
+                  {canEditDelete ? (
                     <TableHead className="w-[44px]">
                       <input
                         type="checkbox"
@@ -1203,7 +1232,7 @@ export function BillsCrud() {
               ) : filteredRows.length ? (
                 tablePagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
-                    {isAdmin ? (
+                    {canEditDelete ? (
                       <TableCell>
                         <input
                           type="checkbox"
@@ -1244,7 +1273,7 @@ export function BillsCrud() {
                             <Crosshair className="h-4 w-4" />
                           </Button>
                         ) : null}
-                        {isAdmin ? (
+                        {canEditDelete ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -1256,7 +1285,7 @@ export function BillsCrud() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         ) : null}
-                        {isAdmin ? (
+                        {canEditDelete ? (
                           <Button
                             size="sm"
                             variant="outline"
@@ -1280,7 +1309,8 @@ export function BillsCrud() {
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
           {!loading ? (
             <TablePagination
               page={tablePagination.page}
@@ -1302,8 +1332,8 @@ export function BillsCrud() {
             <label className={labelClass}>Status</label>
             <select
               className={filterSelectClass}
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as "all" | BillRow["status"])}
+              value={draftStatusFilter}
+              onChange={(event) => setDraftStatusFilter(event.target.value as "all" | BillRow["status"])}
             >
               <option value="all">Semua status</option>
               <option value="Belum bayar">Belum bayar</option>
@@ -1314,7 +1344,7 @@ export function BillsCrud() {
           </div>
           <div>
             <label className={labelClass}>Blok</label>
-            <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
+            <select className={filterSelectClass} value={draftBlokFilter} onChange={(event) => setDraftBlokFilter(event.target.value)}>
               <option value="all">Semua blok</option>
               {blokOptions.map((blok) => (
                 <option key={blok} value={blok}>
@@ -1325,7 +1355,7 @@ export function BillsCrud() {
           </div>
           <div>
             <label className={labelClass}>Periode</label>
-            <select className={filterSelectClass} value={periodeFilter} onChange={(event) => setPeriodeFilter(event.target.value)}>
+            <select className={filterSelectClass} value={draftPeriodeFilter} onChange={(event) => setDraftPeriodeFilter(event.target.value)}>
               <option value="all">Semua periode</option>
               {periodeOptions.map((periode) => (
                 <option key={periode} value={periode}>
@@ -1335,10 +1365,10 @@ export function BillsCrud() {
             </select>
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={resetFilters}>
+            <Button type="button" variant="outline" onClick={resetDraftFilters}>
               Reset
             </Button>
-            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+            <Button type="button" onClick={applyFilters}>
               Terapkan
             </Button>
           </div>

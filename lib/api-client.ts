@@ -27,7 +27,7 @@ type TransactionMutationPayload = {
   transaction_name: string;
   category: TransactionRow["category"];
   amount: string;
-  date: string;
+  date?: string;
   payment_method: TransactionRow["payment_method"];
   status: TransactionRow["status"];
 };

@@ -1945,18 +1945,14 @@ export async function updateTransaction(id: string, payload: TransactionPayload,
     const defaultCategory = transactionType === "Pengeluaran" ? "Other" : "IPL Warga";
     const category = normalizeTransactionCategory(payload.category, defaultCategory);
     const status = normalizeTransactionStatus(payload.status) || "Lunas";
-    const transactionDate = normalizeDateTimeInput(payload.date);
     const paymentMethod = asString(payload.payment_method);
     const transactionName =
       typeof payload.transaction_name === "string" && payload.transaction_name.trim()
         ? payload.transaction_name.trim()
         : defaultTransactionName(category || defaultCategory, transactionType);
 
-    if (!payload.amount || !payload.date || !paymentMethod || !transactionName) {
-      throw new ApiHttpError(400, "transaction_name, amount, date, dan payment_method wajib diisi.");
-    }
-    if (!transactionDate) {
-      throw new ApiHttpError(400, "Format date tidak valid. Gunakan format datetime yang benar.");
+    if (!payload.amount || !paymentMethod || !transactionName) {
+      throw new ApiHttpError(400, "transaction_name, amount, dan payment_method wajib diisi.");
     }
     if (!category) {
       throw new ApiHttpError(400, "category tidak valid. Pilih IPL Warga, IPL Cluster, Barang Inventaris, atau Other.");
@@ -1977,8 +1973,8 @@ export async function updateTransaction(id: string, payload: TransactionPayload,
     const previous = before.rows[0] as JsonRecord;
 
     const result = await query(
-      "UPDATE transactions SET bill_id=$1, transaction_type=$2, transaction_name=$3, category=$4, amount=$5, date=$6, payment_method=$7, status=$8, status_date=CASE WHEN status IS DISTINCT FROM $8 THEN NOW() ELSE status_date END WHERE id=$9 RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
-      [billId, transactionType, transactionName, category, payload.amount, transactionDate, paymentMethod, status, id],
+      "UPDATE transactions SET bill_id=$1, transaction_type=$2, transaction_name=$3, category=$4, amount=$5, date=NOW(), payment_method=$6, status=$7, status_date=CASE WHEN status IS DISTINCT FROM $7 THEN NOW() ELSE status_date END WHERE id=$8 RETURNING id, bill_id, transaction_type, transaction_name, category, amount, date, payment_method, status, status_date",
+      [billId, transactionType, transactionName, category, payload.amount, paymentMethod, status, id],
     );
 
     await writeAuditLog(query, {

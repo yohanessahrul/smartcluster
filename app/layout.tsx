@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
@@ -75,10 +76,68 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+const stripExtensionAttributesScript = `
+(() => {
+  try {
+    const removeExtensionAttrs = (el) => {
+      if (!el || !el.attributes) return;
+      for (let i = el.attributes.length - 1; i >= 0; i -= 1) {
+        const attrName = el.attributes[i]?.name || "";
+        if (attrName.startsWith("jf-ext-")) {
+          el.removeAttribute(attrName);
+        }
+      }
+    };
+
+    const scanNode = (node) => {
+      if (!node) return;
+      if (node.nodeType === 1) {
+        removeExtensionAttrs(node);
+      }
+      if (node.querySelectorAll) {
+        const all = node.querySelectorAll("*");
+        for (const item of all) {
+          removeExtensionAttrs(item);
+        }
+      }
+    };
+
+    scanNode(document.documentElement);
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === "attributes") {
+          const name = mutation.attributeName || "";
+          if (name.startsWith("jf-ext-")) {
+            removeExtensionAttrs(mutation.target);
+          }
+        }
+        if (mutation.type === "childList" && mutation.addedNodes?.length) {
+          for (const node of mutation.addedNodes) {
+            scanNode(node);
+          }
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
+  } catch (_) {
+    // noop
+  }
+})();
+`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="id" suppressHydrationWarning>
       <body className="font-sans antialiased" suppressHydrationWarning>
+        <Script id="strip-extension-attrs" strategy="beforeInteractive">
+          {stripExtensionAttributesScript}
+        </Script>
         {children}
         <DeveloperErrorModal />
         <PwaRegister />

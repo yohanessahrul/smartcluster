@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, FileCheck2, FileSpreadsheet, ReceiptText, SlidersHorizontal, Upload } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
@@ -138,9 +138,12 @@ export default function WargaTagihanPage() {
   const [successToast, setSuccessToast] = useState("");
   const [localBills, setLocalBills] = useState<BillRow[]>([]);
   const [statusFilter, setStatusFilter] = useState<"all" | BillRow["status"]>("all");
+  const [draftStatusFilter, setDraftStatusFilter] = useState<"all" | BillRow["status"]>("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [payProofFile, setPayProofFile] = useState<File | null>(null);
+  const [payProofPreviewUrl, setPayProofPreviewUrl] = useState<string>("");
+  const payProofFileInputRef = useRef<HTMLInputElement | null>(null);
   const [paySubmitting, setPaySubmitting] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [userDirectory, setUserDirectory] = useState<UserDirectory>({});
@@ -217,8 +220,30 @@ export default function WargaTagihanPage() {
     setPage(1);
   }, [statusFilter]);
 
+  useEffect(() => {
+    if (!payProofFile || !payProofFile.type.startsWith("image/")) {
+      setPayProofPreviewUrl("");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(payProofFile);
+    setPayProofPreviewUrl(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [payProofFile]);
+
   function resetFilters() {
-    setStatusFilter("all");
+    setDraftStatusFilter("all");
+  }
+
+  function openFilterModal() {
+    setDraftStatusFilter(statusFilter);
+    setFilterModalOpen(true);
+  }
+
+  function applyFilters() {
+    setStatusFilter(draftStatusFilter);
+    setFilterModalOpen(false);
   }
 
   function openPayModal(bill: BillRow) {
@@ -226,6 +251,10 @@ export default function WargaTagihanPage() {
     setPayModalOpen(true);
     setPayProofFile(null);
     setPayError("");
+  }
+
+  function handleProofFileChange(fileList: FileList | null) {
+    setPayProofFile(fileList?.[0] ?? null);
   }
 
   function openPreviewModal(bill: BillRow, viewerEmail?: string | null) {
@@ -322,13 +351,17 @@ export default function WargaTagihanPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="flex w-full items-end gap-2 sm:w-auto">
-                    <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
+                  <div className="flex w-full items-end justify-end gap-2 sm:hidden">
+                    <Button type="button" variant="outline" className="h-10 sm:flex-none" onClick={openFilterModal}>
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
                       Filter
                     </Button>
                   </div>
-                  <div className="ml-auto hidden items-end sm:flex">
+                  <div className="ml-auto hidden items-end gap-2 sm:flex">
+                    <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
+                      <SlidersHorizontal className="h-4 w-4" />
+                      <span className="text-sm">Filter</span>
+                    </Button>
                     <Button
                       type="button"
                       variant="outline"
@@ -348,6 +381,7 @@ export default function WargaTagihanPage() {
                     pagedRows.map((item) => {
                       const isLunas = item.status === "Lunas";
                       const isMenungguVerifikasi = item.status === "Menunggu Verifikasi";
+                      const isBelumBayar = item.status === "Belum bayar";
 
                       return (
                         <div
@@ -367,7 +401,9 @@ export default function WargaTagihanPage() {
                               ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
                               : isMenungguVerifikasi
                                 ? "border-[hsl(var(--warning-border))] bg-[hsl(var(--warning-bg))] hover:bg-[hsl(var(--warning-bg))]/80"
-                              : "border-border bg-background hover:bg-muted/40"
+                              : isBelumBayar
+                                ? "border-destructive/35 bg-destructive/10 hover:bg-destructive/15"
+                                : "border-border bg-background hover:bg-muted/40"
                           } cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -394,9 +430,7 @@ export default function WargaTagihanPage() {
                                 Bayar
                                 <ArrowRight className="ml-0 h-0 w-0 opacity-0 transition-all duration-200 group-hover:ml-2 group-hover:h-4 group-hover:w-4 group-hover:opacity-100" />
                               </Button>
-                            ) : (
-                              <span className={`text-xs ${isLunas ? "text-primary-foreground/80" : "text-muted-foreground"}`}>-</span>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       );
@@ -429,8 +463,8 @@ export default function WargaTagihanPage() {
                   <label className={filterLabelClass}>Status</label>
                   <select
                     className="h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    value={statusFilter}
-                    onChange={(event) => setStatusFilter(event.target.value as "all" | BillRow["status"])}
+                    value={draftStatusFilter}
+                    onChange={(event) => setDraftStatusFilter(event.target.value as "all" | BillRow["status"])}
                   >
                     <option value="all">Semua status</option>
                     <option value="Belum bayar">Belum bayar</option>
@@ -443,7 +477,7 @@ export default function WargaTagihanPage() {
                   <Button type="button" variant="outline" onClick={resetFilters}>
                     Reset
                   </Button>
-                  <Button type="button" onClick={() => setFilterModalOpen(false)}>
+                  <Button type="button" onClick={applyFilters}>
                     Terapkan
                   </Button>
                 </div>
@@ -473,16 +507,48 @@ export default function WargaTagihanPage() {
                   </p>
                 </div>
 
-                <div>
-                  <label className={filterLabelClass}>Upload Bukti Transaksi</label>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,application/pdf"
-                    className="h-10 w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                    onChange={(event) => setPayProofFile(event.target.files?.[0] ?? null)}
-                  />
-                  {payProofFile ? <p className="mt-1 text-xs text-muted-foreground">File dipilih: {payProofFile.name}</p> : null}
-                </div>
+                {payProofPreviewUrl ? (
+                  <div>
+                    {payProofFile ? <p className="mb-1 text-xs text-muted-foreground">File dipilih: {payProofFile.name}</p> : null}
+                    <div className="relative isolate rounded-lg border border-border bg-muted/20">
+                      <input
+                        ref={payProofFileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        className="hidden"
+                        onChange={(event) => handleProofFileChange(event.target.files)}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="absolute right-[13px] top-[13px] z-30 bg-background/95 shadow-lg ring-1 ring-border/70"
+                        onClick={() => {
+                          if (!payProofFileInputRef.current) return;
+                          payProofFileInputRef.current.value = "";
+                          payProofFileInputRef.current.click();
+                        }}
+                        >
+                          <Upload className="mr-1 h-3.5 w-3.5" />
+                          Ganti Bukti Transaksi
+                        </Button>
+                      <div className="h-[280px] overflow-y-auto overflow-x-hidden rounded-lg">
+                        <img src={payProofPreviewUrl} alt="Preview bukti transaksi" className="h-auto w-full" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className={filterLabelClass}>Upload Bukti Transaksi</label>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      onChange={(event) => handleProofFileChange(event.target.files)}
+                    />
+                    {payProofFile ? <p className="mt-1 text-xs text-muted-foreground">File dipilih: {payProofFile.name}</p> : null}
+                  </div>
+                )}
 
                 <Button className="w-full" onClick={() => submitBillPayment(data.session?.email)} disabled={paySubmitting}>
                   {paySubmitting ? "Menyimpan..." : "Kirim Pembayaran"}

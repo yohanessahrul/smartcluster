@@ -315,12 +315,16 @@ function UpdateHouseModal({ open, onClose, value, onChange, onSubmit, emailOptio
 export function HousesCrud() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
   const { session } = useAuthSession();
+  const canEditDelete = session?.role === "admin" || session?.role === "superadmin";
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<HouseRow[]>([]);
   const [userRows, setUserRows] = useState<UserRow[]>([]);
   const [blokFilter, setBlokFilter] = useState("all");
   const [occupiedFilter, setOccupiedFilter] = useState<"all" | "true" | "false">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | HouseRow["residential_status"]>("all");
+  const [draftBlokFilter, setDraftBlokFilter] = useState("all");
+  const [draftOccupiedFilter, setDraftOccupiedFilter] = useState<"all" | "true" | "false">("all");
+  const [draftStatusFilter, setDraftStatusFilter] = useState<"all" | HouseRow["residential_status"]>("all");
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<HouseFormState>(emptyForm);
   const [editForm, setEditForm] = useState<HouseFormState>(emptyForm);
@@ -612,10 +616,24 @@ export function HousesCrud() {
     });
   }
 
-  function resetFilters() {
-    setBlokFilter("all");
-    setOccupiedFilter("all");
-    setStatusFilter("all");
+  function openFilterModal() {
+    setDraftBlokFilter(blokFilter);
+    setDraftOccupiedFilter(occupiedFilter);
+    setDraftStatusFilter(statusFilter);
+    setFilterModalOpen(true);
+  }
+
+  function resetDraftFilters() {
+    setDraftBlokFilter("all");
+    setDraftOccupiedFilter("all");
+    setDraftStatusFilter("all");
+  }
+
+  function applyFilters() {
+    setBlokFilter(draftBlokFilter);
+    setOccupiedFilter(draftOccupiedFilter);
+    setStatusFilter(draftStatusFilter);
+    setFilterModalOpen(false);
   }
 
   const filteredRows = useMemo(() => {
@@ -628,6 +646,7 @@ export function HousesCrud() {
     });
   }, [rows, blokFilter, occupiedFilter, statusFilter]);
   const pagination = useTablePagination(filteredRows);
+  const listColSpan = canEditDelete ? 6 : 5;
   const pageIds = pagination.pagedRows.map((row) => row.id);
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
 
@@ -653,15 +672,15 @@ export function HousesCrud() {
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data Rumah</CardTitle>
-          <Button className="w-full sm:hidden" onClick={openCreateModal}>
-            <Plus className="mr-2 h-4 w-4" />
-            Tambah Rumah
-          </Button>
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
             <div className="flex w-full items-end gap-2 sm:hidden">
-              <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
+              <Button className="h-10" onClick={openCreateModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Rumah
+              </Button>
+              <Button type="button" variant="outline" className="ml-auto h-10 sm:flex-none" onClick={openFilterModal}>
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filter
               </Button>
@@ -672,7 +691,7 @@ export function HousesCrud() {
                 Tambah Rumah
               </Button>
             </div>
-            {selectedIds.length ? (
+            {canEditDelete && selectedIds.length ? (
               <>
                 <div className="w-full sm:w-[180px]">
                   <label className={labelClass}>Multi Action</label>
@@ -689,7 +708,7 @@ export function HousesCrud() {
               </>
             ) : null}
             <div className="ml-auto hidden items-end gap-2 sm:flex">
-              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={() => setFilterModalOpen(true)}>
+              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
                 <SlidersHorizontal className="h-4 w-4" />
                 <span className="text-sm">Filter</span>
               </Button>
@@ -707,20 +726,23 @@ export function HousesCrud() {
               </Button>
             </div>
           </div>
-          <Table className={loading ? "" : "min-w-[980px]"}>
+          <div className="mt-[10px]">
+            <Table className={loading ? "" : "min-w-[980px]"}>
             {loading ? (
-              <ApiTableLoadingHead colSpan={6} />
+              <ApiTableLoadingHead colSpan={listColSpan} />
             ) : (
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[44px]">
-                    <input
-                      type="checkbox"
-                      checked={allPageSelected}
-                      onChange={(event) => togglePageSelection(event.target.checked)}
-                      aria-label="Pilih semua data rumah pada halaman"
-                    />
-                  </TableHead>
+                  {canEditDelete ? (
+                    <TableHead className="w-[44px]">
+                      <input
+                        type="checkbox"
+                        checked={allPageSelected}
+                        onChange={(event) => togglePageSelection(event.target.checked)}
+                        aria-label="Pilih semua data rumah pada halaman"
+                      />
+                    </TableHead>
+                  ) : null}
                   <TableHead>Unit</TableHead>
                   <TableHead>Kepemilikan</TableHead>
                   <TableHead>Dihuni</TableHead>
@@ -731,18 +753,20 @@ export function HousesCrud() {
             )}
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={6} message="Memuat data rumah..." />
+                <ApiTableLoadingRow colSpan={listColSpan} message="Memuat data rumah..." />
               ) : filteredRows.length ? (
                 pagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(item.id)}
-                        onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
-                        aria-label={`Pilih rumah ${item.id}`}
-                      />
-                    </TableCell>
+                    {canEditDelete ? (
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.id)}
+                          onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
+                          aria-label={`Pilih rumah ${item.id}`}
+                        />
+                      </TableCell>
+                    ) : null}
                     <TableCell>{`${item.blok}-${item.nomor}`}</TableCell>
                     <TableCell>{item.residential_status || "-"}</TableCell>
                     <TableCell>
@@ -770,39 +794,44 @@ export function HousesCrud() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          aria-label="Edit rumah"
-                          title="Edit rumah"
-                          onClick={() => openEditModal(item)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
-                          aria-label="Delete rumah"
-                          title="Delete rumah"
-                          onClick={() => openDeleteModal(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEditDelete ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            aria-label="Edit rumah"
+                            title="Edit rumah"
+                            onClick={() => openEditModal(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                        {canEditDelete ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
+                            aria-label="Delete rumah"
+                            title="Delete rumah"
+                            onClick={() => openDeleteModal(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
+                  <TableCell colSpan={listColSpan} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
           {!loading ? (
             <TablePagination
               page={pagination.page}
@@ -824,7 +853,7 @@ export function HousesCrud() {
         <div className="space-y-3">
           <div>
             <label className={labelClass}>Blok</label>
-            <select className={filterSelectClass} value={blokFilter} onChange={(event) => setBlokFilter(event.target.value)}>
+            <select className={filterSelectClass} value={draftBlokFilter} onChange={(event) => setDraftBlokFilter(event.target.value)}>
               <option value="all">Semua blok</option>
               {blokOptions.map((blok) => (
                 <option key={blok} value={blok}>
@@ -837,8 +866,8 @@ export function HousesCrud() {
             <label className={labelClass}>Dihuni</label>
             <select
               className={filterSelectClass}
-              value={occupiedFilter}
-              onChange={(event) => setOccupiedFilter(event.target.value as "all" | "true" | "false")}
+              value={draftOccupiedFilter}
+              onChange={(event) => setDraftOccupiedFilter(event.target.value as "all" | "true" | "false")}
             >
               <option value="all">Semua Dihuni</option>
               <option value="true">Ya</option>
@@ -849,8 +878,8 @@ export function HousesCrud() {
             <label className={labelClass}>Kepemilikan</label>
             <select
               className={filterSelectClass}
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as "all" | HouseRow["residential_status"])}
+              value={draftStatusFilter}
+              onChange={(event) => setDraftStatusFilter(event.target.value as "all" | HouseRow["residential_status"])}
             >
               <option value="all">Semua Kepemilikan</option>
               <option value="Owner">Owner</option>
@@ -858,10 +887,10 @@ export function HousesCrud() {
             </select>
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={resetFilters}>
+            <Button type="button" variant="outline" onClick={resetDraftFilters}>
               Reset
             </Button>
-            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+            <Button type="button" onClick={applyFilters}>
               Terapkan
             </Button>
           </div>

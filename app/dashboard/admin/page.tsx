@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { RefreshCw, Server } from "lucide-react";
+import { ArrowRight, RefreshCw, ScanSearch, Server } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
@@ -19,6 +19,7 @@ import { useAuthSession } from "@/lib/auth-client";
 import { apiClient, emitDataChanged, OverviewSnapshotRow } from "@/lib/api-client";
 import { formatRupiahFromAny } from "@/lib/currency";
 import { buildAdminWidgets, buildFinanceWidgets } from "@/lib/master-widgets";
+import { isAdminLikeRole, isFinanceRole } from "@/lib/role-access";
 
 const EMPTY_SNAPSHOT: OverviewSnapshotRow = {
   generated_at: "",
@@ -62,8 +63,8 @@ export default function AdminDashboardPage() {
   const [openedFromQuery, setOpenedFromQuery] = useState(false);
   const shouldLogTableData = process.env.NODE_ENV !== "production";
 
-  const isFinance = session?.role === "finance";
-  const isAdmin = session?.role === "admin" || session?.role === "superadmin";
+  const isFinance = isFinanceRole(session?.role);
+  const isAdmin = isAdminLikeRole(session?.role);
 
   useEffect(() => {
     void loadDashboardData();
@@ -121,6 +122,10 @@ export default function AdminDashboardPage() {
     } finally {
       setRefreshing(false);
     }
+  }
+
+  function openBillVerification(billId: string) {
+    router.push(`/dashboard/admin/bills?verifyBill=${encodeURIComponent(billId)}&focus=pending-verification`);
   }
 
   function closeServerStatusModal() {
@@ -185,7 +190,7 @@ export default function AdminDashboardPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="flex-row items-center justify-between pb-3">
-              <CardTitle>IPL Perlu Tindakan</CardTitle>
+              <CardTitle>Menunggu verifikasi anda</CardTitle>
               <Badge variant="outline">{loading ? "Memuat..." : `${financeBillsNeedAction.length} data`}</Badge>
             </CardHeader>
             <CardContent>
@@ -194,7 +199,7 @@ export default function AdminDashboardPage() {
                   <div className="rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground">Memuat data IPL...</div>
                 ) : financeBillsNeedAction.length ? (
                   financeBillsNeedAction.map((item) => (
-                    <div key={item.id} className="rounded-lg border border-border bg-background p-3">
+                    <div key={item.id} className="relative rounded-lg border border-border bg-background p-3 pb-14">
                       <div className="flex items-start justify-between gap-3">
                         <p className="text-sm font-medium">{item.unit || "-"}</p>
                         <PaymentStatusBadge status={item.status} />
@@ -202,10 +207,17 @@ export default function AdminDashboardPage() {
                       <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
                         <p>Periode: {item.periode}</p>
                         <p>Amount: {formatRupiahFromAny(item.amount)}</p>
-                        <p>
-                          Status Date: <DateTimeText value={item.status_date} />
-                        </p>
                       </div>
+                      <Button
+                        size="sm"
+                        className="absolute bottom-3 right-3 h-9 px-4"
+                        aria-label={`Verifikasi pembayaran IPL ${item.id}`}
+                        title="Verifikasi pembayaran"
+                        onClick={() => openBillVerification(item.id)}
+                      >
+                        Verifikasi
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
                     </div>
                   ))
                 ) : (
@@ -218,7 +230,7 @@ export default function AdminDashboardPage() {
               <div className="hidden md:block">
                 <Table className={loading ? "" : "min-w-[760px]"}>
                   {loading ? (
-                    <ApiTableLoadingHead colSpan={5} />
+                    <ApiTableLoadingHead colSpan={6} />
                   ) : (
                     <TableHeader>
                       <TableRow>
@@ -227,12 +239,13 @@ export default function AdminDashboardPage() {
                         <TableHead>Amount</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="hidden lg:table-cell">Status Date</TableHead>
+                        <TableHead className="w-[92px]">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                   )}
                   <TableBody>
                     {loading ? (
-                      <ApiTableLoadingRow colSpan={5} message="Memuat data IPL..." />
+                      <ApiTableLoadingRow colSpan={6} message="Memuat data IPL..." />
                     ) : financeBillsNeedAction.length ? (
                       financeBillsNeedAction.map((item) => (
                         <TableRow key={item.id}>
@@ -253,11 +266,23 @@ export default function AdminDashboardPage() {
                           <TableCell className="hidden lg:table-cell">
                             <DateTimeText value={item.status_date} />
                           </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                              aria-label={`Verifikasi pembayaran IPL ${item.id}`}
+                              title="Verifikasi pembayaran"
+                              onClick={() => openBillVerification(item.id)}
+                            >
+                              <ScanSearch className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        <TableCell colSpan={6} className="text-center text-muted-foreground">
                           No record available
                         </TableCell>
                       </TableRow>

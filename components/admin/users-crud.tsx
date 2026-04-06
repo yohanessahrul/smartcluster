@@ -103,7 +103,6 @@ function UserForm({ value, onChange, disableId, errorMessage, submitLabel, submi
         <label className={labelClass}>Role</label>
         <select className={inputClass} value={value.role} onChange={(event) => onChange({ ...value, role: event.target.value as UserRow["role"] })}>
           <option value="admin">Admin</option>
-          <option value="superadmin">Superadmin</option>
           <option value="warga">Warga</option>
           <option value="finance">Finance</option>
         </select>
@@ -170,10 +169,13 @@ function UpdateUserModal({ open, onClose, value, onChange, onSubmit, submitting,
 export function UsersCrud() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
   const { session } = useAuthSession();
+  const canEditDelete = session?.role === "admin" || session?.role === "superadmin";
   const actorEmail = session?.email ?? "system@smart-perumahan";
   const [rows, setRows] = useState<UserRow[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | UserRow["role"]>("all");
+  const [draftSearch, setDraftSearch] = useState("");
+  const [draftRoleFilter, setDraftRoleFilter] = useState<"all" | UserRow["role"]>("all");
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [createForm, setCreateForm] = useState<UserRow>(emptyForm);
   const [editForm, setEditForm] = useState<UserRow>(emptyForm);
@@ -210,6 +212,7 @@ export function UsersCrud() {
     });
   }, [roleFilter, rows, search]);
   const pagination = useTablePagination(filteredRows);
+  const listColSpan = canEditDelete ? 5 : 4;
 
   useEffect(() => {
     pagination.setPage(1);
@@ -437,9 +440,21 @@ export function UsersCrud() {
     });
   }
 
-  function resetFilters() {
-    setSearch("");
-    setRoleFilter("all");
+  function openFilterModal() {
+    setDraftSearch(search);
+    setDraftRoleFilter(roleFilter);
+    setFilterModalOpen(true);
+  }
+
+  function resetDraftFilters() {
+    setDraftSearch("");
+    setDraftRoleFilter("all");
+  }
+
+  function applyFilters() {
+    setSearch(draftSearch);
+    setRoleFilter(draftRoleFilter);
+    setFilterModalOpen(false);
   }
 
   return (
@@ -447,15 +462,15 @@ export function UsersCrud() {
       <Card>
         <CardHeader className="flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Data Pengguna</CardTitle>
-          <Button className="w-full sm:hidden" onClick={openCreateModal}>
-            <Plus className="mr-2 h-4 w-4" />
-            Tambah Pengguna
-          </Button>
         </CardHeader>
         <CardContent>
           <div className="mb-3 flex flex-wrap items-end gap-2">
             <div className="flex w-full items-end gap-2 sm:hidden">
-              <Button type="button" variant="outline" className="h-10 flex-1 sm:flex-none" onClick={() => setFilterModalOpen(true)}>
+              <Button className="h-10" onClick={openCreateModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Pengguna
+              </Button>
+              <Button type="button" variant="outline" className="ml-auto h-10 sm:flex-none" onClick={openFilterModal}>
                 <SlidersHorizontal className="mr-2 h-4 w-4" />
                 Filter
               </Button>
@@ -466,7 +481,7 @@ export function UsersCrud() {
                 Tambah Pengguna
               </Button>
             </div>
-            {selectedIds.length ? (
+            {canEditDelete && selectedIds.length ? (
               <>
                 <div className="w-full sm:w-[180px]">
                   <label className={labelClass}>Multi Action</label>
@@ -483,7 +498,7 @@ export function UsersCrud() {
               </>
             ) : null}
             <div className="ml-auto hidden items-end gap-2 sm:flex">
-              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={() => setFilterModalOpen(true)}>
+              <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
                 <SlidersHorizontal className="h-4 w-4" />
                 <span className="text-sm">Filter</span>
               </Button>
@@ -501,20 +516,23 @@ export function UsersCrud() {
               </Button>
             </div>
           </div>
-          <Table className={loading ? "" : "min-w-[920px]"}>
+          <div className="mt-[10px]">
+            <Table className={loading ? "" : "min-w-[920px]"}>
             {loading ? (
-              <ApiTableLoadingHead colSpan={5} />
+              <ApiTableLoadingHead colSpan={listColSpan} />
             ) : (
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[44px]">
-                    <input
-                      type="checkbox"
-                      checked={allPageSelected}
-                      onChange={(event) => togglePageSelection(event.target.checked)}
-                      aria-label="Pilih semua data pada halaman"
-                    />
-                  </TableHead>
+                  {canEditDelete ? (
+                    <TableHead className="w-[44px]">
+                      <input
+                        type="checkbox"
+                        checked={allPageSelected}
+                        onChange={(event) => togglePageSelection(event.target.checked)}
+                        aria-label="Pilih semua data pada halaman"
+                      />
+                    </TableHead>
+                  ) : null}
                   <TableHead>Pengguna</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Role</TableHead>
@@ -524,18 +542,20 @@ export function UsersCrud() {
             )}
             <TableBody>
               {loading ? (
-                <ApiTableLoadingRow colSpan={5} message="Memuat data pengguna..." />
+                <ApiTableLoadingRow colSpan={listColSpan} message="Memuat data pengguna..." />
               ) : filteredRows.length ? (
                 pagination.pagedRows.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(item.id)}
-                        onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
-                        aria-label={`Pilih pengguna ${item.name}`}
-                      />
-                    </TableCell>
+                    {canEditDelete ? (
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.id)}
+                          onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
+                          aria-label={`Pilih pengguna ${item.name}`}
+                        />
+                      </TableCell>
+                    ) : null}
                     <TableCell className="align-top">
                       <p className="font-medium">{item.name}</p>
                       <p className="text-xs text-muted-foreground">{item.email}</p>
@@ -556,39 +576,44 @@ export function UsersCrud() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 p-0"
-                          aria-label="Edit pengguna"
-                          title="Edit pengguna"
-                          onClick={() => openEditModal(item)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
-                          aria-label="Delete pengguna"
-                          title="Delete pengguna"
-                          onClick={() => openDeleteModal(item.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canEditDelete ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            aria-label="Edit pengguna"
+                            title="Edit pengguna"
+                            onClick={() => openEditModal(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        ) : null}
+                        {canEditDelete ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-destructive p-0 text-destructive hover:bg-destructive/10"
+                            aria-label="Delete pengguna"
+                            title="Delete pengguna"
+                            onClick={() => openDeleteModal(item.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                       </div>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={listColSpan} className="text-center text-muted-foreground">
                     No record available
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
           {!loading ? (
             <TablePagination
               page={pagination.page}
@@ -612,8 +637,8 @@ export function UsersCrud() {
             <label className={labelClass}>Pencarian</label>
             <input
               className={filterInputClass}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              value={draftSearch}
+              onChange={(event) => setDraftSearch(event.target.value)}
               placeholder="Cari nama, email, atau nomor telepon"
             />
           </div>
@@ -621,8 +646,8 @@ export function UsersCrud() {
             <label className={labelClass}>Role</label>
             <select
               className={filterSelectClass}
-              value={roleFilter}
-              onChange={(event) => setRoleFilter(event.target.value as "all" | UserRow["role"])}
+              value={draftRoleFilter}
+              onChange={(event) => setDraftRoleFilter(event.target.value as "all" | UserRow["role"])}
             >
               <option value="all">Semua role</option>
               <option value="admin">admin</option>
@@ -632,10 +657,10 @@ export function UsersCrud() {
             </select>
           </div>
           <div className="flex items-center justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={resetFilters}>
+            <Button type="button" variant="outline" onClick={resetDraftFilters}>
               Reset
             </Button>
-            <Button type="button" onClick={() => setFilterModalOpen(false)}>
+            <Button type="button" onClick={applyFilters}>
               Terapkan
             </Button>
           </div>

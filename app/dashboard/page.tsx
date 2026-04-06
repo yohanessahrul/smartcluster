@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoadingScreen } from "@/components/ui/page-loading-screen";
 import { useAuthSession } from "@/lib/auth-client";
+import { resolveDashboardPathByRole } from "@/lib/role-access";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -16,15 +17,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (loading || !session) return;
-    if (session.role === "finance") {
-      router.replace("/dashboard/admin");
-      return;
-    }
-    if (session.role === "admin" || session.role === "superadmin") {
-      router.replace("/dashboard/admin");
-      return;
-    }
-    router.replace("/dashboard/warga");
+    router.replace(resolveDashboardPathByRole(session.role));
   }, [loading, router, session]);
 
   if (loading) {

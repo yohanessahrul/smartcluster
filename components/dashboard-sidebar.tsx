@@ -6,6 +6,7 @@ import { History, Home, House, ReceiptText, Users, WalletCards } from "lucide-re
 
 import { useAuthSession } from "@/lib/auth-client";
 import { BrandMark } from "@/components/brand-mark";
+import { isAdminLikeRole, isFinanceRole } from "@/lib/role-access";
 import { cn } from "@/lib/utils";
 
 const adminMenus = [
@@ -28,8 +29,8 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const { loading, session } = useAuthSession();
   const role = session?.role;
-  const isFinance = role === "finance";
-  const isAdmin = role === "admin" || role === "superadmin";
+  const isFinance = isFinanceRole(role);
+  const isAdmin = isAdminLikeRole(role);
   const visibleMenus = loading ? [] : isFinance ? financeMenus : isAdmin ? adminMenus : [];
   const panelLabel = isFinance ? "Finance Panel" : "Admin Panel";
 

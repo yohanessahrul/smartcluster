@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoadingScreen } from "@/components/ui/page-loading-screen";
 import { useAuthSession } from "@/lib/auth-client";
+import { canAccessAdminPanel, isFinanceRole } from "@/lib/role-access";
 
 type AdminAccessGuardProps = {
   children: ReactNode;
@@ -37,7 +38,7 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
     );
   }
 
-  if (session.role !== "admin" && session.role !== "superadmin" && session.role !== "finance") {
+  if (!canAccessAdminPanel(session.role)) {
     return (
       <Card>
         <CardHeader>
@@ -52,7 +53,7 @@ export function AdminAccessGuard({ children }: AdminAccessGuardProps) {
     );
   }
 
-  if (session.role === "finance") {
+  if (isFinanceRole(session.role)) {
     const financeAllowedPaths = new Set(["/dashboard/admin", "/dashboard/admin/bills", "/dashboard/admin/transactions"]);
     if (!financeAllowedPaths.has(pathname)) {
       return (
