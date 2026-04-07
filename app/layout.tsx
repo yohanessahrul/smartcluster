@@ -39,7 +39,15 @@ export const metadata: Metadata = {
     siteName: APP_NAME,
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ["/og-image.png"],
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 800,
+        alt: 'Hunita',
+      },
+    ],
+
   },
   twitter: {
     card: "summary",
