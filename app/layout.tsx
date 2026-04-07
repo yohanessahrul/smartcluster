@@ -39,13 +39,13 @@ export const metadata: Metadata = {
     siteName: APP_NAME,
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ["/brand/og-image.png"],
+    images: ["/og-image.png"],
   },
   twitter: {
     card: "summary",
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ["/brand/og-image.png"],
+    images: ["/og-image.png"],
   },
   manifest: "/manifest.webmanifest",
   icons: {
