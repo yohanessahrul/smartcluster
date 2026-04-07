@@ -86,7 +86,7 @@ export default function WargaDashboardPage() {
           <div>
             <DashboardHeader
               title="Dashboard Warga"
-              description={`Profil rumah Blok ${data.house.blok} No ${data.house.nomor}`}
+              description="Monitoring pembayaranmu."
             />
 
             <MasterWidgetGrid widgets={wargaWidgets} />

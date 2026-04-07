@@ -191,7 +191,7 @@ export default function AdminDashboardPage() {
       <div>
         <DashboardHeader
           title="Dashboard Finance"
-          description="Ringkasan data verifikasi IPL, arus pemasukan, dan daftar unit yang perlu ditindak."
+          description="Monitoring iuran dan transaksi."
           actions={headerActions}
         />
         {safeSnapshot.generated_at ? (
@@ -417,7 +417,7 @@ export default function AdminDashboardPage() {
     <div>
       <DashboardHeader
         title="Dashboard Admin"
-        description="Ringkasan operasional IPL: rumah, warga, dan status tagihan."
+        description="Monitoring iuran warga dan transaksi lingkungan"
         actions={headerActions}
       />
       {safeSnapshot.generated_at ? (

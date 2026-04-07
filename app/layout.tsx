@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     description: APP_DESCRIPTION,
     images: [
       {
-        url: "/brand/icon-512-green.png",
+        url: "/brand/og-image.png",
         width: 512,
         height: 512,
         alt: `${APP_NAME} logo`,
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ["/brand/icon-512-green.png"],
+    images: ["/brand/og-image.png"],
   },
   manifest: "/manifest.webmanifest",
   icons: {
