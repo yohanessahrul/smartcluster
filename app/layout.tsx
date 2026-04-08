@@ -7,7 +7,14 @@ import { DeveloperErrorModal } from "@/components/ui/developer-error-modal";
 
 const APP_NAME = "Hunita";
 const APP_DESCRIPTION = "Sistem Management Perumahan yang transparan.";
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const RAW_APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+  process.env.VERCEL_URL ||
+  "http://localhost:3000";
+
+const APP_URL = (RAW_APP_URL.startsWith("http") ? RAW_APP_URL : `https://${RAW_APP_URL}`).replace(/\/$/, "");
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -35,25 +42,24 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "id_ID",
-    url: "/",
+    url: APP_URL,
     siteName: APP_NAME,
     title: APP_NAME,
     description: APP_DESCRIPTION,
     images: [
       {
-        url: '/og-image.png',
-        width: 1200,
-        height: 800,
-        alt: 'Hunita',
+        url: `${APP_URL}/og-image.jpg`,
+        width: 1536,
+        height: 1024,
+        alt: "Hunita",
       },
     ],
-
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: APP_NAME,
     description: APP_DESCRIPTION,
-    images: ["/og-image.png"],
+    images: [`${APP_URL}/og-image.jpg`],
   },
   manifest: "/manifest.webmanifest",
   icons: {
