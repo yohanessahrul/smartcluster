@@ -29,6 +29,11 @@ const blokSelectGroupButtonClass =
 const blokSelectGroupButtonActiveClass = "border-primary bg-primary text-primary-foreground hover:bg-primary/90";
 const blokOptions = ["AM1", "AM2", "AM3", "AM4", "AM5"] as const;
 
+function textOrDash(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized || "-";
+}
+
 type HouseFormState = {
   id: string;
   blok: string;
@@ -814,11 +819,11 @@ export function HousesCrud() {
                           type="checkbox"
                           checked={selectedIds.includes(item.id)}
                           onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
-                          aria-label={`Pilih rumah ${item.id}`}
+                          aria-label={`Pilih rumah ${textOrDash(item.id)}`}
                         />
                       </TableCell>
                     ) : null}
-                    <TableCell>{`${item.blok}-${item.nomor}`}</TableCell>
+                    <TableCell>{`${textOrDash(item.blok)}-${textOrDash(item.nomor)}`}</TableCell>
                     <TableCell>{item.residential_status || "-"}</TableCell>
                     <TableCell>
                       <BooleanBadge value={item.isOccupied} />

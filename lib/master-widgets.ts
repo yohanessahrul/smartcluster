@@ -1,12 +1,4 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  Clock3,
-  Home,
-  NotebookText,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock3, Home, NotebookText, Users, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { OverviewSnapshotRow } from "@/lib/api-client";
@@ -47,10 +39,7 @@ export function buildAdminWidgets(admin: OverviewSnapshotRow["admin"]): MasterWi
       id: "admin-total-warga",
       title: "Total Pengguna",
       value: String(admin?.total_warga ?? 0),
-      noteLines: [
-        `Terkoneksi rumah: ${admin?.connected_users ?? 0}`,
-        `Data pengurus: ${admin?.manager_count ?? 0}`,
-      ],
+      noteLines: [`Terkoneksi rumah: ${admin?.connected_users ?? 0}`, `Data pengurus: ${admin?.manager_count ?? 0}`],
       icon: Users,
     },
     {

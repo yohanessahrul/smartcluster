@@ -28,6 +28,11 @@ function normalizeAmountLabel(amount: string | null | undefined) {
   return amount.replace(/^rp\.?\s*/i, "").trim();
 }
 
+function textOrDash(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized || "-";
+}
+
 function normalizePeriode(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
@@ -189,22 +194,28 @@ export default function WargaDashboardPage() {
                 <Badge variant="outline">{data.houseTransactions.length} transaksi</Badge>
               </CardHeader>
               <CardContent className="space-y-2">
-                {data.houseTransactions.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-lg border border-border p-3">
-                    <div>
-                      <p className="text-sm font-medium">
-                        {item.bill_id ? billPeriodeById.get(item.bill_id) ?? "-" : "-"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        <DateTimeText value={item.date} /> • {item.payment_method}
+                {data.houseTransactions.length ? (
+                  data.houseTransactions.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {item.bill_id ? billPeriodeById.get(item.bill_id) ?? "-" : "-"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          <DateTimeText value={item.date} /> • {textOrDash(item.payment_method)}
+                        </p>
+                      </div>
+                      <p className="inline-flex items-center text-sm font-semibold">
+                        <Wallet className="mr-1 h-3.5 w-3.5" />
+                        {textOrDash(item.amount)}
                       </p>
                     </div>
-                    <p className="inline-flex items-center text-sm font-semibold">
-                      <Wallet className="mr-1 h-3.5 w-3.5" />
-                      {item.amount}
-                    </p>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-border bg-background p-6 text-center text-sm text-muted-foreground">
+                    No record available
                   </div>
-                ))}
+                )}
               </CardContent>
             </Card>
           </div>

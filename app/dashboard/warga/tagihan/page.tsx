@@ -49,6 +49,11 @@ function normalizeEmail(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
 
+function textOrDash(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized || "-";
+}
+
 function formatRoleLabel(role: UserRow["role"]) {
   switch (role) {
     case "superadmin":
@@ -201,8 +206,10 @@ export default function WargaTagihanPage() {
       try {
         setPreviewTimelineLoading(true);
         const logs = await apiClient.getAuditLogs("bills", 200, previewBill.id);
+        const normalizedBillId = previewBill.id.trim().toLowerCase();
+        const matchedLogs = logs.filter((row) => (row.record_id ?? "").trim().toLowerCase() === normalizedBillId);
         if (!isActive) return;
-        const steps = buildLunasTimeline(logs, userDirectory, previewViewerEmail);
+        const steps = buildLunasTimeline(matchedLogs, userDirectory, previewViewerEmail);
         setPreviewTimelineSteps(steps);
       } catch {
         if (!isActive) return;
@@ -392,7 +399,7 @@ export default function WargaTagihanPage() {
                           key={item.id}
                           role="button"
                           tabIndex={0}
-                          aria-label={`Lihat detail IPL ${item.id}`}
+                          aria-label={`Lihat detail IPL ${textOrDash(item.id)}`}
                           onClick={() => openPreviewModal(item, data.session?.email)}
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ") {
@@ -413,13 +420,13 @@ export default function WargaTagihanPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className={`text-xs ${isLunas ? "text-primary-foreground/80" : "text-muted-foreground"}`}>Periode</p>
-                              <p className="font-medium">{item.periode}</p>
+                              <p className="font-medium">{textOrDash(item.periode)}</p>
                             </div>
                             <PaymentStatusBadge status={item.status} />
                           </div>
 
                           <div className="mt-3 flex items-center justify-between gap-3">
-                            <p className="font-heading text-2xl font-black sm:text-3xl">{item.amount}</p>
+                            <p className="font-heading text-2xl font-black sm:text-3xl">{textOrDash(item.amount)}</p>
                             {item.status === "Belum bayar" ? (
                               <Button
                                 size="sm"

@@ -27,6 +27,11 @@ const filterSelectClass =
   "h-10 w-full rounded-[6px] border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100";
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 
+function textOrDash(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized || "-";
+}
+
 const emptyForm: UserRow = {
   id: "",
   name: "",
@@ -548,15 +553,15 @@ export function UsersCrud() {
                           checked={selectedIds.includes(item.id)}
                           onChange={(event) => toggleRowSelection(item.id, event.target.checked)}
                           disabled={isLockedForAdmin(item)}
-                          aria-label={`Pilih pengguna ${item.name}`}
+                          aria-label={`Pilih pengguna ${textOrDash(item.name)}`}
                         />
                       </TableCell>
                     ) : null}
                     <TableCell className="align-top">
-                      <p className="font-medium">{item.name}</p>
-                      <p className="text-xs text-muted-foreground">{item.email}</p>
+                      <p className="font-medium">{textOrDash(item.name)}</p>
+                      <p className="text-xs text-muted-foreground">{textOrDash(item.email)}</p>
                     </TableCell>
-                    <TableCell>{item.phone}</TableCell>
+                    <TableCell>{textOrDash(item.phone)}</TableCell>
                     <TableCell>
                       <RoleBadge role={item.role} />
                     </TableCell>

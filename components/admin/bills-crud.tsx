@@ -31,6 +31,11 @@ const filterSelectClass =
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 const OPEN_GENERATE_IPL_EVENT = "smart-open-generate-ipl";
 
+function textOrDash(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized || "-";
+}
+
 const emptyForm: BillRow = {
   id: "",
   house_id: "",
@@ -1088,7 +1093,9 @@ export function BillsCrud() {
     try {
       setPreviewLoading(true);
       const rows = await apiClient.getAuditLogs("bills", 200, recordId);
-      setPreviewHistoryRows(rows);
+      const normalizedRecordId = recordId.trim().toLowerCase();
+      const matchedRows = rows.filter((row) => (row.record_id ?? "").trim().toLowerCase() === normalizedRecordId);
+      setPreviewHistoryRows(matchedRows);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Gagal memuat preview detail IPL.");
     } finally {
@@ -1262,8 +1269,8 @@ export function BillsCrud() {
                       </TableCell>
                     ) : null}
                     <TableCell>{houseDisplayValue(item.house_id)}</TableCell>
-                    <TableCell>{item.periode}</TableCell>
-                    <TableCell>{item.amount}</TableCell>
+                    <TableCell>{textOrDash(item.periode)}</TableCell>
+                    <TableCell>{textOrDash(item.amount)}</TableCell>
                     <TableCell>{statusBadge(item.status)}</TableCell>
                     <TableCell>
                       <DateTimeText value={item.status_date} />
@@ -1530,7 +1537,7 @@ export function BillsCrud() {
                     <TableCell>
                       <DateTimeText value={item.updatedAt} />
                     </TableCell>
-                    <TableCell>{item.author}</TableCell>
+                    <TableCell>{textOrDash(item.author)}</TableCell>
                     <TableCell>{renderStatusCell(item.afterStatus)}</TableCell>
                     <TableCell>
                       <DateTimeText value={item.afterStatusDate} />

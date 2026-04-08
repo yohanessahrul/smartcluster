@@ -25,9 +25,7 @@ export function DashboardHeader({ title, description, actions }: DashboardHeader
       </div>
       <div className="flex items-center gap-2">
         {actions}
-        {session ? (
-          <UserMenuCta name={displayName} email={displayEmail} className="hidden lg:block" />
-        ) : null}
+        {session ? <UserMenuCta name={displayName} email={displayEmail} className="hidden lg:block" /> : null}
       </div>
     </header>
   );

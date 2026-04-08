@@ -101,6 +101,9 @@ const SCHEMA_META_KEY = "smart_api_schema_version";
 const SCHEMA_MIGRATION_LOCK_ID = 762430991;
 const OVERVIEW_SNAPSHOT_SCOPE = "global";
 const OVERVIEW_REFRESH_LOCK_ID = 762430992;
+const DEFAULT_SUPERADMIN_EMAIL = "yohanessahrul92@gmail.com";
+const DEFAULT_SUPERADMIN_NAME = "Yohanes Sahrul";
+const DEFAULT_SUPERADMIN_PHONE = "081703631403";
 
 type GlobalApiState = typeof globalThis & {
   smartPerumahanApiReadyPromise?: Promise<void>;
@@ -969,6 +972,53 @@ async function ensureOverviewSnapshotsTable() {
   `);
 }
 
+function getDefaultSuperadminSeed() {
+  const email = (process.env.DEFAULT_SUPERADMIN_EMAIL || DEFAULT_SUPERADMIN_EMAIL).trim().toLowerCase();
+  const name = (process.env.DEFAULT_SUPERADMIN_NAME || DEFAULT_SUPERADMIN_NAME).trim() || DEFAULT_SUPERADMIN_NAME;
+  const phone = (process.env.DEFAULT_SUPERADMIN_PHONE || DEFAULT_SUPERADMIN_PHONE).trim() || DEFAULT_SUPERADMIN_PHONE;
+  return { email, name, phone };
+}
+
+async function ensureDefaultSuperadminUser() {
+  const seed = getDefaultSuperadminSeed();
+  if (!seed.email) return;
+
+  const existing = await query<{ id: string; name: string; email: string; phone: string; role: string }>(
+    "SELECT id, name, email, phone, role FROM users WHERE LOWER(email)=$1 LIMIT 1",
+    [seed.email],
+  );
+
+  if (existing.rowCount) {
+    const row = existing.rows[0];
+    await query(
+      `
+        UPDATE users
+        SET
+          role='superadmin',
+          name=CASE WHEN name IS NULL OR BTRIM(name) = '' THEN $1 ELSE name END,
+          phone=CASE WHEN phone IS NULL OR BTRIM(phone) = '' THEN $2 ELSE phone END
+        WHERE id=$3
+      `,
+      [seed.name, seed.phone, row.id],
+    );
+    return;
+  }
+
+  const nextUserId = await getNextPrefixedId("U", "users");
+  await query(
+    `
+      INSERT INTO users (id, name, email, phone, role)
+      VALUES ($1, $2, $3, $4, 'superadmin')
+      ON CONFLICT (email) DO UPDATE
+      SET
+        role='superadmin',
+        name=CASE WHEN users.name IS NULL OR BTRIM(users.name) = '' THEN EXCLUDED.name ELSE users.name END,
+        phone=CASE WHEN users.phone IS NULL OR BTRIM(users.phone) = '' THEN EXCLUDED.phone ELSE users.phone END
+    `,
+    [nextUserId, seed.name, seed.email, seed.phone],
+  );
+}
+
 function shouldAutoMigrateSchema() {
   const raw = (process.env.SMART_API_AUTO_MIGRATE || "").trim().toLowerCase();
   if (raw === "false" || raw === "0" || raw === "off") return false;
@@ -1040,6 +1090,7 @@ export async function ensureBackendReady() {
       await ensureSchemaMetaTable();
       const currentVersion = await getStoredSchemaVersion();
       if (currentVersion === API_SCHEMA_VERSION) {
+        await ensureDefaultSuperadminUser();
         globalState.smartPerumahanApiSchemaVersion = API_SCHEMA_VERSION;
         return;
       }
@@ -1060,6 +1111,7 @@ export async function ensureBackendReady() {
           await runSchemaMigrations();
           await setStoredSchemaVersion(API_SCHEMA_VERSION);
         }
+        await ensureDefaultSuperadminUser();
       } finally {
         await query("SELECT pg_advisory_unlock($1)", [SCHEMA_MIGRATION_LOCK_ID]).catch(() => null);
       }

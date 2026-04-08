@@ -57,6 +57,10 @@ const EMPTY_SNAPSHOT: OverviewSnapshotRow = {
 };
 
 export default function AdminDashboardPage() {
+  const textOrDash = (value: string | null | undefined) => {
+    const normalized = (value ?? "").trim();
+    return normalized || "-";
+  };
   const router = useRouter();
   const pathname = usePathname();
   const { loading: sessionLoading, session } = useAuthSession();
@@ -221,7 +225,7 @@ export default function AdminDashboardPage() {
                         <PaymentStatusBadge status={item.status} />
                       </div>
                       <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                        <p>Periode: {item.periode}</p>
+                        <p>Periode: {textOrDash(item.periode)}</p>
                         <p>Amount: {formatRupiahFromAny(item.amount)}</p>
                       </div>
                       <Button
@@ -268,13 +272,13 @@ export default function AdminDashboardPage() {
                           <TableCell className="whitespace-normal">
                             <div className="space-y-1">
                               <p>{item.unit || "-"}</p>
-                              <p className="text-xs text-muted-foreground md:hidden">Periode: {item.periode}</p>
+                              <p className="text-xs text-muted-foreground md:hidden">Periode: {textOrDash(item.periode)}</p>
                               <p className="text-xs text-muted-foreground lg:hidden">
                                 Status Date: <DateTimeText value={item.status_date} />
                               </p>
                             </div>
                           </TableCell>
-                          <TableCell className="hidden md:table-cell">{item.periode}</TableCell>
+                          <TableCell className="hidden md:table-cell">{textOrDash(item.periode)}</TableCell>
                           <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
                           <TableCell>
                             <PaymentStatusBadge status={item.status} />
@@ -324,17 +328,17 @@ export default function AdminDashboardPage() {
                   financeLatestTransactions.map((item) => (
                     <div key={item.id} className="rounded-lg border border-border bg-background p-3">
                       <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm font-medium">{item.transaction_name}</p>
+                        <p className="text-sm font-medium">{textOrDash(item.transaction_name)}</p>
                         <PaymentStatusBadge status={item.status} />
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>{item.transaction_type}</Badge>
-                        <Badge variant="secondary">{item.category}</Badge>
+                        <Badge variant="secondary">{textOrDash(item.category)}</Badge>
                       </div>
                       <div className="mt-2 grid gap-1 text-xs text-muted-foreground">
-                        <p>ID: {item.id}</p>
+                        <p>ID: {textOrDash(item.id)}</p>
                         <p>Amount: {formatRupiahFromAny(item.amount)}</p>
-                        <p>Metode: {item.payment_method}</p>
+                        <p>Metode: {textOrDash(item.payment_method)}</p>
                         <p>
                           Status Date: <DateTimeText value={item.status_date} />
                         </p>
@@ -370,23 +374,23 @@ export default function AdminDashboardPage() {
                     ) : financeLatestTransactions.length ? (
                       financeLatestTransactions.map((item) => (
                         <TableRow key={item.id}>
-                          <TableCell className="hidden md:table-cell">{item.id}</TableCell>
+                          <TableCell className="hidden md:table-cell">{textOrDash(item.id)}</TableCell>
                           <TableCell className="align-top whitespace-normal">
                             <div className="space-y-1">
-                              <p className="text-sm">{item.transaction_name}</p>
+                              <p className="text-sm">{textOrDash(item.transaction_name)}</p>
                               <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>{item.transaction_type}</Badge>
-                                <Badge variant="secondary">{item.category}</Badge>
+                                <Badge variant="secondary">{textOrDash(item.category)}</Badge>
                               </div>
-                              <p className="text-xs text-muted-foreground md:hidden">ID: {item.id}</p>
-                              <p className="text-xs text-muted-foreground lg:hidden">Metode: {item.payment_method}</p>
+                              <p className="text-xs text-muted-foreground md:hidden">ID: {textOrDash(item.id)}</p>
+                              <p className="text-xs text-muted-foreground lg:hidden">Metode: {textOrDash(item.payment_method)}</p>
                               <p className="text-xs text-muted-foreground lg:hidden">
                                 Status Date: <DateTimeText value={item.status_date} />
                               </p>
                             </div>
                           </TableCell>
                           <TableCell>{formatRupiahFromAny(item.amount)}</TableCell>
-                          <TableCell className="hidden lg:table-cell">{item.payment_method}</TableCell>
+                          <TableCell className="hidden lg:table-cell">{textOrDash(item.payment_method)}</TableCell>
                           <TableCell>
                             <PaymentStatusBadge status={item.status} />
                           </TableCell>

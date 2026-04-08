@@ -35,6 +35,10 @@ function getNextUserId(rows: UserRow[]) {
 }
 
 function WargaProfileContent({ data }: { data: WargaProfileData }) {
+  const textOrDash = (value: string | null | undefined) => {
+    const normalized = (value ?? "").trim();
+    return normalized || "-";
+  };
   const actorEmail = data.session?.email.toLowerCase() ?? "";
   const houseLinkedEmails = data.house?.linked_emails ?? [];
   const primaryEmail = (houseLinkedEmails[0] ?? "").toLowerCase();
@@ -161,13 +165,13 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
-              <span className="text-muted-foreground">ID:</span> {data.house?.id}
+              <span className="text-muted-foreground">ID:</span> {textOrDash(data.house?.id)}
             </p>
             <p>
               <span className="text-muted-foreground">Unit:</span> {data.house ? `${data.house.blok}-${data.house.nomor}` : "-"}
             </p>
             <p>
-              <span className="text-muted-foreground">Email Login:</span> {data.session?.email}
+              <span className="text-muted-foreground">Email Login:</span> {textOrDash(data.session?.email)}
             </p>
           </CardContent>
         </Card>
@@ -188,18 +192,22 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
             ) : null}
           </CardHeader>
           <CardContent className="space-y-3">
-            {data.linkedUsers.map((user) => (
-              <div key={user.id} className="rounded-lg border border-border p-3">
-                <div className="mb-1 flex items-center gap-2">
-                  <p className="font-medium">{user.name}</p>
-                  <RoleBadge role={user.role} />
-                  {user.email.toLowerCase() === primaryEmail ? <Badge variant="success">Primary</Badge> : null}
-                  {user.email.toLowerCase() === secondaryEmail ? <Badge variant="secondary">Secondary</Badge> : null}
+            {data.linkedUsers.length ? (
+              data.linkedUsers.map((user) => (
+                <div key={user.id} className="rounded-lg border border-border p-3">
+                  <div className="mb-1 flex items-center gap-2">
+                    <p className="font-medium">{textOrDash(user.name)}</p>
+                    <RoleBadge role={user.role} />
+                    {user.email.toLowerCase() === primaryEmail ? <Badge variant="success">Primary</Badge> : null}
+                    {user.email.toLowerCase() === secondaryEmail ? <Badge variant="secondary">Secondary</Badge> : null}
+                  </div>
+                  <p className="text-sm text-muted-foreground">{textOrDash(user.email)}</p>
+                  <p className="text-sm text-muted-foreground">{textOrDash(user.phone)}</p>
                 </div>
-                <p className="text-sm text-muted-foreground">{user.email}</p>
-                <p className="text-sm text-muted-foreground">{user.phone}</p>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="rounded-lg border border-border p-3 text-sm text-muted-foreground">No record available</p>
+            )}
           </CardContent>
         </Card>
       </section>

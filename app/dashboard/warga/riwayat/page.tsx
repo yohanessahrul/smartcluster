@@ -19,6 +19,11 @@ import { TransactionRow } from "@/lib/mock-data";
 
 const filterLabelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 
+function textOrDash(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized || "-";
+}
+
 export default function WargaRiwayatPage() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
   const [methodFilter, setMethodFilter] = useState<"all" | TransactionRow["payment_method"]>("all");
@@ -128,7 +133,7 @@ export default function WargaRiwayatPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-xs text-muted-foreground">Transaksi ID</p>
-                            <p className="font-medium">{item.id}</p>
+                            <p className="font-medium">{textOrDash(item.id)}</p>
                           </div>
                           <PaymentStatusBadge status={item.status} />
                         </div>
@@ -137,7 +142,7 @@ export default function WargaRiwayatPage() {
                           <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>
                             {item.transaction_type}
                           </Badge>
-                          <Badge variant="secondary">{item.category}</Badge>
+                          <Badge variant="secondary">{textOrDash(item.category)}</Badge>
                         </div>
 
                         <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
@@ -151,7 +156,7 @@ export default function WargaRiwayatPage() {
                             <span className="text-muted-foreground">Date:</span> <DateTimeText value={item.date} />
                           </p>
                           <p>
-                            <span className="text-muted-foreground">Payment Method:</span> {item.payment_method}
+                            <span className="text-muted-foreground">Payment Method:</span> {textOrDash(item.payment_method)}
                           </p>
                           <p className="sm:col-span-2">
                             <span className="text-muted-foreground">Status Date:</span> <DateTimeText value={item.status_date} />

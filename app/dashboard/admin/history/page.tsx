@@ -17,6 +17,10 @@ const filterSelectClass =
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 
 export default function AdminGlobalHistoryPage() {
+  const textOrDash = (value: string | null | undefined) => {
+    const normalized = (value ?? "").trim();
+    return normalized || "-";
+  };
   const { loading: sessionLoading, session } = useAuthSession();
   const [rows, setRows] = useState<AuditLogRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,10 +106,10 @@ export default function AdminGlobalHistoryPage() {
       filenamePrefix: "global-history",
       rows: filteredRows,
       columns: [
-        { header: "Waktu Update", value: (row) => row.updated_at },
-        { header: "Author", value: (row) => row.author },
-        { header: "Table", value: (row) => row.table_name },
-        { header: "Action", value: (row) => row.action },
+        { header: "Waktu Update", value: (row) => textOrDash(row.updated_at) },
+        { header: "Author", value: (row) => textOrDash(row.author) },
+        { header: "Table", value: (row) => textOrDash(row.table_name) },
+        { header: "Action", value: (row) => textOrDash(row.action) },
         { header: "Record ID", value: (row) => row.record_id ?? "-" },
         { header: "Before", value: (row) => JSON.stringify(row.before_value ?? {}) },
         { header: "After", value: (row) => JSON.stringify(row.after_value ?? {}) },

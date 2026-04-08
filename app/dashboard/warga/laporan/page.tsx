@@ -27,6 +27,10 @@ type JournalRow = {
 };
 
 export default function WargaLaporanPage() {
+  const textOrDash = (value: string | null | undefined) => {
+    const normalized = (value ?? "").trim();
+    return normalized || "-";
+  };
   const shouldLogTableData = process.env.NODE_ENV !== "production";
   const [transactions, setTransactions] = useState<TransactionRow[]>([]);
   const [bills, setBills] = useState<BillRow[]>([]);
@@ -169,7 +173,7 @@ export default function WargaLaporanPage() {
         <div>
           <DashboardHeader
             title="Laporan Penggunaan Dana"
-            description={`Transparansi dana untuk rumah ${data.house?.id} berdasarkan data pada tabel transaksi.`}
+            description={`Transparansi dana untuk rumah ${textOrDash(data.house?.id)} berdasarkan data pada tabel transaksi.`}
           />
 
           <section className="mb-4 grid gap-3 md:grid-cols-3">
@@ -227,7 +231,7 @@ export default function WargaLaporanPage() {
                               {`${row.description} · ${row.populatedCount ?? 0} transaksi`}
                             </Button>
                           ) : (
-                            <p>{row.description}</p>
+                            <p>{textOrDash(row.description)}</p>
                           )}
                         </div>
 
@@ -277,7 +281,7 @@ export default function WargaLaporanPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-xs text-muted-foreground">ID</p>
-                        <p className="font-medium">{item.id}</p>
+                        <p className="font-medium">{textOrDash(item.id)}</p>
                       </div>
                       <Badge variant={item.transaction_type === "Pemasukan" ? "success" : "warning"}>{item.transaction_type}</Badge>
                     </div>
@@ -290,13 +294,13 @@ export default function WargaLaporanPage() {
                         <span className="text-muted-foreground">Amount:</span> {formatRupiah(parseRupiahToNumber(item.amount))}
                       </p>
                       <p>
-                        <span className="text-muted-foreground">Nama Transaksi:</span> {item.transaction_name}
+                        <span className="text-muted-foreground">Nama Transaksi:</span> {textOrDash(item.transaction_name)}
                       </p>
                       <p>
-                        <span className="text-muted-foreground">Payment Method:</span> {item.payment_method}
+                        <span className="text-muted-foreground">Payment Method:</span> {textOrDash(item.payment_method)}
                       </p>
                       <p className="sm:col-span-2">
-                        <span className="text-muted-foreground">Status:</span> {item.status}
+                        <span className="text-muted-foreground">Status:</span> {textOrDash(item.status)}
                       </p>
                     </div>
                   </div>

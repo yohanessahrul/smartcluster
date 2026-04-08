@@ -36,6 +36,11 @@ const filterSelectClass =
 const labelClass = "mb-1 block text-xs font-medium text-muted-foreground";
 const transactionCategoryOptions: TransactionRow["category"][] = ["IPL Warga", "IPL Cluster", "Barang Inventaris", "Other"];
 
+function textOrDash(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized || "-";
+}
+
 function getDefaultTransactionName(category: TransactionRow["category"], transactionType: TransactionRow["transaction_type"]) {
   if (category === "Barang Inventaris") {
     return transactionType === "Pengeluaran" ? "Pembelian Barang Inventaris" : "Pemasukan Barang Inventaris";
@@ -811,10 +816,10 @@ export function TransactionsCrud() {
                     ) : null}
                     <TableCell className="align-top">
                       <div className="space-y-2">
-                        <p className="text-sm">{item.transaction_name}</p>
+                        <p className="text-sm">{textOrDash(item.transaction_name)}</p>
                         <div className="flex flex-wrap items-center gap-2">
                           {transactionTypeBadge(item.transaction_type)}
-                          <Badge variant="secondary">{item.category}</Badge>
+                          <Badge variant="secondary">{textOrDash(item.category)}</Badge>
                         </div>
                       </div>
                     </TableCell>
@@ -822,7 +827,7 @@ export function TransactionsCrud() {
                     <TableCell>
                       <DateTimeText value={item.status_date} />
                     </TableCell>
-                    <TableCell>{item.payment_method}</TableCell>
+                    <TableCell>{textOrDash(item.payment_method)}</TableCell>
                     <TableCell>{transactionStatusBadge(item.status)}</TableCell>
                     <TableCell className="min-w-[132px]">
                       <div className="flex items-center gap-2">
@@ -1015,7 +1020,7 @@ export function TransactionsCrud() {
                     <TableCell>
                       <DateTimeText value={item.updatedAt} />
                     </TableCell>
-                    <TableCell>{item.author}</TableCell>
+                    <TableCell>{textOrDash(item.author)}</TableCell>
                     <TableCell>{renderStatusCell(item.afterStatus)}</TableCell>
                   </TableRow>
                 ))

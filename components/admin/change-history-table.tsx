@@ -22,6 +22,11 @@ function asPrettyJson(value: unknown) {
   return JSON.stringify(value, null, 2);
 }
 
+function textOrDash(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized || "-";
+}
+
 export function ChangeHistoryTable({ title, rows, loading }: ChangeHistoryTableProps) {
   const pagination = useTablePagination(rows);
   const [selectedRow, setSelectedRow] = useState<AuditLogRow | null>(null);
@@ -55,10 +60,10 @@ export function ChangeHistoryTable({ title, rows, loading }: ChangeHistoryTableP
                     <TableCell className="align-top text-sm">
                       <DateTimeText value={row.updated_at} />
                     </TableCell>
-                    <TableCell className="align-top text-sm">{row.author}</TableCell>
+                    <TableCell className="align-top text-sm">{textOrDash(row.author)}</TableCell>
                     <TableCell className="align-top text-sm">
-                      {row.table_name}
-                      <p className="text-xs text-muted-foreground">{row.action}</p>
+                      {textOrDash(row.table_name)}
+                      <p className="text-xs text-muted-foreground">{textOrDash(row.action)}</p>
                     </TableCell>
                     <TableCell className="align-top">
                       <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => setSelectedRow(row)}>
@@ -103,10 +108,10 @@ export function ChangeHistoryTable({ title, rows, loading }: ChangeHistoryTableP
               <span className="text-muted-foreground">Tanggal Update:</span> <DateTimeText value={selectedRow?.updated_at} />
             </p>
             <p>
-              <span className="text-muted-foreground">Author:</span> {selectedRow?.author ?? "-"}
+              <span className="text-muted-foreground">Author:</span> {textOrDash(selectedRow?.author)}
             </p>
             <p>
-              <span className="text-muted-foreground">Table:</span> {selectedRow?.table_name ?? "-"} ({selectedRow?.action ?? "-"})
+              <span className="text-muted-foreground">Table:</span> {textOrDash(selectedRow?.table_name)} ({textOrDash(selectedRow?.action)})
             </p>
           </div>
 
