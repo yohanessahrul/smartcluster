@@ -25,6 +25,11 @@ function badgeClassForCreditCard(status: string | null | undefined) {
   return `${base} !bg-white/90 !text-slate-900`;
 }
 
+function normalizeAmountLabel(amount: string | null | undefined) {
+  if (!amount) return "-";
+  return amount.replace(/^rp\.?\s*/i, "").trim();
+}
+
 export default function WargaDashboardPage() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
 
@@ -141,10 +146,12 @@ export default function WargaDashboardPage() {
                       </div>
                     </div>
 
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-white/70">Nominal IPL</p>
-                      <p className="font-heading text-4xl leading-tight text-white">{latestBill?.amount ?? "-"}</p>
-                    </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-white/70">Nominal IPL</p>
+                    <p className="font-heading text-2xl font-bold leading-tight text-white">
+                      Rp {normalizeAmountLabel(latestBill?.amount)}
+                    </p>
+                  </div>
 
                     <div className="pointer-events-none absolute right-3 top-[calc(46%-30px)] -translate-y-1/2 sm:right-5">
                       <img
