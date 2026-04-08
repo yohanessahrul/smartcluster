@@ -125,6 +125,10 @@ function normalizeStatus(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
 
+function isLunasStatus(value: string | null | undefined) {
+  return normalizeStatus(value) === "lunas";
+}
+
 function isBelumBayarStatus(value: string | null | undefined) {
   const normalized = normalizeStatus(value);
   return normalized === "belum bayar" || normalized === "belum dibayar";
@@ -167,6 +171,21 @@ function formatPeriodeFromMonthKey(key: number) {
   const monthName = periodeMonthNames[monthIndex];
   if (!monthName) return "";
   return `${monthName} ${year}`;
+}
+
+function getCurrentPeriodeLabel() {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+  });
+  const [yearPart, monthPart] = formatter.format(now).split("-");
+  const parsedYear = Number.parseInt(yearPart ?? "", 10);
+  const parsedMonth = Number.parseInt(monthPart ?? "", 10);
+  const year = Number.isInteger(parsedYear) ? parsedYear : now.getFullYear();
+  const monthIndex = Number.isInteger(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12 ? parsedMonth - 1 : now.getMonth();
+  return `${periodeMonthNames[monthIndex]} ${year}`;
 }
 
 function normalizePeriodeText(value: string | null | undefined) {
@@ -527,6 +546,10 @@ export default function WargaTagihanPage() {
         const filteredRows = rows.filter((item) => {
           return statusFilter === "all" ? true : item.status === statusFilter;
         });
+        const currentPeriodeLabel = getCurrentPeriodeLabel();
+        const canShowBulkPayCta = rows.some(
+          (item) => normalizePeriodeText(item.periode) === normalizePeriodeText(currentPeriodeLabel) && isLunasStatus(item.status)
+        );
         const selectedMonthsCount = Number.parseInt(bulkPayDuration, 10) as 3 | 6 | 12;
         const bulkAllocationPlan = buildBulkAllocationPlan(rows, selectedMonthsCount);
         const totalItems = filteredRows.length;
@@ -570,30 +593,34 @@ export default function WargaTagihanPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="flex w-full items-end justify-between gap-2 sm:hidden">
-                    <Button
-                      type="button"
-                      className="h-10 gap-2"
-                      onClick={openBulkPayModal}
-                    >
-                      <WalletCards className="h-4 w-4" />
-                      Bayar Sekaligus
-                    </Button>
+                  <div className={`flex w-full items-end gap-2 sm:hidden ${canShowBulkPayCta ? "justify-between" : "justify-end"}`}>
+                    {canShowBulkPayCta ? (
+                      <Button
+                        type="button"
+                        className="h-10 gap-2"
+                        onClick={openBulkPayModal}
+                      >
+                        <WalletCards className="h-4 w-4" />
+                        Bayar Sekaligus
+                      </Button>
+                    ) : null}
                     <Button type="button" variant="outline" className="h-10 sm:flex-none" onClick={openFilterModal}>
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
                       Filter
                     </Button>
                   </div>
-                  <div className="hidden w-full items-end justify-between gap-2 sm:flex">
-                    <Button
-                      type="button"
-                      className="h-10 gap-2 px-4"
-                      onClick={openBulkPayModal}
-                    >
-                      <WalletCards className="h-4 w-4" />
-                      <span className="text-sm">Bayar Sekaligus</span>
-                    </Button>
-                    <div className="ml-auto flex items-end gap-2">
+                  <div className={`hidden w-full items-end gap-2 sm:flex ${canShowBulkPayCta ? "justify-between" : "justify-end"}`}>
+                    {canShowBulkPayCta ? (
+                      <Button
+                        type="button"
+                        className="h-10 gap-2 px-4"
+                        onClick={openBulkPayModal}
+                      >
+                        <WalletCards className="h-4 w-4" />
+                        <span className="text-sm">Bayar Sekaligus</span>
+                      </Button>
+                    ) : null}
+                    <div className="flex items-end gap-2">
                       <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
                         <SlidersHorizontal className="h-4 w-4" />
                         <span className="text-sm">Filter</span>

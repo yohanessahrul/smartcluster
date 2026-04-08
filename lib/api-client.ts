@@ -145,6 +145,13 @@ export type OverviewSnapshotRow = {
   };
 };
 
+export type ResetDatabaseResponse = {
+  status: boolean;
+  cleared_tables: string[];
+  cleared_count: number;
+  users_preserved: boolean;
+};
+
 function isTransientServerTimeoutMessage(message: string) {
   const lowered = message.toLowerCase();
   return lowered.includes("connection terminated due to connection timeout") || lowered.includes("timeout exceeded when trying to connect");
@@ -324,6 +331,11 @@ export const apiClient = {
     request<{ can_refresh: boolean; snapshot: OverviewSnapshotRow }>("/api/overview"),
   refreshOverviewSnapshot: (options?: MutationOptions) =>
     request<{ status: boolean; message: string; snapshot: OverviewSnapshotRow }>("/api/overview/refresh", {
+      method: "POST",
+      ...options,
+    }),
+  resetDatabaseExceptUsers: (options?: MutationOptions) =>
+    request<ResetDatabaseResponse>("/api/admin/reset-db", {
       method: "POST",
       ...options,
     }),

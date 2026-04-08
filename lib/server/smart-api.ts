@@ -205,6 +205,10 @@ function throwServerError(error: unknown): never {
   throw new ApiHttpError(500, "Server error", getErrorDetail(error));
 }
 
+function quoteIdentifier(value: string) {
+  return `"${value.replace(/"/g, "\"\"")}"`;
+}
+
 function normalizeDateTimeInput(value: unknown) {
   if (value instanceof Date) {
     if (Number.isNaN(value.getTime())) return null;
@@ -2485,6 +2489,60 @@ export async function payBillsInBulk(
       processed_bill_ids: processedBillIds,
       processed_periods: processedPeriods,
       skipped_periods: skippedPeriods,
+    };
+  } catch (error) {
+    await rollbackTransaction(transaction).catch(() => null);
+    throwServerError(error);
+  } finally {
+    transaction.release();
+  }
+}
+
+export async function resetDatabaseExceptUsers(actor: string) {
+  const transaction = await connect();
+  try {
+    await beginTransaction(transaction);
+
+    const tableResult = await transaction.query<{ tablename: string }>(
+      `
+        SELECT tablename
+        FROM pg_tables
+        WHERE schemaname='public'
+          AND tablename <> 'users'
+          AND tablename NOT IN ('__drizzle_migrations', 'drizzle_migrations')
+        ORDER BY tablename ASC
+      `,
+    );
+
+    const clearedTables: string[] = [];
+    for (const row of tableResult.rows) {
+      const tableName = asString(row.tablename).trim();
+      if (!tableName) continue;
+      await transaction.query(`TRUNCATE TABLE ${quoteIdentifier(tableName)} RESTART IDENTITY CASCADE`);
+      clearedTables.push(tableName);
+    }
+
+    if (clearedTables.includes("audit_logs")) {
+      await writeAuditLog((text, params) => transaction.query(text, params), {
+        author: actor,
+        tableName: "system",
+        action: "CREATE",
+        recordId: null,
+        beforeValue: null,
+        afterValue: {
+          event: "RESET_DB",
+          message: "Semua tabel publik telah dikosongkan kecuali users.",
+          cleared_tables: clearedTables,
+        },
+      });
+    }
+
+    await commitTransaction(transaction);
+    return {
+      status: true,
+      cleared_tables: clearedTables,
+      cleared_count: clearedTables.length,
+      users_preserved: true,
     };
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, RefreshCw, ScanSearch, Server } from "lucide-react";
+import { AlertTriangle, ArrowRight, RefreshCw, ScanSearch, Server } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
@@ -13,7 +13,9 @@ import { ApiTableLoadingHead, ApiTableLoadingRow } from "@/components/ui/api-loa
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
+import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
+import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuthSession } from "@/lib/auth-client";
@@ -71,11 +73,15 @@ export default function AdminDashboardPage() {
   const [loadError, setLoadError] = useState("");
   const [successToast, setSuccessToast] = useState("");
   const [showServerStatus, setShowServerStatus] = useState(false);
+  const [resetDbModalOpen, setResetDbModalOpen] = useState(false);
+  const [resetDbSubmitting, setResetDbSubmitting] = useState(false);
+  const [resetDbError, setResetDbError] = useState("");
   const [openedFromQuery, setOpenedFromQuery] = useState(false);
   const shouldLogTableData = process.env.NODE_ENV !== "production";
 
   const isFinance = isFinanceRole(session?.role);
   const isAdmin = isAdminLikeRole(session?.role);
+  const isSuperadmin = session?.role === "superadmin";
 
   useEffect(() => {
     void loadDashboardData();
@@ -135,6 +141,27 @@ export default function AdminDashboardPage() {
     }
   }
 
+  function openResetDbModal() {
+    setResetDbError("");
+    setResetDbModalOpen(true);
+  }
+
+  async function confirmResetDatabase() {
+    try {
+      setResetDbSubmitting(true);
+      setResetDbError("");
+      const result = await apiClient.resetDatabaseExceptUsers({ actorEmail });
+      setResetDbModalOpen(false);
+      emitDataChanged();
+      await loadDashboardData();
+      setSuccessToast(`Reset DB selesai. ${result.cleared_count} tabel berhasil dikosongkan.`);
+    } catch (error) {
+      setResetDbError(error instanceof Error ? error.message : "Gagal mereset database.");
+    } finally {
+      setResetDbSubmitting(false);
+    }
+  }
+
   function openBillVerification(billId: string) {
     router.push(`/dashboard/admin/bills?verifyBill=${encodeURIComponent(billId)}&focus=pending-verification`);
   }
@@ -176,6 +203,17 @@ export default function AdminDashboardPage() {
         <RefreshCw className="mr-2 h-4 w-4" />
         Refresh widget
       </Button>
+      {isSuperadmin ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="border-destructive/60 text-destructive hover:bg-destructive/10"
+          onClick={openResetDbModal}
+        >
+          <AlertTriangle className="mr-2 h-4 w-4" />
+          Reset DB
+        </Button>
+      ) : null}
     </div>
   ) : isFinance ? (
     <div className="flex items-center gap-2">
@@ -413,6 +451,31 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
         <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
+        <SimpleModal open={resetDbModalOpen} onClose={() => setResetDbModalOpen(false)} title="Reset Database" className="max-w-md">
+          <div className="space-y-4">
+            <FormErrorAlert message={resetDbError} />
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Action ini akan menghapus semua data tabel kecuali tabel users. Pastikan Anda benar-benar yakin.
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Hanya role superadmin yang bisa menjalankan action ini.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button type="button" variant="outline" onClick={() => setResetDbModalOpen(false)} disabled={resetDbSubmitting}>
+                Batal
+              </Button>
+              <Button
+                type="button"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                loading={resetDbSubmitting}
+                loadingText="Mereset database..."
+                onClick={confirmResetDatabase}
+              >
+                Reset DB
+              </Button>
+            </div>
+          </div>
+        </SimpleModal>
       </div>
     );
   }
@@ -435,6 +498,31 @@ export default function AdminDashboardPage() {
 
       <ServerStatusModal open={showServerStatus} onClose={closeServerStatusModal} />
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
+      <SimpleModal open={resetDbModalOpen} onClose={() => setResetDbModalOpen(false)} title="Reset Database" className="max-w-md">
+        <div className="space-y-4">
+          <FormErrorAlert message={resetDbError} />
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Action ini akan menghapus semua data tabel kecuali tabel users. Pastikan Anda benar-benar yakin.
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Hanya role superadmin yang bisa menjalankan action ini.
+          </p>
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={() => setResetDbModalOpen(false)} disabled={resetDbSubmitting}>
+              Batal
+            </Button>
+            <Button
+              type="button"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              loading={resetDbSubmitting}
+              loadingText="Mereset database..."
+              onClick={confirmResetDatabase}
+            >
+              Reset DB
+            </Button>
+          </div>
+        </div>
+      </SimpleModal>
     </div>
   );
 }
