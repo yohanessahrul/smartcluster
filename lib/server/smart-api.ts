@@ -1,7 +1,7 @@
 import { PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { connect, query } from "@/lib/server/db";
-import { deletePaymentProofFromSupabase } from "@/lib/server/supabase";
+import { deletePaymentProofFromSupabase, emptySupabaseStorageBucket } from "@/lib/server/supabase";
 
 type JsonRecord = Record<string, unknown>;
 type QueryFn = (text: string, params?: unknown[]) => Promise<QueryResult<QueryResultRow>>;
@@ -2498,7 +2498,7 @@ export async function payBillsInBulk(
   }
 }
 
-export async function resetDatabaseExceptUsers(actor: string) {
+export async function resetDatabaseExceptUsers(_actor: string) {
   const transaction = await connect();
   try {
     await beginTransaction(transaction);
@@ -2522,27 +2522,20 @@ export async function resetDatabaseExceptUsers(actor: string) {
       clearedTables.push(tableName);
     }
 
-    if (clearedTables.includes("audit_logs")) {
-      await writeAuditLog((text, params) => transaction.query(text, params), {
-        author: actor,
-        tableName: "system",
-        action: "CREATE",
-        recordId: null,
-        beforeValue: null,
-        afterValue: {
-          event: "RESET_DB",
-          message: "Semua tabel publik telah dikosongkan kecuali users.",
-          cleared_tables: clearedTables,
-        },
-      });
-    }
-
     await commitTransaction(transaction);
+    const storage = await emptySupabaseStorageBucket().catch((error) => {
+      const detail = error instanceof Error ? error.message : "unknown-error";
+      return { cleared: false as const, bucket: "", reason: `error:${detail}` };
+    });
+
     return {
       status: true,
       cleared_tables: clearedTables,
       cleared_count: clearedTables.length,
       users_preserved: true,
+      storage_cleared: storage.cleared,
+      storage_bucket: storage.bucket,
+      storage_reason: storage.reason,
     };
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);

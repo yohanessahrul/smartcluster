@@ -167,3 +167,28 @@ export async function uploadPaymentProofToSupabase(params: { billId: string; fil
     publicUrl: data.publicUrl,
   };
 }
+
+export async function emptySupabaseStorageBucket() {
+  const supabase = getSupabaseAdminClient();
+  const bucket = getSupabaseStorageBucket();
+
+  const { data: bucketInfo, error: bucketError } = await supabase.storage.getBucket(bucket);
+  if (bucketError) {
+    const message = (bucketError.message || "").toLowerCase();
+    if (message.includes("not found") || message.includes("not exist")) {
+      return { cleared: true as const, bucket, reason: "bucket-not-found" as const };
+    }
+    throw new Error(`Gagal memeriksa bucket storage: ${bucketError.message}`);
+  }
+
+  if (!bucketInfo) {
+    return { cleared: true as const, bucket, reason: "bucket-not-found" as const };
+  }
+
+  const { error: emptyError } = await supabase.storage.emptyBucket(bucket);
+  if (emptyError) {
+    throw new Error(`Gagal menghapus semua file storage: ${emptyError.message}`);
+  }
+
+  return { cleared: true as const, bucket, reason: "ok" as const };
+}

@@ -154,7 +154,10 @@ export default function AdminDashboardPage() {
       setResetDbModalOpen(false);
       emitDataChanged();
       await loadDashboardData();
-      setSuccessToast(`Reset DB selesai. ${result.cleared_count} tabel berhasil dikosongkan.`);
+      const storageStatus = result.storage_cleared
+        ? `Storage bucket ${result.storage_bucket || "-"} ikut dibersihkan.`
+        : `Storage tidak sepenuhnya dibersihkan (${result.storage_reason}).`;
+      setSuccessToast(`Reset DB selesai. ${result.cleared_count} tabel berhasil dikosongkan. ${storageStatus}`);
     } catch (error) {
       setResetDbError(error instanceof Error ? error.message : "Gagal mereset database.");
     } finally {
@@ -194,14 +197,10 @@ export default function AdminDashboardPage() {
   }, [shouldLogTableData, safeSnapshot]);
 
   const headerActions = isAdmin ? (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button type="button" variant="outline" onClick={() => setShowServerStatus(true)}>
         <Server className="mr-2 h-4 w-4" />
         Status Server
-      </Button>
-      <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
-        <RefreshCw className="mr-2 h-4 w-4" />
-        Refresh widget
       </Button>
       {isSuperadmin ? (
         <Button
@@ -214,9 +213,13 @@ export default function AdminDashboardPage() {
           Reset DB
         </Button>
       ) : null}
+      <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
+        <RefreshCw className="mr-2 h-4 w-4" />
+        Refresh widget
+      </Button>
     </div>
   ) : isFinance ? (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
         <RefreshCw className="mr-2 h-4 w-4" />
         Refresh widget
@@ -455,7 +458,8 @@ export default function AdminDashboardPage() {
           <div className="space-y-4">
             <FormErrorAlert message={resetDbError} />
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Action ini akan menghapus semua data tabel kecuali tabel users. Pastikan Anda benar-benar yakin.
+              Action ini akan menghapus semua data tabel kecuali tabel users, sekaligus menghapus seluruh file di storage bucket.
+              Pastikan Anda benar-benar yakin.
             </div>
             <p className="text-sm text-muted-foreground">
               Hanya role superadmin yang bisa menjalankan action ini.
@@ -502,7 +506,8 @@ export default function AdminDashboardPage() {
         <div className="space-y-4">
           <FormErrorAlert message={resetDbError} />
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Action ini akan menghapus semua data tabel kecuali tabel users. Pastikan Anda benar-benar yakin.
+            Action ini akan menghapus semua data tabel kecuali tabel users, sekaligus menghapus seluruh file di storage bucket.
+            Pastikan Anda benar-benar yakin.
           </div>
           <p className="text-sm text-muted-foreground">
             Hanya role superadmin yang bisa menjalankan action ini.

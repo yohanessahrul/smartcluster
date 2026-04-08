@@ -150,6 +150,9 @@ export type ResetDatabaseResponse = {
   cleared_tables: string[];
   cleared_count: number;
   users_preserved: boolean;
+  storage_cleared: boolean;
+  storage_bucket: string;
+  storage_reason: string;
 };
 
 function isTransientServerTimeoutMessage(message: string) {
