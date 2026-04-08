@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { CalendarClock, RefreshCw, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 
-import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
-import { buildWargaWidgets } from "@/lib/master-widgets";
 
 function badgeClassForCreditCard(status: string | null | undefined) {
   const lowered = status?.trim().toLowerCase() ?? "";
@@ -28,6 +26,18 @@ function badgeClassForCreditCard(status: string | null | undefined) {
 function normalizeAmountLabel(amount: string | null | undefined) {
   if (!amount) return "-";
   return amount.replace(/^rp\.?\s*/i, "").trim();
+}
+
+function normalizePeriode(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function currentPeriodeLabel() {
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date());
 }
 
 export default function WargaDashboardPage() {
@@ -96,17 +106,18 @@ export default function WargaDashboardPage() {
           );
         }
 
-        const latestBill = [...data.houseBills].sort((a, b) => b.id.localeCompare(a.id))[0];
-        const wargaWidgets = buildWargaWidgets(data.houseBills);
-
+        const currentPeriode = currentPeriodeLabel();
+        const currentPeriodBills = data.houseBills.filter(
+          (item) => normalizePeriode(item.periode) === normalizePeriode(currentPeriode),
+        );
+        const activeBill = [...currentPeriodBills].sort((a, b) => b.id.localeCompare(a.id))[0];
+        const billPeriodeById = new Map(data.houseBills.map((bill) => [bill.id, bill.periode]));
         return (
           <div>
             <DashboardHeader
               title="Dashboard Warga"
               description="Monitoring pembayaranmu."
             />
-
-            <MasterWidgetGrid widgets={wargaWidgets} />
 
             <section className="mb-4">
               <Link
@@ -124,10 +135,10 @@ export default function WargaDashboardPage() {
                         <p className="text-[11px] uppercase tracking-[0.26em] text-white/70">Tagihan Aktif</p>
                       </div>
                       <div className="flex flex-col items-end gap-2">
-                        {latestBill ? (
+                        {activeBill ? (
                           <PaymentStatusBadge
-                            status={latestBill.status}
-                            className={badgeClassForCreditCard(latestBill.status)}
+                            status={activeBill.status}
+                            className={badgeClassForCreditCard(activeBill.status)}
                           />
                         ) : (
                           <Badge variant="outline" className="bg-transparent text-white">
@@ -142,14 +153,14 @@ export default function WargaDashboardPage() {
                     <div>
                       <div>
                         <p className="text-xs uppercase tracking-widest text-white/70">Periode</p>
-                        <p className="font-heading text-2xl leading-tight text-white">{latestBill?.periode ?? "-"}</p>
+                        <p className="font-heading text-2xl leading-tight text-white">{activeBill?.periode ?? "-"}</p>
                       </div>
                     </div>
 
                   <div>
                     <p className="text-xs uppercase tracking-widest text-white/70">Nominal IPL</p>
                     <p className="font-heading text-2xl font-bold leading-tight text-white whitespace-nowrap">
-                      Rp&nbsp;{normalizeAmountLabel(latestBill?.amount)}
+                      Rp&nbsp;{normalizeAmountLabel(activeBill?.amount)}
                     </p>
                   </div>
 
@@ -182,9 +193,11 @@ export default function WargaDashboardPage() {
                   <div key={item.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                     <div>
                       <p className="text-sm font-medium">
-                        <DateTimeText value={item.date} />
+                        {item.bill_id ? billPeriodeById.get(item.bill_id) ?? "-" : "-"}
                       </p>
-                      <p className="text-xs text-muted-foreground">{item.payment_method}</p>
+                      <p className="text-xs text-muted-foreground">
+                        <DateTimeText value={item.date} /> • {item.payment_method}
+                      </p>
                     </div>
                     <p className="inline-flex items-center text-sm font-semibold">
                       <Wallet className="mr-1 h-3.5 w-3.5" />

@@ -5,6 +5,7 @@ import { Crosshair, Eye, FileSpreadsheet, Pencil, Plus, SlidersHorizontal, Trash
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { BooleanBadge } from "@/components/ui/boolean-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
@@ -417,9 +418,12 @@ type FinanceVerifyForm = {
 type FinanceVerifyModalProps = {
   open: boolean;
   onClose: () => void;
+  billId?: string | null;
+  unitLabel?: string | null;
+  periode?: string | null;
+  amount?: string | null;
   currentProofUrl?: string | null;
   value: FinanceVerifyForm;
-  onChange: (value: FinanceVerifyForm) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   submitting?: boolean;
   errorMessage?: string;
@@ -428,29 +432,46 @@ type FinanceVerifyModalProps = {
 function FinanceVerifyModal({
   open,
   onClose,
+  billId,
+  unitLabel,
+  periode,
+  amount,
   currentProofUrl,
   value,
-  onChange,
   onSubmit,
   submitting,
   errorMessage,
 }: FinanceVerifyModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Verifikasi IPL">
+    <SimpleModal
+      open={open}
+      onClose={onClose}
+      title={
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <span>Verifikasi IPL</span>
+          <Badge variant="outline">{billId ?? "-"}</Badge>
+        </span>
+      }
+    >
       <form className="space-y-3" onSubmit={onSubmit}>
         <FormErrorAlert message={errorMessage} />
-        <div>
-          <label className={labelClass}>Payment Method</label>
-          <select
-            className={inputClass}
-            value={value.payment_method}
-            onChange={(event) => onChange({ ...value, payment_method: event.target.value as BillRow["payment_method"] })}
-          >
-            <option value="Transfer Bank">Transfer Bank</option>
-            <option value="Cash">Cash</option>
-            <option value="QRIS">QRIS</option>
-            <option value="E-wallet">E-wallet</option>
-          </select>
+        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Unit</p>
+            <p className="font-medium">{unitLabel ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Periode</p>
+            <p className="font-medium">{periode ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Nominal</p>
+            <p className="font-heading text-lg font-bold">{amount ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Metode Pembayaran</p>
+            <p className="font-medium">{value.payment_method}</p>
+          </div>
         </div>
         <div>
           <label className={labelClass}>Preview Bukti Pembayaran</label>
@@ -639,6 +660,7 @@ export function BillsCrud() {
   const periodeOptions = useMemo(() => {
     return Array.from(new Set(rows.map((row) => row.periode).filter(Boolean))).sort((a, b) => toMonthValue(b).localeCompare(toMonthValue(a)));
   }, [rows]);
+  const verifyingRow = useMemo(() => rows.find((row) => row.id === verifyingId) ?? null, [rows, verifyingId]);
   const selectedGeneratePeriode = useMemo(() => toPeriode(generateForm.month), [generateForm.month]);
   const isGeneratePeriodAlreadyExists = useMemo(() => {
     if (!selectedGeneratePeriode) return false;
@@ -1402,9 +1424,12 @@ export function BillsCrud() {
       <FinanceVerifyModal
         open={verifyOpen}
         onClose={() => setVerifyOpen(false)}
-        currentProofUrl={rows.find((row) => row.id === verifyingId)?.payment_proof_url ?? null}
+        billId={verifyingRow?.id ?? null}
+        unitLabel={verifyingRow ? houseDisplayValue(verifyingRow.house_id) : "-"}
+        periode={verifyingRow?.periode ?? null}
+        amount={verifyingRow?.amount ?? null}
+        currentProofUrl={verifyingRow?.payment_proof_url ?? null}
         value={verifyForm}
-        onChange={setVerifyForm}
         onSubmit={verifyBill}
         submitting={verifySubmitting}
         errorMessage={verifyError}
@@ -1423,47 +1448,64 @@ export function BillsCrud() {
       <SimpleModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={`Preview Detail IPL${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span>Detail IPL</span>
+            <Badge variant="outline">{previewRow?.id ?? "-"}</Badge>
+          </span>
+        }
         className="w-[96vw] max-w-6xl"
       >
         <div className="space-y-3">
-          <div className="rounded-lg border border-border p-3 text-sm">
-            <p>
-              <span className="text-muted-foreground">Blok:</span>{" "}
-              {previewHouse ? `Blok ${previewHouse.blok} - No ${previewHouse.nomor}` : "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Periode:</span> {previewRow?.periode ?? "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Payment Method:</span> {previewRow?.payment_method ?? "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Bukti Pembayaran:</span>{" "}
-              {previewRow?.payment_proof_url ? (
-                <a href={previewRow.payment_proof_url} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
-                  Lihat Bukti
-                </a>
-              ) : (
-                "-"
-              )}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Status Saat Ini:</span>{" "}
-              {previewRow ? renderStatusCell(previewRow.status) : "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Tanggal Generate:</span>{" "}
-              <DateTimeText value={previewBillCreatedAt ?? previewRow?.status_date} />
-            </p>
-            <p>
-              <span className="text-muted-foreground">Paid To Developer:</span>{" "}
-              {previewRow ? <BooleanBadge value={previewRow.paid_to_developer} /> : "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Date Paid Period To Developer:</span>{" "}
-              <DateTimeText value={previewRow?.date_paid_period_to_developer} />
-            </p>
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Unit</p>
+              <p className="font-medium">{previewHouse ? `Blok ${previewHouse.blok} - No ${previewHouse.nomor}` : "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Periode</p>
+              <p className="font-medium">{previewRow?.periode ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Nominal</p>
+              <p className="font-heading text-lg font-bold">{previewRow?.amount ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Metode Pembayaran</p>
+              <p className="font-medium">{previewRow?.payment_method ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Status Saat Ini</p>
+              <p>{previewRow ? renderStatusCell(previewRow.status) : "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Tanggal Generate</p>
+              <p className="font-medium">
+                <DateTimeText value={previewBillCreatedAt ?? previewRow?.status_date} />
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Paid To Developer</p>
+              <p>{previewRow ? <BooleanBadge value={previewRow.paid_to_developer} /> : "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Date Paid Period To Developer</p>
+              <p className="font-medium">
+                <DateTimeText value={previewRow?.date_paid_period_to_developer} />
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Bukti Pembayaran</p>
+              <p>
+                {previewRow?.payment_proof_url ? (
+                  <a href={previewRow.payment_proof_url} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
+                    Lihat Bukti
+                  </a>
+                ) : (
+                  "-"
+                )}
+              </p>
+            </div>
           </div>
 
           <Table className={previewLoading ? "" : "min-w-[900px]"}>

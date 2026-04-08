@@ -952,28 +952,46 @@ export function TransactionsCrud() {
       <SimpleModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={`Preview Detail Transaksi${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span>Detail Transaksi</span>
+            <Badge variant="outline">{previewRow?.id ?? "-"}</Badge>
+          </span>
+        }
         className="w-[96vw] max-w-6xl"
       >
         <div className="space-y-3">
-          <div className="rounded-lg border border-border p-3 text-sm">
-            <p>
-              <span className="text-muted-foreground">IPL:</span> {previewRow?.bill_id ?? "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Kategori:</span> {previewRow?.category ?? "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Nama Transaksi:</span> {previewRow?.transaction_name ?? "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Status Saat Ini:</span>{" "}
-              {previewRow ? renderStatusCell(previewRow.status) : "-"}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Tanggal Status Saat Ini:</span>{" "}
-              <DateTimeText value={previewRow?.status_date} />
-            </p>
+          <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">IPL ID</p>
+              <p className="font-medium">{previewRow?.bill_id ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Kategori</p>
+              <p className="font-medium">{previewRow?.category ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Nama Transaksi</p>
+              <p className="font-medium">{previewRow?.transaction_name ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Nominal</p>
+              <p className="font-heading text-lg font-bold">{previewRow?.amount ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Metode Pembayaran</p>
+              <p className="font-medium">{previewRow?.payment_method ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Status Saat Ini</p>
+              <p>{previewRow ? renderStatusCell(previewRow.status) : "-"}</p>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Tanggal Status Saat Ini</p>
+              <p className="font-medium">
+                <DateTimeText value={previewRow?.status_date} />
+              </p>
+            </div>
           </div>
 
           <Table className={previewLoading ? "" : "min-w-[900px]"}>

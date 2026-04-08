@@ -971,7 +971,7 @@ export function HousesCrud() {
       <SimpleModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={`Preview Detail Rumah${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
+        title={`Detail Rumah${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
         className="w-[96vw] max-w-3xl"
       >
         <div className="space-y-3">

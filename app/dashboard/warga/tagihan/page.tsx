@@ -5,6 +5,7 @@ import { ArrowRight, FileCheck2, FileSpreadsheet, ReceiptText, SlidersHorizontal
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
@@ -144,6 +145,7 @@ export default function WargaTagihanPage() {
   const [payProofFile, setPayProofFile] = useState<File | null>(null);
   const [payProofPreviewUrl, setPayProofPreviewUrl] = useState<string>("");
   const payProofFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [payMethod, setPayMethod] = useState<BillRow["payment_method"]>("Transfer Bank");
   const [paySubmitting, setPaySubmitting] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [userDirectory, setUserDirectory] = useState<UserDirectory>({});
@@ -251,6 +253,7 @@ export default function WargaTagihanPage() {
     setPayModalOpen(true);
     setPayProofFile(null);
     setPayError("");
+    setPayMethod((bill.payment_method as BillRow["payment_method"]) ?? "Transfer Bank");
   }
 
   function handleProofFileChange(fileList: FileList | null) {
@@ -282,7 +285,7 @@ export default function WargaTagihanPage() {
       await apiClient.payBill(
         {
           billId: selectedBill.id,
-          payment_method: selectedBill.payment_method ?? "Transfer Bank",
+          payment_method: payMethod,
           payment_proof_url: uploaded.public_url,
         },
         { actorEmail }
@@ -293,6 +296,7 @@ export default function WargaTagihanPage() {
       setPayModalOpen(false);
       setPayProofFile(null);
       setPayError("");
+      setPayMethod("Transfer Bank");
       setSuccessToast(`Pembayaran untuk ${selectedBill.id} berhasil dikirim. Status menjadi Menunggu Verifikasi.`);
     } catch (error) {
       setPayError(error instanceof Error ? error.message : "Gagal memproses pembayaran.");
@@ -419,7 +423,7 @@ export default function WargaTagihanPage() {
                             {item.status === "Belum bayar" ? (
                               <Button
                                 size="sm"
-                                className="h-9 px-4 text-sm"
+                                className="h-9 bg-black px-4 text-sm text-white hover:bg-black/90"
                                 aria-label="Bayar"
                                 title="Bayar"
                                 onClick={(event) => {
@@ -428,7 +432,7 @@ export default function WargaTagihanPage() {
                                 }}
                               >
                                 Bayar
-                                <ArrowRight className="ml-0 h-0 w-0 opacity-0 transition-all duration-200 group-hover:ml-2 group-hover:h-4 group-hover:w-4 group-hover:opacity-100" />
+                                <ArrowRight className="ml-2 h-4 w-4" />
                               </Button>
                             ) : null}
                           </div>
@@ -486,25 +490,44 @@ export default function WargaTagihanPage() {
 
             <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
 
-            <SimpleModal open={payModalOpen} onClose={() => setPayModalOpen(false)} title="Bayar Tagihan IPL">
+            <SimpleModal
+              open={payModalOpen}
+              onClose={() => setPayModalOpen(false)}
+              title={
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  <span>Bayar Tagihan IPL</span>
+                  <Badge variant="outline">{selectedBill?.id ?? "-"}</Badge>
+                </span>
+              }
+            >
               <div className="space-y-4">
                 <FormErrorAlert message={payError} />
-                <div className="rounded-lg border border-border p-3 text-sm">
-                  <p>
-                    <span className="text-muted-foreground">IPL:</span> {selectedBill?.id}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Unit:</span> {houseDisplay}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Periode:</span> {selectedBill?.periode}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Nominal:</span> {selectedBill?.amount}
-                  </p>
-                  <p>
-                    <span className="text-muted-foreground">Payment Method:</span> {selectedBill?.payment_method ?? "Transfer Bank"}
-                  </p>
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Unit</p>
+                    <p className="font-medium">{houseDisplay}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Periode</p>
+                    <p className="font-medium">{selectedBill?.periode ?? "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Nominal</p>
+                    <p className="font-heading text-lg font-bold">{selectedBill?.amount ?? "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Metode Pembayaran</p>
+                    <select
+                      className="mt-1 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      value={payMethod}
+                      onChange={(event) => setPayMethod(event.target.value as BillRow["payment_method"])}
+                    >
+                      <option value="Transfer Bank">Transfer Bank</option>
+                      <option value="QRIS">QRIS</option>
+                      <option value="Cash">Cash</option>
+                      <option value="E-wallet">E-wallet</option>
+                    </select>
+                  </div>
                 </div>
 
                 {payProofPreviewUrl ? (
@@ -556,7 +579,7 @@ export default function WargaTagihanPage() {
               </div>
             </SimpleModal>
 
-            <SimpleModal open={previewModalOpen} onClose={() => setPreviewModalOpen(false)} title="Preview Detail IPL" className="w-[96vw] max-w-2xl">
+            <SimpleModal open={previewModalOpen} onClose={() => setPreviewModalOpen(false)} title="Detail IPL" className="w-[96vw] max-w-2xl">
               <div className="space-y-4">
                 <div className="rounded-lg border border-border p-3 text-sm">
                   <p>

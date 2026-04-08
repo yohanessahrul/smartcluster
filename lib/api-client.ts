@@ -202,7 +202,8 @@ async function request<T>(path: string, init?: RequestInit & MutationOptions): P
       continue;
     }
 
-    if (isNonFormRequest) {
+    const shouldEmitDeveloperError = isNonFormRequest && response.status !== 401;
+    if (shouldEmitDeveloperError) {
       emitDeveloperError({
         title: "API Request Error",
         message,

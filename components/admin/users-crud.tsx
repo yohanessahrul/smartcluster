@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Eye, FileSpreadsheet, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DeleteConfirmModal } from "@/components/ui/delete-confirm-modal";
@@ -683,25 +684,31 @@ export function UsersCrud() {
       <SimpleModal
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        title={`Preview Detail Pengguna${previewRow?.id ? ` - ${previewRow.id}` : ""}`}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <span>Detail Pengguna</span>
+            <Badge variant="outline">{previewRow?.id ?? "-"}</Badge>
+          </span>
+        }
         className="w-[96vw] max-w-2xl"
       >
-        <div className="space-y-2 rounded-lg border border-border p-3 text-sm">
-          <p>
-            <span className="text-muted-foreground">ID:</span> {previewRow?.id ?? "-"}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Name:</span> {previewRow?.name ?? "-"}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Email:</span> {previewRow?.email ?? "-"}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Phone:</span> {previewRow?.phone ?? "-"}
-          </p>
-          <p>
-            <span className="text-muted-foreground">Role:</span> {previewRow?.role ?? "-"}
-          </p>
+        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Nama</p>
+            <p className="font-medium">{previewRow?.name ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Role</p>
+            <p>{previewRow ? <RoleBadge role={previewRow.role} /> : "-"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Email</p>
+            <p className="font-medium break-all">{previewRow?.email ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Phone</p>
+            <p className="font-medium">{previewRow?.phone ?? "-"}</p>
+          </div>
         </div>
       </SimpleModal>
       <DeleteConfirmModal

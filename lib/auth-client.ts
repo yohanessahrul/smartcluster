@@ -154,25 +154,33 @@ export function useWargaResolvedData() {
   const [dataLoading, setDataLoading] = useState(true);
 
   const loadAllData = useCallback(async () => {
+    if (loading) return;
+    if (!session) {
+      setUsersData([]);
+      setHousesData([]);
+      setBillsData([]);
+      setTransactionsData([]);
+      setDataLoading(false);
+      return;
+    }
+
     try {
       setDataLoading(true);
-      const [usersRows, housesRows, billsRows, transactionRows] = await Promise.allSettled([
-        apiClient.getUsers(),
-        apiClient.getHouses(),
-        apiClient.getBills(),
-        apiClient.getTransactions(),
-      ]);
-
-      if (usersRows.status === "fulfilled") setUsersData(usersRows.value);
+      // Fetch sequentially to avoid bursty concurrent DB hits that can exhaust session-mode pool limits.
+      const usersRows = await apiClient.getUsers().catch(() => null);
+      if (usersRows) setUsersData(usersRows);
       else setUsersData((prev) => (prev.length ? prev : []));
 
-      if (housesRows.status === "fulfilled") setHousesData(housesRows.value);
+      const housesRows = await apiClient.getHouses().catch(() => null);
+      if (housesRows) setHousesData(housesRows);
       else setHousesData((prev) => (prev.length ? prev : []));
 
-      if (billsRows.status === "fulfilled") setBillsData(billsRows.value);
+      const billsRows = await apiClient.getBills().catch(() => null);
+      if (billsRows) setBillsData(billsRows);
       else setBillsData((prev) => (prev.length ? prev : []));
 
-      if (transactionRows.status === "fulfilled") setTransactionsData(transactionRows.value);
+      const transactionRows = await apiClient.getTransactions().catch(() => null);
+      if (transactionRows) setTransactionsData(transactionRows);
       else setTransactionsData((prev) => (prev.length ? prev : []));
     } catch {
       setUsersData((prev) => (prev.length ? prev : []));
@@ -182,12 +190,19 @@ export function useWargaResolvedData() {
     } finally {
       setDataLoading(false);
     }
-  }, []);
+  }, [loading, session]);
 
   useEffect(() => {
-    void loadAllData();
-    window.addEventListener("smart-perumahan-data-changed", loadAllData);
-    return () => window.removeEventListener("smart-perumahan-data-changed", loadAllData);
+    if (!loading) {
+      void loadAllData();
+    }
+
+    function onDataChanged() {
+      void loadAllData();
+    }
+
+    window.addEventListener("smart-perumahan-data-changed", onDataChanged);
+    return () => window.removeEventListener("smart-perumahan-data-changed", onDataChanged);
   }, [loadAllData]);
 
   const data = useMemo<WargaResolvedData>(() => {

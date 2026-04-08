@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 type SimpleModalProps = {
   open: boolean;
   onClose: () => void;
-  title: string;
+  title: ReactNode;
   children: ReactNode;
   className?: string;
 };
