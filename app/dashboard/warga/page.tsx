@@ -13,6 +13,18 @@ import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { buildWargaWidgets } from "@/lib/master-widgets";
 
+function badgeClassForCreditCard(status: string | null | undefined) {
+  const lowered = status?.trim().toLowerCase() ?? "";
+  const base = "border-0 shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)]";
+  if (lowered === "belum bayar" || lowered === "belum dibayar") return `${base} !bg-rose-500 !text-white`;
+  if (lowered === "pending" || lowered === "menunggu verifikasi" || lowered === "menunggu_verifikasi") {
+    return `${base} !bg-amber-300 !text-amber-950`;
+  }
+  if (lowered === "verifikasi") return `${base} !bg-sky-300 !text-sky-950`;
+  if (lowered === "lunas") return `${base} !bg-emerald-300 !text-emerald-950`;
+  return `${base} !bg-white/90 !text-slate-900`;
+}
+
 export default function WargaDashboardPage() {
   const shouldLogTableData = process.env.NODE_ENV !== "production";
 
@@ -92,29 +104,61 @@ export default function WargaDashboardPage() {
             <MasterWidgetGrid widgets={wargaWidgets} />
 
             <section className="mb-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tagihan Aktif</CardTitle>
+              <Card className="relative overflow-hidden border-0 bg-[linear-gradient(140deg,hsl(176_56%_16%)_0%,hsl(168_63%_24%)_45%,hsl(176_45%_12%)_100%)] text-white shadow-[0_22px_45px_-26px_rgba(4,41,36,0.95)]">
+                <div className="pointer-events-none absolute -right-16 -top-14 h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.35)_0%,rgba(255,255,255,0)_65%)]" />
+                <div className="pointer-events-none absolute -bottom-20 -left-14 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(255,204,128,0.34)_0%,rgba(255,204,128,0)_68%)]" />
+
+                <CardHeader className="relative pb-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.26em] text-white/70">Tagihan Aktif</p>
+                      <CardTitle className="mt-2 text-xl text-white">Kartu IPL Warga</CardTitle>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      {latestBill ? (
+                        <PaymentStatusBadge
+                          status={latestBill.status}
+                          className={badgeClassForCreditCard(latestBill.status)}
+                        />
+                      ) : (
+                        <Badge variant="outline" className="bg-transparent text-white">
+                          Belum Ada Tagihan
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground">Periode</p>
-                  <p className="font-heading text-xl">{latestBill?.periode ?? "-"}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">Nominal IPL</p>
-                  <p className="font-heading text-3xl">{latestBill?.amount ?? "-"}</p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {latestBill ? (
-                      <PaymentStatusBadge status={latestBill.status} />
-                    ) : (
-                      <Badge variant="outline">Belum Ada Tagihan</Badge>
-                    )}
-                    <span className="inline-flex items-center text-xs text-muted-foreground">
+
+                <CardContent className="relative space-y-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-white/70">Periode</p>
+                      <p className="font-heading text-2xl leading-tight text-white">{latestBill?.periode ?? "-"}</p>
+                    </div>
+                    <div>
+                      <img
+                        src="/brand/cluster-lisse-logo.png"
+                        alt="Cluster Lisse"
+                        className="h-[72px] w-auto max-w-[260px] object-contain"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-white/70">Nominal IPL</p>
+                    <p className="font-heading text-4xl leading-tight text-white">{latestBill?.amount ?? "-"}</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-white/85">
+                    <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 backdrop-blur-[2px]">
                       <CalendarClock className="mr-1 h-3.5 w-3.5" />
                       Jatuh tempo tiap tanggal 10
                     </span>
                   </div>
+
                   {latestBill?.status === "Lunas" ? null : (
                     <div className="mt-4">
-                      <Button asChild className="rounded-full">
+                      <Button asChild className="rounded-full bg-white text-[hsl(var(--phone-bg))] hover:bg-white/90">
                         <Link href="/dashboard/warga/tagihan">Lihat Tagihan</Link>
                       </Button>
                     </div>

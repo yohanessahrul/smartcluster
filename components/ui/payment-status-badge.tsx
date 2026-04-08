@@ -1,11 +1,13 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 type PaymentStatus = "Belum bayar" | "Menunggu Verifikasi" | "Verifikasi" | "Lunas";
 
 type PaymentStatusBadgeProps = {
   status: string | null | undefined;
+  className?: string;
 };
 
 function normalizePaymentStatus(status: string | null | undefined): PaymentStatus | null {
@@ -27,8 +29,8 @@ function variantByStatus(status: PaymentStatus) {
   return "danger" as const;
 }
 
-export function PaymentStatusBadge({ status }: PaymentStatusBadgeProps) {
+export function PaymentStatusBadge({ status, className }: PaymentStatusBadgeProps) {
   const normalized = normalizePaymentStatus(status);
-  if (!normalized) return <Badge variant="outline">{status || "-"}</Badge>;
-  return <Badge variant={variantByStatus(normalized)}>{normalized}</Badge>;
+  if (!normalized) return <Badge variant="outline" className={className}>{status || "-"}</Badge>;
+  return <Badge variant={variantByStatus(normalized)} className={cn(className)}>{normalized}</Badge>;
 }

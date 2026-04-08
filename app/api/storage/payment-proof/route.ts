@@ -80,9 +80,8 @@ export async function POST(request: Request) {
           SELECT 1
           FROM bills b
           JOIN house_users hu ON hu.house_id = b.house_id
-          JOIN users u ON u.id = hu.user_id
           WHERE b.id = $1
-            AND LOWER(u.email) = $2
+            AND LOWER(hu.user_email) = $2
           LIMIT 1
         `,
         [billId, user.email.toLowerCase()],
