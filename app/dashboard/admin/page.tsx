@@ -132,10 +132,10 @@ export default function AdminDashboardPage() {
       setLoadError("");
       const response = await apiClient.refreshOverviewSnapshot({ actorEmail });
       setSnapshot(response.snapshot ?? EMPTY_SNAPSHOT);
-      setSuccessToast("Beranda berhasil diperbarui.");
+      setSuccessToast("Snapshot berhasil disinkronkan.");
       emitDataChanged();
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Gagal refresh data overview.");
+      setLoadError(error instanceof Error ? error.message : "Gagal sinkron snapshot overview.");
     } finally {
       setRefreshing(false);
     }
@@ -213,16 +213,16 @@ export default function AdminDashboardPage() {
           Reset DB
         </Button>
       ) : null}
-      <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
+      <Button
+        type="button"
+        variant="outline"
+        loading={refreshing}
+        loadingText="Sinkronisasi..."
+        onClick={refreshSnapshotData}
+        title="Gunakan ini setelah proses Generate IPL"
+      >
         <RefreshCw className="mr-2 h-4 w-4" />
-        Refresh widget
-      </Button>
-    </div>
-  ) : isFinance ? (
-    <div className="flex flex-wrap items-center gap-2">
-      <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
-        <RefreshCw className="mr-2 h-4 w-4" />
-        Refresh widget
+        Sync Generate IPL
       </Button>
     </div>
   ) : null;

@@ -1559,6 +1559,15 @@ export async function getOverviewSnapshot() {
   }
 }
 
+async function refreshOverviewSnapshotAfterMutation(actor: string) {
+  const safeActor = actor.trim().toLowerCase() || "system@smart-cluster";
+  try {
+    await refreshOverviewSnapshot(safeActor);
+  } catch (error) {
+    console.error("[overview] gagal auto-refresh snapshot setelah mutasi data:", error);
+  }
+}
+
 export async function listAuditLogs(params: { table?: string | null; recordId?: string | null; limit?: number }) {
   try {
     const tableName = params.table ?? null;
@@ -1631,8 +1640,9 @@ export async function createUser(payload: JsonRecord, actor: string) {
       beforeValue: null,
       afterValue: (result.rows[0] as JsonRecord) ?? null,
     });
-
-    return result.rows[0];
+    const created = result.rows[0];
+    await refreshOverviewSnapshotAfterMutation(actor);
+    return created;
   } catch (error) {
     const code = getErrorCode(error);
     if (code === "23505") {
@@ -1669,8 +1679,9 @@ export async function updateUser(id: string, payload: JsonRecord, actor: string)
       beforeValue: before.rows[0] as JsonRecord,
       afterValue: result.rows[0] as JsonRecord,
     });
-
-    return result.rows[0];
+    const updated = result.rows[0];
+    await refreshOverviewSnapshotAfterMutation(actor);
+    return updated;
   } catch (error) {
     const code = getErrorCode(error);
     if (code === "23505") throw new ApiHttpError(409, "Email sudah digunakan user lain.");
@@ -1692,7 +1703,7 @@ export async function deleteUser(id: string, actor: string) {
       beforeValue: result.rows[0] as JsonRecord,
       afterValue: null,
     });
-
+    await refreshOverviewSnapshotAfterMutation(actor);
     return { status: true };
   } catch (error) {
     throwServerError(error);
@@ -1770,6 +1781,7 @@ export async function createHouse(payload: HousePayload, actor: string) {
     });
 
     await commitTransaction(transaction);
+    await refreshOverviewSnapshotAfterMutation(actor);
     return afterSnapshot;
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);
@@ -1840,6 +1852,7 @@ export async function updateHouse(id: string, payload: HousePayload, actor: stri
     });
 
     await commitTransaction(transaction);
+    await refreshOverviewSnapshotAfterMutation(actor);
     return afterSnapshot;
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);
@@ -1871,6 +1884,7 @@ export async function deleteHouse(id: string, actor: string) {
     });
 
     await commitTransaction(transaction);
+    await refreshOverviewSnapshotAfterMutation(actor);
     return { status: true };
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);
@@ -1942,8 +1956,9 @@ export async function createBill(payload: JsonRecord, actor: string) {
         console.error("[bills] gagal hapus bukti pembayaran saat create IPL Lunas:", error);
       }
     }
-
-    return result.rows[0];
+    const created = result.rows[0];
+    await refreshOverviewSnapshotAfterMutation(actor);
+    return created;
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);
     if (getErrorCode(error) === "23505") {
@@ -2029,8 +2044,9 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
         console.error("[bills] gagal hapus bukti pembayaran saat status Lunas:", error);
       }
     }
-
-    return result.rows[0];
+    const updated = result.rows[0];
+    await refreshOverviewSnapshotAfterMutation(actor);
+    return updated;
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);
     if (getErrorCode(error) === "23505") {
@@ -2058,7 +2074,7 @@ export async function deleteBill(id: string, actor: string) {
       beforeValue: result.rows[0] as JsonRecord,
       afterValue: null,
     });
-
+    await refreshOverviewSnapshotAfterMutation(actor);
     return { status: true };
   } catch (error) {
     throwServerError(error);
@@ -2685,8 +2701,9 @@ export async function createTransaction(payload: TransactionPayload, actor: stri
       beforeValue: null,
       afterValue: (result.rows[0] as JsonRecord) ?? null,
     });
-
-    return result.rows[0];
+    const created = result.rows[0];
+    await refreshOverviewSnapshotAfterMutation(actor);
+    return created;
   } catch (error) {
     const code = getErrorCode(error);
     if (code === "23505") throw new ApiHttpError(409, "ID transaction sudah digunakan.");
@@ -2748,8 +2765,9 @@ export async function updateTransaction(id: string, payload: TransactionPayload,
       beforeValue: previous,
       afterValue: result.rows[0] as JsonRecord,
     });
-
-    return result.rows[0];
+    const updated = result.rows[0];
+    await refreshOverviewSnapshotAfterMutation(actor);
+    return updated;
   } catch (error) {
     const code = getErrorCode(error);
     if (code === "23514") {
@@ -2779,7 +2797,7 @@ export async function deleteTransaction(id: string, actor: string) {
       beforeValue: result.rows[0] as JsonRecord,
       afterValue: null,
     });
-
+    await refreshOverviewSnapshotAfterMutation(actor);
     return { status: true };
   } catch (error) {
     throwServerError(error);
@@ -2846,6 +2864,7 @@ export async function payBillWithQris(
     });
 
     await commitTransaction(transaction);
+    await refreshOverviewSnapshotAfterMutation(actor);
     return {
       status: true,
       billId,
@@ -3018,6 +3037,7 @@ export async function payBillsInBulk(
     }
 
     await commitTransaction(transaction);
+    await refreshOverviewSnapshotAfterMutation(actor);
     return {
       status: true,
       months_count: monthsCount,
@@ -3035,7 +3055,7 @@ export async function payBillsInBulk(
   }
 }
 
-export async function resetDatabaseExceptUsers(_actor: string) {
+export async function resetDatabaseExceptUsers(actor: string) {
   const transaction = await connect();
   try {
     await beginTransaction(transaction);
@@ -3065,6 +3085,7 @@ export async function resetDatabaseExceptUsers(_actor: string) {
       const detail = error instanceof Error ? error.message : "unknown-error";
       return { cleared: false as const, bucket: "", reason: `error:${detail}` };
     });
+    await refreshOverviewSnapshotAfterMutation(actor);
 
     return {
       status: true,
