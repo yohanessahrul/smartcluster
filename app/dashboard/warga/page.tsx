@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CalendarClock, RefreshCw, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 
 import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
@@ -103,59 +104,65 @@ export default function WargaDashboardPage() {
             <MasterWidgetGrid widgets={wargaWidgets} />
 
             <section className="mb-4">
-              <Card className="relative overflow-hidden border-0 bg-[linear-gradient(140deg,hsl(176_56%_16%)_0%,hsl(168_63%_24%)_45%,hsl(176_45%_12%)_100%)] text-white shadow-[0_22px_45px_-26px_rgba(4,41,36,0.95)]">
-                <div className="pointer-events-none absolute -right-16 -top-14 h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.35)_0%,rgba(255,255,255,0)_65%)]" />
-                <div className="pointer-events-none absolute -bottom-20 -left-14 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(255,204,128,0.34)_0%,rgba(255,204,128,0)_68%)]" />
+              <Link
+                href="/dashboard/warga/tagihan"
+                aria-label="Buka menu IPL"
+                className="group block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))]"
+              >
+                <Card className="relative overflow-hidden border-0 bg-[linear-gradient(140deg,hsl(176_56%_16%)_0%,hsl(168_63%_24%)_45%,hsl(176_45%_12%)_100%)] text-white shadow-[0_22px_45px_-26px_rgba(4,41,36,0.95)] transition duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_28px_48px_-24px_rgba(4,41,36,0.95)]">
+                  <div className="pointer-events-none absolute -right-16 -top-14 h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.35)_0%,rgba(255,255,255,0)_65%)]" />
+                  <div className="pointer-events-none absolute -bottom-20 -left-14 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(255,204,128,0.34)_0%,rgba(255,204,128,0)_68%)]" />
 
-                <CardHeader className="relative pb-2">
-                  <div className="flex items-start justify-between gap-3">
+                  <CardHeader className="relative pb-2">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.26em] text-white/70">Tagihan Aktif</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {latestBill ? (
+                          <PaymentStatusBadge
+                            status={latestBill.status}
+                            className={badgeClassForCreditCard(latestBill.status)}
+                          />
+                        ) : (
+                          <Badge variant="outline" className="bg-transparent text-white">
+                            Belum Ada Tagihan
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="relative space-y-3.5 pb-7 pr-[220px] sm:pr-[260px]">
                     <div>
-                      <p className="text-[11px] uppercase tracking-[0.26em] text-white/70">Tagihan Aktif</p>
+                      <div>
+                        <p className="text-xs uppercase tracking-widest text-white/70">Periode</p>
+                        <p className="font-heading text-2xl leading-tight text-white">{latestBill?.periode ?? "-"}</p>
+                      </div>
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      {latestBill ? (
-                        <PaymentStatusBadge
-                          status={latestBill.status}
-                          className={badgeClassForCreditCard(latestBill.status)}
-                        />
-                      ) : (
-                        <Badge variant="outline" className="bg-transparent text-white">
-                          Belum Ada Tagihan
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
 
-                <CardContent className="relative space-y-3.5 pb-7 pr-[220px] sm:pr-[260px]">
-                  <div>
                     <div>
-                      <p className="text-xs uppercase tracking-widest text-white/70">Periode</p>
-                      <p className="font-heading text-2xl leading-tight text-white">{latestBill?.periode ?? "-"}</p>
+                      <p className="text-xs uppercase tracking-widest text-white/70">Nominal IPL</p>
+                      <p className="font-heading text-4xl leading-tight text-white">{latestBill?.amount ?? "-"}</p>
                     </div>
-                  </div>
 
-                  <div>
-                    <p className="text-xs uppercase tracking-widest text-white/70">Nominal IPL</p>
-                    <p className="font-heading text-4xl leading-tight text-white">{latestBill?.amount ?? "-"}</p>
-                  </div>
+                    <div className="pointer-events-none absolute right-3 top-[calc(46%-30px)] -translate-y-1/2 sm:right-5">
+                      <img
+                        src="/brand/cluster-lisse-logo.png"
+                        alt="Cluster Lisse"
+                        className="h-[96px] w-auto max-w-[210px] object-contain sm:h-[112px] sm:max-w-[240px]"
+                      />
+                    </div>
 
-                  <div className="pointer-events-none absolute right-3 top-[calc(46%-30px)] -translate-y-1/2 sm:right-5">
-                    <img
-                      src="/brand/cluster-lisse-logo.png"
-                      alt="Cluster Lisse"
-                      className="h-[96px] w-auto max-w-[210px] object-contain sm:h-[112px] sm:max-w-[240px]"
-                    />
-                  </div>
-
-                  <div className="pointer-events-none absolute bottom-2 right-2">
-                    <span className="inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80 backdrop-blur-[2px]">
-                      <CalendarClock className="mr-1 h-3 w-3" />
-                      Jatuh tempo tiap tanggal 10
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="pointer-events-none absolute bottom-2 right-2">
+                      <span className="inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80 backdrop-blur-[2px]">
+                        <CalendarClock className="mr-1 h-3 w-3" />
+                        Jatuh tempo tiap tanggal 10
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             </section>
 
             <Card>
