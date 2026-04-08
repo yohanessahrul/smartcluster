@@ -371,14 +371,24 @@ export const apiClient = {
     request<{ status: boolean }>(`/api/bills/${id}`, { method: "DELETE", ...options }),
   generateBills: (payload: GenerateBillsPayload, options?: MutationOptions) =>
     request<{
+      job_id: string;
+      status: "pending" | "running" | "completed" | "failed";
+      month: string;
       periode: string;
-      created: number;
-      updated: number;
-      skipPaid: number;
-      skipExisting: number;
-      occupiedHouseCount: number;
-      totalHouseCount: number;
-      message: string;
+      amount: string;
+      total_target: number;
+      total_house_count: number;
+      occupied_house_count: number;
+      processed_count: number;
+      created_count: number;
+      updated_count: number;
+      skip_paid_count: number;
+      skip_existing_count: number;
+      error_message: string | null;
+      created_at: string;
+      started_at: string | null;
+      completed_at: string | null;
+      updated_at: string;
     }>("/api/bills/generate", {
       method: "POST",
       body: JSON.stringify(payload),

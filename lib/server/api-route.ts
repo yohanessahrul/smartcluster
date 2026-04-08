@@ -4,7 +4,7 @@ import { ApiHttpError, ensureBackendReady, getActorFromHeaders } from "@/lib/ser
 import { query } from "@/lib/server/db";
 import { readSessionFromToken } from "@/lib/server/auth-session";
 
-type AppRole = "admin" | "superadmin" | "warga" | "finance";
+export type AppRole = "admin" | "superadmin" | "warga" | "finance";
 
 type SessionUserRow = {
   id: string;
@@ -33,13 +33,13 @@ function readCookieValue(headers: Headers, name: string) {
   return null;
 }
 
-type ApiSessionUser = {
+export type ApiSessionUser = {
   id: string;
   email: string;
   role: AppRole;
 };
 
-async function requireSessionActor(request: Request, allowedRoles?: AppRole[]): Promise<ApiSessionUser> {
+export async function requireSessionActor(request: Request, allowedRoles?: AppRole[]): Promise<ApiSessionUser> {
   const token = readCookieValue(request.headers, SESSION_COOKIE_NAME);
   const session = readSessionFromToken(token);
   if (!session) throw new ApiHttpError(401, "Unauthenticated.");

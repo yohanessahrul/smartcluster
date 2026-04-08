@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Crosshair, Eye, FileSpreadsheet, Pencil, Plus, SlidersHorizontal, Trash2 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -52,6 +52,20 @@ const emptyForm: BillRow = {
 type GenerateForm = {
   month: string;
   amount: string;
+};
+
+type GenerateProgressEventPayload = {
+  job_id?: string;
+  status?: "pending" | "running" | "completed" | "failed";
+  periode?: string;
+  total_target?: number;
+  created_count?: number;
+  updated_count?: number;
+  skip_paid_count?: number;
+  skip_existing_count?: number;
+  processed_count?: number;
+  message?: string;
+  error_message?: string | null;
 };
 
 const monthNames = [
@@ -585,7 +599,7 @@ function GenerateBillModal({
           />
         </div>
         <p className="text-xs text-muted-foreground">
-          Action ini akan membuat tagihan IPL dari setiap rumah, akan men-skip rumah yang sudah bayar di bulan sebelumnya.
+          Action ini akan membuat tagihan IPL hanya untuk rumah yang dihuni, dan men-skip rumah yang sudah bayar di bulan sebelumnya.
         </p>
         {alreadyGenerated ? (
           <p className="text-xs text-amber-700">
@@ -651,6 +665,7 @@ export function BillsCrud() {
   const [generateSubmitting, setGenerateSubmitting] = useState(false);
   const [generateProgressCreated, setGenerateProgressCreated] = useState(0);
   const [generateProgressTotal, setGenerateProgressTotal] = useState(0);
+  const generateStreamRef = useRef<EventSource | null>(null);
   const [verifyForm, setVerifyForm] = useState<FinanceVerifyForm>({
     payment_method: "Transfer Bank",
   });
@@ -658,6 +673,15 @@ export function BillsCrud() {
 
   useEffect(() => {
     loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (generateStreamRef.current) {
+        generateStreamRef.current.close();
+        generateStreamRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -682,7 +706,7 @@ export function BillsCrud() {
     return new Map(houses.map((house) => [house.id, house]));
   }, [houses]);
   const occupiedHouseCount = useMemo(() => houses.filter((house) => house.isOccupied).length, [houses]);
-  const generateTargetCount = occupiedHouseCount || houses.length;
+  const generateTargetCount = occupiedHouseCount;
 
   function houseDisplayValue(houseId: string) {
     const house = houseById.get(houseId);
@@ -1092,6 +1116,182 @@ export function BillsCrud() {
     }
   }
 
+  function toSafeNumber(value: unknown, fallback = 0) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return fallback;
+  }
+
+  function parseGenerateProgressPayload(raw: string) {
+    try {
+      const parsed = JSON.parse(raw) as GenerateProgressEventPayload;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }
+
+  function waitMs(ms: number) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  async function getGenerateJobStatus(jobId: string) {
+    const response = await fetch(`/api/bills/generate/status?jobId=${encodeURIComponent(jobId)}`, {
+      method: "GET",
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    if (response.ok) {
+      return (await response.json()) as GenerateProgressEventPayload;
+    }
+    const body = (await response.json().catch(() => null)) as { message?: string; detail?: string } | null;
+    const baseMessage = body?.message?.trim() || "Gagal membaca status generate IPL.";
+    const detail = body?.detail?.trim();
+    throw new Error(detail ? `${baseMessage}: ${detail}` : baseMessage);
+  }
+
+  async function pollGenerateProgress(
+    jobId: string,
+    applyProgress: (payload: GenerateProgressEventPayload | null) => void,
+    timeoutMs = 15 * 60 * 1000,
+  ) {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt <= timeoutMs) {
+      const payload = await getGenerateJobStatus(jobId);
+      applyProgress(payload);
+
+      const status = (payload.status ?? "").trim().toLowerCase();
+      if (status === "completed") return payload;
+      if (status === "failed") {
+        throw new Error(payload.error_message || payload.message || "Generate IPL gagal diproses.");
+      }
+
+      await waitMs(1500);
+    }
+
+    throw new Error("Progress generate terlalu lama tanpa status selesai. Silakan cek ulang data IPL.");
+  }
+
+  async function streamGenerateProgress(jobId: string) {
+    if (typeof EventSource === "undefined") {
+      return pollGenerateProgress(jobId, (payload) => {
+        if (!payload) return;
+        const totalTarget = Math.max(0, toSafeNumber(payload.total_target, generateTargetCount));
+        const createdCount = Math.max(0, toSafeNumber(payload.created_count));
+        setGenerateProgressTotal(totalTarget);
+        setGenerateProgressCreated(Math.min(createdCount, totalTarget || createdCount));
+      });
+    }
+
+    return new Promise<GenerateProgressEventPayload>((resolve, reject) => {
+      if (generateStreamRef.current) {
+        generateStreamRef.current.close();
+        generateStreamRef.current = null;
+      }
+
+      const streamUrl = `/api/bills/generate/stream?jobId=${encodeURIComponent(jobId)}`;
+      const eventSource = new EventSource(streamUrl);
+      generateStreamRef.current = eventSource;
+      let settled = false;
+      let fallbackStarted = false;
+      let lastActivityAt = Date.now();
+
+      const closeStream = () => {
+        if (generateStreamRef.current === eventSource) {
+          generateStreamRef.current = null;
+        }
+        eventSource.close();
+      };
+
+      const clearWatchdog = () => window.clearInterval(watchdog);
+
+      const cleanupAndReject = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        clearWatchdog();
+        closeStream();
+        reject(error);
+      };
+
+      const cleanupAndResolve = (payload: GenerateProgressEventPayload) => {
+        if (settled) return;
+        settled = true;
+        clearWatchdog();
+        closeStream();
+        resolve(payload);
+      };
+
+      const applyProgress = (payload: GenerateProgressEventPayload | null) => {
+        if (!payload) return;
+        lastActivityAt = Date.now();
+        const totalTarget = Math.max(0, toSafeNumber(payload.total_target, generateTargetCount));
+        const createdCount = Math.max(0, toSafeNumber(payload.created_count));
+        setGenerateProgressTotal(totalTarget);
+        setGenerateProgressCreated(Math.min(createdCount, totalTarget || createdCount));
+      };
+
+      const switchToPollingFallback = () => {
+        if (settled || fallbackStarted) return;
+        fallbackStarted = true;
+        clearWatchdog();
+        closeStream();
+        pollGenerateProgress(jobId, applyProgress)
+          .then((payload) => {
+            cleanupAndResolve(payload);
+          })
+          .catch((error) => {
+            cleanupAndReject(error instanceof Error ? error : new Error("Gagal membaca progress generate IPL."));
+          });
+      };
+
+      const watchdog = window.setInterval(() => {
+        if (settled) return;
+        if (Date.now() - lastActivityAt < 120_000) return;
+        switchToPollingFallback();
+      }, 3000);
+
+      eventSource.onopen = () => {
+        lastActivityAt = Date.now();
+      };
+
+      eventSource.addEventListener("snapshot", (event) => {
+        applyProgress(parseGenerateProgressPayload((event as MessageEvent).data));
+      });
+      eventSource.addEventListener("started", (event) => {
+        applyProgress(parseGenerateProgressPayload((event as MessageEvent).data));
+      });
+      eventSource.addEventListener("progress", (event) => {
+        applyProgress(parseGenerateProgressPayload((event as MessageEvent).data));
+      });
+      eventSource.addEventListener("completed", (event) => {
+        clearWatchdog();
+        const payload = parseGenerateProgressPayload((event as MessageEvent).data);
+        if (!payload) {
+          switchToPollingFallback();
+          return;
+        }
+        applyProgress(payload);
+        cleanupAndResolve(payload);
+      });
+      eventSource.addEventListener("failed", (event) => {
+        clearWatchdog();
+        const payload = parseGenerateProgressPayload((event as MessageEvent).data);
+        const message = payload?.message || payload?.error_message || "Generate IPL gagal diproses.";
+        cleanupAndReject(new Error(message));
+      });
+
+      eventSource.onerror = () => {
+        if (settled) return;
+        if (eventSource.readyState === EventSource.CLOSED) {
+          switchToPollingFallback();
+        }
+      };
+    });
+  }
+
   async function generateBillForAllHouses(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setGenerateError("");
@@ -1104,42 +1304,37 @@ export function BillsCrud() {
     setGenerateProgressCreated(0);
     setGenerateProgressTotal(targetCount);
 
-    let progressInterval: ReturnType<typeof setInterval> | null = null;
-    if (targetCount > 1) {
-      const step = Math.max(1, Math.floor(targetCount / 20));
-      progressInterval = setInterval(() => {
-        setGenerateProgressCreated((current) => {
-          const maxBeforeDone = Math.max(0, targetCount - 1);
-          if (current >= maxBeforeDone) return current;
-          return Math.min(maxBeforeDone, current + step);
-        });
-      }, 350);
-    }
-
     try {
       setGenerateSubmitting(true);
-      const result = await apiClient.generateBills({
+      const startResult = await apiClient.generateBills({
         month: generateForm.month,
         amount: generateForm.amount,
       }, { actorEmail });
-      const finalTargetCount =
-        Number.isFinite(result.occupiedHouseCount) && result.occupiedHouseCount > 0
-          ? result.occupiedHouseCount
-          : targetCount;
-      const finalCreatedCount = Math.max(0, Math.min(result.created, finalTargetCount || result.created));
+      const startTargetCount = Math.max(0, toSafeNumber(startResult.total_target, targetCount));
+      setGenerateProgressTotal(startTargetCount);
+      setGenerateProgressCreated(Math.max(0, toSafeNumber(startResult.created_count, 0)));
+
+      const completedPayload = await streamGenerateProgress(startResult.job_id);
+      const finalTargetCount = Math.max(0, toSafeNumber(completedPayload.total_target, startTargetCount));
+      const finalCreatedCount = Math.max(0, toSafeNumber(completedPayload.created_count));
+      const finalUpdatedCount = Math.max(0, toSafeNumber(completedPayload.updated_count));
+      const finalSkipPaidCount = Math.max(0, toSafeNumber(completedPayload.skip_paid_count));
+      const finalSkipExistingCount = Math.max(0, toSafeNumber(completedPayload.skip_existing_count));
+
       setGenerateProgressTotal(finalTargetCount);
-      setGenerateProgressCreated(finalCreatedCount);
+      setGenerateProgressCreated(Math.min(finalCreatedCount, finalTargetCount || finalCreatedCount));
       await loadInitialData();
       emitDataChanged();
       setGenerateOpen(false);
       setMessage(
-        `Generate ${result.periode} selesai: sudah terbuat ${result.created} IPL dari ${finalTargetCount} rumah yang dihuni, diperbarui ${result.updated}, skip lunas ${result.skipPaid}, skip existing ${result.skipExisting}.`
+        `Generate ${startResult.periode} selesai: sudah terbuat ${finalCreatedCount} IPL dari ${finalTargetCount} rumah yang dihuni, diperbarui ${finalUpdatedCount}, skip lunas ${finalSkipPaidCount}, skip existing ${finalSkipExistingCount}.`
       );
     } catch (error) {
       setGenerateError(error instanceof Error ? error.message : "Gagal generate IPL.");
     } finally {
-      if (progressInterval) {
-        clearInterval(progressInterval);
+      if (generateStreamRef.current) {
+        generateStreamRef.current.close();
+        generateStreamRef.current = null;
       }
       setGenerateSubmitting(false);
     }

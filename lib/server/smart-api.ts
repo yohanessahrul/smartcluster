@@ -110,7 +110,8 @@ type GlobalApiState = typeof globalThis & {
   smartPerumahanApiSchemaVersion?: number;
 };
 
-const API_SCHEMA_VERSION = 8;
+const API_SCHEMA_VERSION = 9;
+const GENERATE_JOB_LOCK_NAMESPACE = 762430993;
 
 export type OverviewFinanceNeedActionRow = {
   id: string;
@@ -1049,6 +1050,79 @@ async function ensureOverviewSnapshotsTable() {
   `);
 }
 
+async function ensureBillGenerateJobTables() {
+  await query(`
+    CREATE TABLE IF NOT EXISTS bill_generate_jobs (
+      id TEXT PRIMARY KEY,
+      actor TEXT NOT NULL,
+      month TEXT NOT NULL,
+      periode TEXT NOT NULL,
+      amount TEXT NOT NULL,
+      update_existing_unpaid BOOLEAN NOT NULL DEFAULT FALSE,
+      status TEXT NOT NULL DEFAULT 'pending',
+      total_target INTEGER NOT NULL DEFAULT 0,
+      total_house_count INTEGER NOT NULL DEFAULT 0,
+      occupied_house_count INTEGER NOT NULL DEFAULT 0,
+      processed_count INTEGER NOT NULL DEFAULT 0,
+      created_count INTEGER NOT NULL DEFAULT 0,
+      updated_count INTEGER NOT NULL DEFAULT 0,
+      skip_paid_count INTEGER NOT NULL DEFAULT 0,
+      skip_existing_count INTEGER NOT NULL DEFAULT 0,
+      error_message TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      started_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query("ALTER TABLE bill_generate_jobs DROP CONSTRAINT IF EXISTS bill_generate_jobs_status_check");
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE bill_generate_jobs
+      ADD CONSTRAINT bill_generate_jobs_status_check
+      CHECK (status IN ('pending', 'running', 'completed', 'failed'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS bill_generate_job_house_states (
+      job_id TEXT NOT NULL REFERENCES bill_generate_jobs(id) ON DELETE CASCADE,
+      house_id VARCHAR(16) NOT NULL REFERENCES houses(id) ON DELETE CASCADE,
+      outcome TEXT NOT NULL,
+      bill_id TEXT,
+      detail TEXT,
+      processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (job_id, house_id)
+    )
+  `);
+  await query("ALTER TABLE bill_generate_job_house_states DROP CONSTRAINT IF EXISTS bill_generate_job_house_states_outcome_check");
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE bill_generate_job_house_states
+      ADD CONSTRAINT bill_generate_job_house_states_outcome_check
+      CHECK (outcome IN ('created', 'updated', 'skipPaid', 'skipExisting', 'error'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
+
+  await query(`
+    CREATE TABLE IF NOT EXISTS bill_generate_job_events (
+      id BIGSERIAL PRIMARY KEY,
+      job_id TEXT NOT NULL REFERENCES bill_generate_jobs(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await query("CREATE INDEX IF NOT EXISTS idx_bill_generate_job_events_job_id_id ON bill_generate_job_events (job_id, id ASC)");
+  await query("CREATE INDEX IF NOT EXISTS idx_bill_generate_jobs_status_updated ON bill_generate_jobs (status, updated_at DESC)");
+}
+
 function getDefaultSuperadminSeed() {
   const email = (process.env.DEFAULT_SUPERADMIN_EMAIL || DEFAULT_SUPERADMIN_EMAIL).trim().toLowerCase();
   const name = (process.env.DEFAULT_SUPERADMIN_NAME || DEFAULT_SUPERADMIN_NAME).trim() || DEFAULT_SUPERADMIN_NAME;
@@ -1141,6 +1215,7 @@ async function runSchemaMigrations() {
   await ensureHouseUserOrderColumn();
   await ensureBillColumns();
   await ensureTransactionColumns();
+  await ensureBillGenerateJobTables();
   await ensurePerformanceIndexes();
   await ensureOverviewSnapshotsTable();
 }
@@ -1990,19 +2065,164 @@ export async function deleteBill(id: string, actor: string) {
   }
 }
 
-export async function generateBills(payload: GenerateBillsPayload, actor: string) {
-  const transaction = await connect();
+type BillGenerateJobStatus = "pending" | "running" | "completed" | "failed";
+type BillGenerateJobOutcome = "created" | "updated" | "skipPaid" | "skipExisting" | "error";
+
+type BillGenerateJobRow = {
+  id: string;
+  actor: string;
+  month: string;
+  periode: string;
+  amount: string;
+  update_existing_unpaid: boolean;
+  status: BillGenerateJobStatus;
+  total_target: number;
+  total_house_count: number;
+  occupied_house_count: number;
+  processed_count: number;
+  created_count: number;
+  updated_count: number;
+  skip_paid_count: number;
+  skip_existing_count: number;
+  error_message: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  updated_at: string;
+};
+
+type BillGenerateJobEventRow = {
+  id: number;
+  job_id: string;
+  event_type: string;
+  payload: JsonRecord;
+  created_at: string;
+};
+
+function mapGenerateJobSummary(row: BillGenerateJobRow | null | undefined) {
+  if (!row) return null;
+  return {
+    job_id: row.id,
+    status: row.status,
+    month: row.month,
+    periode: row.periode,
+    amount: row.amount,
+    total_target: toNumber(row.total_target),
+    total_house_count: toNumber(row.total_house_count),
+    occupied_house_count: toNumber(row.occupied_house_count),
+    processed_count: toNumber(row.processed_count),
+    created_count: toNumber(row.created_count),
+    updated_count: toNumber(row.updated_count),
+    skip_paid_count: toNumber(row.skip_paid_count),
+    skip_existing_count: toNumber(row.skip_existing_count),
+    error_message: row.error_message ?? null,
+    created_at: row.created_at,
+    started_at: row.started_at,
+    completed_at: row.completed_at,
+    updated_at: row.updated_at,
+  };
+}
+
+async function appendBillGenerateJobEvent(queryFn: QueryFn, jobId: string, eventType: string, payload: JsonRecord) {
+  const result = await queryFn(
+    `
+      INSERT INTO bill_generate_job_events (job_id, event_type, payload)
+      VALUES ($1, $2, $3::jsonb)
+      RETURNING id, job_id, event_type, payload, created_at
+    `,
+    [jobId, eventType, JSON.stringify(payload)],
+  );
+  return result.rows[0] as BillGenerateJobEventRow;
+}
+
+async function getBillGenerateJobRow(queryFn: QueryFn, jobId: string) {
+  const result = await queryFn(
+    `
+      SELECT
+        id,
+        actor,
+        month,
+        periode,
+        amount,
+        update_existing_unpaid,
+        status,
+        total_target,
+        total_house_count,
+        occupied_house_count,
+        processed_count,
+        created_count,
+        updated_count,
+        skip_paid_count,
+        skip_existing_count,
+        error_message,
+        created_at,
+        started_at,
+        completed_at,
+        updated_at
+      FROM bill_generate_jobs
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [jobId],
+  );
+  return (result.rows[0] as BillGenerateJobRow | undefined) ?? null;
+}
+
+export async function listBillGenerateJobEvents(jobId: string, afterEventId = 0, limit = 100) {
   try {
-    const month = asString(payload.month);
-    const amount = asString(payload.amount);
-    const updateExistingUnpaid = normalizeBoolean(payload.updateExistingUnpaid, false);
-    if (!month || !amount) throw new ApiHttpError(400, "month dan amount wajib diisi.");
+    const safeAfter = Math.max(0, Math.trunc(afterEventId));
+    const safeLimit = Math.min(500, Math.max(1, Math.trunc(limit)));
+    const result = await query<BillGenerateJobEventRow>(
+      `
+        SELECT id, job_id, event_type, payload, created_at
+        FROM bill_generate_job_events
+        WHERE job_id = $1 AND id > $2
+        ORDER BY id ASC
+        LIMIT $3
+      `,
+      [jobId, safeAfter, safeLimit],
+    );
+    return result.rows.map((row) => ({
+      id: toNumber(row.id),
+      job_id: asString(row.job_id),
+      event_type: asString(row.event_type),
+      payload: (row.payload ?? {}) as JsonRecord,
+      created_at: asString(row.created_at),
+    }));
+  } catch (error) {
+    throwServerError(error);
+  }
+}
 
-    const periode = toPeriode(month);
-    if (!periode) throw new ApiHttpError(400, "Format month tidak valid.");
-    await beginTransaction(transaction);
+export async function getBillGenerateJob(jobId: string) {
+  try {
+    const row = await getBillGenerateJobRow(query, jobId);
+    if (!row) return null;
+    return mapGenerateJobSummary(row);
+  } catch (error) {
+    throwServerError(error);
+  }
+}
 
-    const existingPeriodeCount = await transaction.query(
+export async function generateBills(payload: GenerateBillsPayload, actor: string) {
+  const month = asString(payload.month);
+  const amount = asString(payload.amount);
+  const updateExistingUnpaid = normalizeBoolean(payload.updateExistingUnpaid, false);
+  if (!month || !amount) throw new ApiHttpError(400, "month dan amount wajib diisi.");
+
+  const periode = toPeriode(month);
+  if (!periode) throw new ApiHttpError(400, "Format month tidak valid.");
+
+  try {
+    const activeJobCount = await query<{ total: number }>(
+      "SELECT COUNT(*)::int AS total FROM bill_generate_jobs WHERE periode=$1 AND status IN ('pending', 'running')",
+      [periode],
+    );
+    if (toNumber(activeJobCount.rows[0]?.total) > 0) {
+      throw new ApiHttpError(409, `Generate IPL periode ${periode} sedang berjalan.`);
+    }
+
+    const existingPeriodeCount = await query<{ total: number }>(
       "SELECT COUNT(*)::int AS total FROM bills WHERE periode=$1 AND bill_source='generated'",
       [periode],
     );
@@ -2010,91 +2230,403 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
       throw new ApiHttpError(409, `Periode ${periode} sudah pernah digenerate.`);
     }
 
-    const houses = await transaction.query<{ id: string; is_occupied: boolean }>(
-      "SELECT id, COALESCE(is_occupied, FALSE) AS is_occupied FROM houses ORDER BY id ASC",
+    const totalHouseCountResult = await query<{ total: number }>("SELECT COUNT(*)::int AS total FROM houses");
+    const totalHouseCount = toNumber(totalHouseCountResult.rows[0]?.total);
+    const occupiedHouseCountResult = await query<{ total: number }>(
+      "SELECT COUNT(*)::int AS total FROM houses WHERE COALESCE(is_occupied, FALSE) = TRUE",
     );
-    const occupiedHouseCount = houses.rows.reduce((total, house) => (normalizeBoolean(house.is_occupied, false) ? total + 1 : total), 0);
-    await transaction.query(
-      "UPDATE bills SET payment_method='Transfer Bank' WHERE periode=$1 AND (payment_method IS NULL OR BTRIM(payment_method) = '' OR payment_method NOT IN ('Transfer Bank', 'Cash', 'QRIS', 'E-wallet'))",
-      [periode],
+    const occupiedHouseCount = toNumber(occupiedHouseCountResult.rows[0]?.total);
+
+    if (!occupiedHouseCount) {
+      throw new ApiHttpError(400, "Tidak ada rumah dihuni untuk periode ini.");
+    }
+
+    const jobId = await getNextPrefixedId("GBJ", "bill_generate_jobs");
+    const insertResult = await query<BillGenerateJobRow>(
+      `
+        INSERT INTO bill_generate_jobs (
+          id,
+          actor,
+          month,
+          periode,
+          amount,
+          update_existing_unpaid,
+          status,
+          total_target,
+          total_house_count,
+          occupied_house_count
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,$8,$9)
+        RETURNING
+          id,
+          actor,
+          month,
+          periode,
+          amount,
+          update_existing_unpaid,
+          status,
+          total_target,
+          total_house_count,
+          occupied_house_count,
+          processed_count,
+          created_count,
+          updated_count,
+          skip_paid_count,
+          skip_existing_count,
+          error_message,
+          created_at,
+          started_at,
+          completed_at,
+          updated_at
+      `,
+      [jobId, actor, month, periode, amount, updateExistingUnpaid, occupiedHouseCount, totalHouseCount, occupiedHouseCount],
     );
-    const existingBills = await transaction.query(
-      "SELECT id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills WHERE periode=$1",
-      [periode],
-    );
-    const billByHouse = new Map(existingBills.rows.map((row) => [asString(row.house_id), row]));
 
-    let created = 0;
-    let updated = 0;
-    let skipPaid = 0;
-    let skipExisting = 0;
+    const row = insertResult.rows[0] as BillGenerateJobRow;
+    const summary = mapGenerateJobSummary(row)!;
+    await appendBillGenerateJobEvent(query, jobId, "snapshot", summary);
+    return summary;
+  } catch (error) {
+    throwServerError(error);
+  }
+}
 
-    const nextBillId = await getNextPrefixedId("BILL", "bills", (text, params) => transaction.query(text, params));
-    let nextNumber = Number(nextBillId.replace("BILL", ""));
+function normalizeBillStatusCase(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
 
-    for (const house of houses.rows) {
-      const houseId = asString(house.id);
-      const existing = billByHouse.get(houseId);
-      if (existing) {
-        if (asString(existing.status) === "Lunas") {
-          skipPaid += 1;
-          continue;
-        }
+async function processBillGenerateJob(jobId: string, actor: string) {
+  const initial = await getBillGenerateJobRow(query, jobId);
+  if (!initial) throw new ApiHttpError(404, "Generate job tidak ditemukan.");
+  if (initial.status === "completed") {
+    return mapGenerateJobSummary(initial)!;
+  }
 
-        if (updateExistingUnpaid) {
+  const runningResult = await query<BillGenerateJobRow>(
+    `
+      UPDATE bill_generate_jobs
+      SET
+        status = 'running',
+        started_at = COALESCE(started_at, NOW()),
+        error_message = NULL,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING
+        id,
+        actor,
+        month,
+        periode,
+        amount,
+        update_existing_unpaid,
+        status,
+        total_target,
+        total_house_count,
+        occupied_house_count,
+        processed_count,
+        created_count,
+        updated_count,
+        skip_paid_count,
+        skip_existing_count,
+        error_message,
+        created_at,
+        started_at,
+        completed_at,
+        updated_at
+    `,
+    [jobId],
+  );
+  const running = runningResult.rows[0] as BillGenerateJobRow | undefined;
+  if (!running) throw new ApiHttpError(404, "Generate job tidak ditemukan.");
+  await appendBillGenerateJobEvent(query, jobId, "started", mapGenerateJobSummary(running)!);
+
+  const remainingHouses = await query<{ id: string }>(
+    `
+      SELECT h.id
+      FROM houses h
+      LEFT JOIN bill_generate_job_house_states jhs
+        ON jhs.job_id = $1
+       AND jhs.house_id = h.id
+      WHERE COALESCE(h.is_occupied, FALSE) = TRUE
+        AND jhs.house_id IS NULL
+      ORDER BY h.id ASC
+    `,
+    [jobId],
+  );
+
+  for (const row of remainingHouses.rows) {
+    const houseId = asString(row.id);
+    const transaction = await connect();
+    try {
+      await beginTransaction(transaction);
+
+      const currentJob = await transaction.query<BillGenerateJobRow>(
+        `
+          SELECT
+            id,
+            actor,
+            month,
+            periode,
+            amount,
+            update_existing_unpaid,
+            status,
+            total_target,
+            total_house_count,
+            occupied_house_count,
+            processed_count,
+            created_count,
+            updated_count,
+            skip_paid_count,
+            skip_existing_count,
+            error_message,
+            created_at,
+            started_at,
+            completed_at,
+            updated_at
+          FROM bill_generate_jobs
+          WHERE id = $1
+          FOR UPDATE
+        `,
+        [jobId],
+      );
+      const jobRow = currentJob.rows[0] as BillGenerateJobRow | undefined;
+      if (!jobRow) {
+        throw new ApiHttpError(404, "Generate job tidak ditemukan.");
+      }
+
+      const periode = asString(jobRow.periode);
+      const amount = asString(jobRow.amount);
+      const updateExistingUnpaid = normalizeBoolean(jobRow.update_existing_unpaid, false);
+
+      await transaction.query(
+        "UPDATE bills SET payment_method='Transfer Bank' WHERE periode=$1 AND (payment_method IS NULL OR BTRIM(payment_method) = '' OR payment_method NOT IN ('Transfer Bank', 'Cash', 'QRIS', 'E-wallet'))",
+        [periode],
+      );
+
+      const existingResult = await transaction.query<JsonRecord>(
+        `
+          SELECT id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer
+          FROM bills
+          WHERE house_id = $1 AND periode = $2
+          LIMIT 1
+          FOR UPDATE
+        `,
+        [houseId, periode],
+      );
+
+      let outcome: BillGenerateJobOutcome = "skipExisting";
+      let affectedBillId: string | null = null;
+      let createdInc = 0;
+      let updatedInc = 0;
+      let skipPaidInc = 0;
+      let skipExistingInc = 0;
+
+      if (existingResult.rows.length) {
+        const existing = existingResult.rows[0] as JsonRecord;
+        affectedBillId = asString(existing.id);
+        const normalizedStatus = normalizeBillStatusCase(asString(existing.status));
+        if (normalizedStatus === "lunas") {
+          outcome = "skipPaid";
+          skipPaidInc = 1;
+        } else if (updateExistingUnpaid) {
           const beforeValue = { ...existing } as JsonRecord;
           const updatedResult = await transaction.query(
             "UPDATE bills SET amount=$1 WHERE id=$2 RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
-            [amount, existing.id],
+            [amount, affectedBillId],
           );
           await writeAuditLog((text, params) => transaction.query(text, params), {
             author: actor,
             tableName: "bills",
             action: "UPDATE",
-            recordId: asString(existing.id),
+            recordId: affectedBillId,
             beforeValue,
             afterValue: updatedResult.rows[0] as JsonRecord,
           });
-          updated += 1;
+          outcome = "updated";
+          updatedInc = 1;
         } else {
-          skipExisting += 1;
+          outcome = "skipExisting";
+          skipExistingInc = 1;
         }
-        continue;
+      } else {
+        affectedBillId = await getNextPrefixedId("BILL", "bills", (text, params) => transaction.query(text, params));
+        const inserted = await transaction.query(
+          "INSERT INTO bills (id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+          [affectedBillId, houseId, periode, amount, "generated", "Transfer Bank", "Belum bayar", null, false, null],
+        );
+        await writeAuditLog((text, params) => transaction.query(text, params), {
+          author: actor,
+          tableName: "bills",
+          action: "CREATE",
+          recordId: affectedBillId,
+          beforeValue: null,
+          afterValue: inserted.rows[0] as JsonRecord,
+        });
+        outcome = "created";
+        createdInc = 1;
       }
 
-      const billId = `BILL${String(nextNumber).padStart(3, "0")}`;
-      const inserted = await transaction.query(
-        "INSERT INTO bills (id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
-        [billId, houseId, periode, amount, "generated", "Transfer Bank", "Belum bayar", null, false, null],
+      await transaction.query(
+        `
+          INSERT INTO bill_generate_job_house_states (job_id, house_id, outcome, bill_id, detail, processed_at)
+          VALUES ($1, $2, $3, $4, NULL, NOW())
+          ON CONFLICT (job_id, house_id) DO NOTHING
+        `,
+        [jobId, houseId, outcome, affectedBillId],
       );
-      await writeAuditLog((text, params) => transaction.query(text, params), {
-        author: actor,
-        tableName: "bills",
-        action: "CREATE",
-        recordId: billId,
-        beforeValue: null,
-        afterValue: inserted.rows[0] as JsonRecord,
-      });
-      nextNumber += 1;
-      created += 1;
-    }
 
-    await commitTransaction(transaction);
-    return {
-      periode,
-      created,
-      updated,
-      skipPaid,
-      skipExisting,
-      occupiedHouseCount,
-      totalHouseCount: houses.rows.length,
-      message: `Generate ${periode} selesai.`,
-    };
+      const progressResult = await transaction.query<BillGenerateJobRow>(
+        `
+          UPDATE bill_generate_jobs
+          SET
+            processed_count = processed_count + 1,
+            created_count = created_count + $2,
+            updated_count = updated_count + $3,
+            skip_paid_count = skip_paid_count + $4,
+            skip_existing_count = skip_existing_count + $5,
+            updated_at = NOW()
+          WHERE id = $1
+          RETURNING
+            id,
+            actor,
+            month,
+            periode,
+            amount,
+            update_existing_unpaid,
+            status,
+            total_target,
+            total_house_count,
+            occupied_house_count,
+            processed_count,
+            created_count,
+            updated_count,
+            skip_paid_count,
+            skip_existing_count,
+            error_message,
+            created_at,
+            started_at,
+            completed_at,
+            updated_at
+        `,
+        [jobId, createdInc, updatedInc, skipPaidInc, skipExistingInc],
+      );
+      const progressRow = progressResult.rows[0] as BillGenerateJobRow | undefined;
+      if (!progressRow) {
+        throw new ApiHttpError(404, "Generate job tidak ditemukan.");
+      }
+
+      const progressPayload = {
+        ...mapGenerateJobSummary(progressRow)!,
+        house_id: houseId,
+        outcome,
+        bill_id: affectedBillId,
+      } as JsonRecord;
+      await appendBillGenerateJobEvent((text, params) => transaction.query(text, params), jobId, "progress", progressPayload);
+
+      await commitTransaction(transaction);
+    } catch (error) {
+      await rollbackTransaction(transaction).catch(() => null);
+      throw error;
+    } finally {
+      transaction.release();
+    }
+  }
+
+  const completedResult = await query<BillGenerateJobRow>(
+    `
+      UPDATE bill_generate_jobs
+      SET status='completed', completed_at=NOW(), updated_at=NOW()
+      WHERE id=$1
+      RETURNING
+        id,
+        actor,
+        month,
+        periode,
+        amount,
+        update_existing_unpaid,
+        status,
+        total_target,
+        total_house_count,
+        occupied_house_count,
+        processed_count,
+        created_count,
+        updated_count,
+        skip_paid_count,
+        skip_existing_count,
+        error_message,
+        created_at,
+        started_at,
+        completed_at,
+        updated_at
+    `,
+    [jobId],
+  );
+  const completed = completedResult.rows[0] as BillGenerateJobRow | undefined;
+  if (!completed) throw new ApiHttpError(404, "Generate job tidak ditemukan.");
+  const completedPayload = {
+    ...mapGenerateJobSummary(completed)!,
+    message: `Generate ${completed.periode} selesai.`,
+  } as JsonRecord;
+  await appendBillGenerateJobEvent(query, jobId, "completed", completedPayload);
+  return completedPayload;
+}
+
+export async function maybeRunBillGenerateJob(jobId: string, actor: string) {
+  try {
+    const lockResult = await query<{ locked: boolean }>(
+      "SELECT pg_try_advisory_lock($1, hashtext($2)) AS locked",
+      [GENERATE_JOB_LOCK_NAMESPACE, jobId],
+    );
+    const locked = normalizeBoolean(lockResult.rows[0]?.locked, false);
+    if (!locked) return { started: false as const };
+
+    try {
+      const result = await processBillGenerateJob(jobId, actor);
+      return { started: true as const, result };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Gagal menjalankan generate job.";
+      const failedResult = await query<BillGenerateJobRow>(
+        `
+          UPDATE bill_generate_jobs
+          SET status='failed', error_message=$2, updated_at=NOW()
+          WHERE id=$1
+          RETURNING
+            id,
+            actor,
+            month,
+            periode,
+            amount,
+            update_existing_unpaid,
+            status,
+            total_target,
+            total_house_count,
+            occupied_house_count,
+            processed_count,
+            created_count,
+            updated_count,
+            skip_paid_count,
+            skip_existing_count,
+            error_message,
+            created_at,
+            started_at,
+            completed_at,
+            updated_at
+        `,
+        [jobId, errorMessage],
+      );
+      const failedRow = failedResult.rows[0] as BillGenerateJobRow | undefined;
+      if (failedRow) {
+        const failedPayload = {
+          ...mapGenerateJobSummary(failedRow)!,
+          message: errorMessage,
+        } as JsonRecord;
+        await appendBillGenerateJobEvent(query, jobId, "failed", failedPayload).catch(() => null);
+      }
+      throwServerError(error);
+    } finally {
+      await query("SELECT pg_advisory_unlock($1, hashtext($2))", [GENERATE_JOB_LOCK_NAMESPACE, jobId]).catch(() => null);
+    }
   } catch (error) {
-    await rollbackTransaction(transaction).catch(() => null);
     throwServerError(error);
-  } finally {
-    transaction.release();
   }
 }
 
