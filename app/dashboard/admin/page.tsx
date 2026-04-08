@@ -458,7 +458,8 @@ export default function AdminDashboardPage() {
           <div className="space-y-4">
             <FormErrorAlert message={resetDbError} />
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Action ini akan menghapus semua data tabel kecuali tabel users, sekaligus menghapus seluruh file di storage bucket.
+              Action ini akan menghapus semua data tabel kecuali tabel users dan houses, sekaligus menghapus seluruh file di
+              storage bucket.
               Pastikan Anda benar-benar yakin.
             </div>
             <p className="text-sm text-muted-foreground">
@@ -506,7 +507,8 @@ export default function AdminDashboardPage() {
         <div className="space-y-4">
           <FormErrorAlert message={resetDbError} />
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Action ini akan menghapus semua data tabel kecuali tabel users, sekaligus menghapus seluruh file di storage bucket.
+            Action ini akan menghapus semua data tabel kecuali tabel users dan houses, sekaligus menghapus seluruh file di
+            storage bucket.
             Pastikan Anda benar-benar yakin.
           </div>
           <p className="text-sm text-muted-foreground">

@@ -2509,6 +2509,7 @@ export async function resetDatabaseExceptUsers(_actor: string) {
         FROM pg_tables
         WHERE schemaname='public'
           AND tablename <> 'users'
+          AND tablename <> 'houses'
           AND tablename NOT IN ('__drizzle_migrations', 'drizzle_migrations')
         ORDER BY tablename ASC
       `,
