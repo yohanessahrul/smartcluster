@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CalendarClock, RefreshCw, ShieldCheck, Sparkles, Wallet } from "lucide-react";
 
 import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
@@ -112,7 +111,6 @@ export default function WargaDashboardPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.26em] text-white/70">Tagihan Aktif</p>
-                      <CardTitle className="mt-2 text-xl text-white">Kartu IPL Warga</CardTitle>
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       {latestBill ? (
@@ -129,18 +127,11 @@ export default function WargaDashboardPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="relative space-y-5">
-                  <div className="flex items-start justify-between gap-4">
+                <CardContent className="relative space-y-3.5 pb-7 pr-[220px] sm:pr-[260px]">
+                  <div>
                     <div>
                       <p className="text-xs uppercase tracking-widest text-white/70">Periode</p>
                       <p className="font-heading text-2xl leading-tight text-white">{latestBill?.periode ?? "-"}</p>
-                    </div>
-                    <div>
-                      <img
-                        src="/brand/cluster-lisse-logo.png"
-                        alt="Cluster Lisse"
-                        className="h-[72px] w-auto max-w-[260px] object-contain"
-                      />
                     </div>
                   </div>
 
@@ -149,20 +140,20 @@ export default function WargaDashboardPage() {
                     <p className="font-heading text-4xl leading-tight text-white">{latestBill?.amount ?? "-"}</p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-white/85">
-                    <span className="inline-flex items-center rounded-full bg-white/10 px-2.5 py-1 backdrop-blur-[2px]">
-                      <CalendarClock className="mr-1 h-3.5 w-3.5" />
+                  <div className="pointer-events-none absolute right-3 top-[calc(46%-30px)] -translate-y-1/2 sm:right-5">
+                    <img
+                      src="/brand/cluster-lisse-logo.png"
+                      alt="Cluster Lisse"
+                      className="h-[96px] w-auto max-w-[210px] object-contain sm:h-[112px] sm:max-w-[240px]"
+                    />
+                  </div>
+
+                  <div className="pointer-events-none absolute bottom-2 right-2">
+                    <span className="inline-flex items-center rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80 backdrop-blur-[2px]">
+                      <CalendarClock className="mr-1 h-3 w-3" />
                       Jatuh tempo tiap tanggal 10
                     </span>
                   </div>
-
-                  {latestBill?.status === "Lunas" ? null : (
-                    <div className="mt-4">
-                      <Button asChild className="rounded-full bg-white text-[hsl(var(--phone-bg))] hover:bg-white/90">
-                        <Link href="/dashboard/warga/tagihan">Lihat Tagihan</Link>
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </section>
