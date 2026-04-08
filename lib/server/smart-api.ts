@@ -2355,6 +2355,15 @@ async function processBillGenerateJob(jobId: string, actor: string) {
   if (!running) throw new ApiHttpError(404, "Generate job tidak ditemukan.");
   await appendBillGenerateJobEvent(query, jobId, "started", mapGenerateJobSummary(running)!);
 
+  const periode = asString(running.periode);
+  const amount = asString(running.amount);
+  const updateExistingUnpaid = normalizeBoolean(running.update_existing_unpaid, false);
+
+  await query(
+    "UPDATE bills SET payment_method='Transfer Bank' WHERE periode=$1 AND (payment_method IS NULL OR BTRIM(payment_method) = '' OR payment_method NOT IN ('Transfer Bank', 'Cash', 'QRIS', 'E-wallet'))",
+    [periode],
+  );
+
   const remainingHouses = await query<{ id: string }>(
     `
       SELECT h.id
@@ -2368,137 +2377,105 @@ async function processBillGenerateJob(jobId: string, actor: string) {
     `,
     [jobId],
   );
+  const remainingHouseIds = remainingHouses.rows.map((row) => asString(row.id)).filter(Boolean);
+  const batchSize = 25;
 
-  for (const row of remainingHouses.rows) {
-    const houseId = asString(row.id);
+  for (let offset = 0; offset < remainingHouseIds.length; offset += batchSize) {
+    const batchHouseIds = remainingHouseIds.slice(offset, offset + batchSize);
+    if (!batchHouseIds.length) continue;
     const transaction = await connect();
     try {
       await beginTransaction(transaction);
-
-      const currentJob = await transaction.query<BillGenerateJobRow>(
-        `
-          SELECT
-            id,
-            actor,
-            month,
-            periode,
-            amount,
-            update_existing_unpaid,
-            status,
-            total_target,
-            total_house_count,
-            occupied_house_count,
-            processed_count,
-            created_count,
-            updated_count,
-            skip_paid_count,
-            skip_existing_count,
-            error_message,
-            created_at,
-            started_at,
-            completed_at,
-            updated_at
-          FROM bill_generate_jobs
-          WHERE id = $1
-          FOR UPDATE
-        `,
-        [jobId],
-      );
-      const jobRow = currentJob.rows[0] as BillGenerateJobRow | undefined;
-      if (!jobRow) {
-        throw new ApiHttpError(404, "Generate job tidak ditemukan.");
-      }
-
-      const periode = asString(jobRow.periode);
-      const amount = asString(jobRow.amount);
-      const updateExistingUnpaid = normalizeBoolean(jobRow.update_existing_unpaid, false);
-
-      await transaction.query(
-        "UPDATE bills SET payment_method='Transfer Bank' WHERE periode=$1 AND (payment_method IS NULL OR BTRIM(payment_method) = '' OR payment_method NOT IN ('Transfer Bank', 'Cash', 'QRIS', 'E-wallet'))",
-        [periode],
-      );
-
       const existingResult = await transaction.query<JsonRecord>(
         `
           SELECT id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer
           FROM bills
-          WHERE house_id = $1 AND periode = $2
-          LIMIT 1
+          WHERE house_id = ANY($1::varchar[]) AND periode = $2
+          ORDER BY house_id ASC, status_date DESC NULLS LAST, id DESC
           FOR UPDATE
         `,
-        [houseId, periode],
+        [batchHouseIds, periode],
       );
+      const existingByHouse = new Map<string, JsonRecord>();
+      for (const existingRow of existingResult.rows) {
+        const houseId = asString(existingRow.house_id);
+        if (!houseId || existingByHouse.has(houseId)) continue;
+        existingByHouse.set(houseId, existingRow as JsonRecord);
+      }
 
-      let outcome: BillGenerateJobOutcome = "skipExisting";
-      let affectedBillId: string | null = null;
       let createdInc = 0;
       let updatedInc = 0;
       let skipPaidInc = 0;
       let skipExistingInc = 0;
 
-      if (existingResult.rows.length) {
-        const existing = existingResult.rows[0] as JsonRecord;
-        affectedBillId = asString(existing.id);
-        const normalizedStatus = normalizeBillStatusCase(asString(existing.status));
-        if (normalizedStatus === "lunas") {
-          outcome = "skipPaid";
-          skipPaidInc = 1;
-        } else if (updateExistingUnpaid) {
-          const beforeValue = { ...existing } as JsonRecord;
-          const updatedResult = await transaction.query(
-            "UPDATE bills SET amount=$1 WHERE id=$2 RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
-            [amount, affectedBillId],
+      for (const houseId of batchHouseIds) {
+        const existing = existingByHouse.get(houseId) ?? null;
+        let outcome: BillGenerateJobOutcome = "skipExisting";
+        let affectedBillId: string | null = null;
+
+        if (existing) {
+          affectedBillId = asString(existing.id);
+          const normalizedStatus = normalizeBillStatusCase(asString(existing.status));
+          if (normalizedStatus === "lunas") {
+            outcome = "skipPaid";
+            skipPaidInc += 1;
+          } else if (updateExistingUnpaid) {
+            const beforeValue = { ...existing } as JsonRecord;
+            const updatedResult = await transaction.query(
+              "UPDATE bills SET amount=$1 WHERE id=$2 RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+              [amount, affectedBillId],
+            );
+            await writeAuditLog((text, params) => transaction.query(text, params), {
+              author: actor,
+              tableName: "bills",
+              action: "UPDATE",
+              recordId: affectedBillId,
+              beforeValue,
+              afterValue: updatedResult.rows[0] as JsonRecord,
+            });
+            outcome = "updated";
+            updatedInc += 1;
+          } else {
+            outcome = "skipExisting";
+            skipExistingInc += 1;
+          }
+        } else {
+          affectedBillId = await getNextPrefixedId("BILL", "bills", (text, params) => transaction.query(text, params));
+          const inserted = await transaction.query(
+            "INSERT INTO bills (id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+            [affectedBillId, houseId, periode, amount, "generated", "Transfer Bank", "Belum bayar", null, false, null],
           );
           await writeAuditLog((text, params) => transaction.query(text, params), {
             author: actor,
             tableName: "bills",
-            action: "UPDATE",
+            action: "CREATE",
             recordId: affectedBillId,
-            beforeValue,
-            afterValue: updatedResult.rows[0] as JsonRecord,
+            beforeValue: null,
+            afterValue: inserted.rows[0] as JsonRecord,
           });
-          outcome = "updated";
-          updatedInc = 1;
-        } else {
-          outcome = "skipExisting";
-          skipExistingInc = 1;
+          outcome = "created";
+          createdInc += 1;
         }
-      } else {
-        affectedBillId = await getNextPrefixedId("BILL", "bills", (text, params) => transaction.query(text, params));
-        const inserted = await transaction.query(
-          "INSERT INTO bills (id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
-          [affectedBillId, houseId, periode, amount, "generated", "Transfer Bank", "Belum bayar", null, false, null],
-        );
-        await writeAuditLog((text, params) => transaction.query(text, params), {
-          author: actor,
-          tableName: "bills",
-          action: "CREATE",
-          recordId: affectedBillId,
-          beforeValue: null,
-          afterValue: inserted.rows[0] as JsonRecord,
-        });
-        outcome = "created";
-        createdInc = 1;
-      }
 
-      await transaction.query(
-        `
-          INSERT INTO bill_generate_job_house_states (job_id, house_id, outcome, bill_id, detail, processed_at)
-          VALUES ($1, $2, $3, $4, NULL, NOW())
-          ON CONFLICT (job_id, house_id) DO NOTHING
-        `,
-        [jobId, houseId, outcome, affectedBillId],
-      );
+        await transaction.query(
+          `
+            INSERT INTO bill_generate_job_house_states (job_id, house_id, outcome, bill_id, detail, processed_at)
+            VALUES ($1, $2, $3, $4, NULL, NOW())
+            ON CONFLICT (job_id, house_id) DO NOTHING
+          `,
+          [jobId, houseId, outcome, affectedBillId],
+        );
+      }
 
       const progressResult = await transaction.query<BillGenerateJobRow>(
         `
           UPDATE bill_generate_jobs
           SET
-            processed_count = processed_count + 1,
-            created_count = created_count + $2,
-            updated_count = updated_count + $3,
-            skip_paid_count = skip_paid_count + $4,
-            skip_existing_count = skip_existing_count + $5,
+            processed_count = processed_count + $2,
+            created_count = created_count + $3,
+            updated_count = updated_count + $4,
+            skip_paid_count = skip_paid_count + $5,
+            skip_existing_count = skip_existing_count + $6,
             updated_at = NOW()
           WHERE id = $1
           RETURNING
@@ -2523,7 +2500,7 @@ async function processBillGenerateJob(jobId: string, actor: string) {
             completed_at,
             updated_at
         `,
-        [jobId, createdInc, updatedInc, skipPaidInc, skipExistingInc],
+        [jobId, batchHouseIds.length, createdInc, updatedInc, skipPaidInc, skipExistingInc],
       );
       const progressRow = progressResult.rows[0] as BillGenerateJobRow | undefined;
       if (!progressRow) {
@@ -2532,9 +2509,12 @@ async function processBillGenerateJob(jobId: string, actor: string) {
 
       const progressPayload = {
         ...mapGenerateJobSummary(progressRow)!,
-        house_id: houseId,
-        outcome,
-        bill_id: affectedBillId,
+        batch_size: batchHouseIds.length,
+        created_in_batch: createdInc,
+        updated_in_batch: updatedInc,
+        skip_paid_in_batch: skipPaidInc,
+        skip_existing_in_batch: skipExistingInc,
+        last_house_id: batchHouseIds[batchHouseIds.length - 1] ?? null,
       } as JsonRecord;
       await appendBillGenerateJobEvent((text, params) => transaction.query(text, params), jobId, "progress", progressPayload);
 

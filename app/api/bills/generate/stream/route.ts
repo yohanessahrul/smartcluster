@@ -40,6 +40,7 @@ export async function GET(request: Request) {
       async start(controller) {
         let lastEventId = startAfterEventId;
         let pingCount = 0;
+        const pollIntervalMs = 200;
 
         const writeChunk = (chunk: string) => {
           if (cancelled) return;
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
 
         try {
           while (!cancelled) {
-            const events = await listBillGenerateJobEvents(jobId, lastEventId, 200);
+            const events = await listBillGenerateJobEvents(jobId, lastEventId, 500);
             if (events.length) {
               for (const event of events) {
                 writeEvent(event.event_type, event.payload, event.id);
@@ -100,11 +101,11 @@ export async function GET(request: Request) {
             }
 
             pingCount += 1;
-            if (pingCount % 15 === 0) {
+            if (pingCount % 75 === 0) {
               writeChunk(`: ping ${Date.now()}\n\n`);
             }
 
-            await wait(1000);
+            await wait(pollIntervalMs);
           }
 
           await runner.catch(() => null);
