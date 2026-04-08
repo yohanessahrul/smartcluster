@@ -43,9 +43,12 @@ const EMPTY_WARGA_DATASET: WargaDatasetCache = {
 };
 
 let cachedWargaDataset: WargaDatasetCache = EMPTY_WARGA_DATASET;
-let cachedWargaDatasetLoading = false;
 let hasLoadedWargaDataset = false;
 let inFlightWargaDatasetRequest: Promise<void> | null = null;
+
+function normalizeEmail(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase();
+}
 
 function emitAuthSessionUpdated() {
   if (typeof window === "undefined") return;
@@ -64,7 +67,6 @@ function emitWargaDataUpdated() {
 
 function resetWargaDataCache() {
   cachedWargaDataset = EMPTY_WARGA_DATASET;
-  cachedWargaDatasetLoading = false;
   hasLoadedWargaDataset = false;
   inFlightWargaDatasetRequest = null;
   emitWargaDataUpdated();
@@ -80,7 +82,6 @@ async function syncWargaDataCache(force = false) {
     return;
   }
 
-  cachedWargaDatasetLoading = true;
   emitWargaDataUpdated();
 
   const request = (async () => {
@@ -108,7 +109,6 @@ async function syncWargaDataCache(force = false) {
     } finally {
       // Mark as loaded even when API partially fails so route transitions aren't blocked by endless loaders.
       hasLoadedWargaDataset = true;
-      cachedWargaDatasetLoading = false;
     }
   })();
 
@@ -305,16 +305,17 @@ export function useWargaResolvedData() {
       return { user: null, house: null, linkedUsers: [], houseBills: [], houseTransactions: [] };
     }
 
-    const email = session.email.toLowerCase();
-    const user = usersData.find((item) => item.email.toLowerCase() === email && item.role === "warga") ?? null;
+    const email = normalizeEmail(session.email);
+    const user = usersData.find((item) => normalizeEmail(item.email) === email && item.role === "warga") ?? null;
     const house =
-      housesData.find((item) => item.linked_emails.map((mail) => mail.toLowerCase()).includes(email)) ?? null;
+      housesData.find((item) => item.linked_emails.some((mail) => normalizeEmail(mail) === email)) ?? null;
 
     const houseBills = house ? billsData.filter((item) => item.house_id === house.id) : [];
     const houseBillIds = new Set(houseBills.map((item) => item.id));
     const houseTransactions = transactionsData.filter((item) => (item.bill_id ? houseBillIds.has(item.bill_id) : false));
+    const linkedEmailSet = house ? new Set(house.linked_emails.map((mail) => normalizeEmail(mail)).filter(Boolean)) : null;
     const linkedUsers = house
-      ? usersData.filter((item) => house.linked_emails.map((mail) => mail.toLowerCase()).includes(item.email.toLowerCase()))
+      ? usersData.filter((item) => (linkedEmailSet ? linkedEmailSet.has(normalizeEmail(item.email)) : false))
       : [];
 
     return { user, house, linkedUsers, houseBills, houseTransactions };

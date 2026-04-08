@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { History, Home, House, ReceiptText, Users, WalletCards } from "lucide-react";
 
 import { useAuthSession } from "@/lib/auth-client";
 import { BrandMark } from "@/components/brand-mark";
+import { DashboardNavLinks } from "@/components/dashboard-nav-links";
 import { isAdminLikeRole, isFinanceRole } from "@/lib/role-access";
-import { cn } from "@/lib/utils";
 
 const adminMenus = [
   { href: "/dashboard/admin", label: "Beranda", icon: Home },
@@ -47,24 +46,7 @@ export function AdminSidebar() {
       </div>
 
       <nav className="space-y-1">
-        {visibleMenus.map((menu) => {
-          const active = pathname === menu.href;
-          return (
-            <Link
-              key={menu.href}
-              href={menu.href}
-              className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
-                active
-                  ? "bg-[hsl(var(--menu-active))] text-white"
-                  : "text-[hsl(var(--menu-fg))] hover:bg-[hsl(var(--menu-note))]"
-              )}
-            >
-              <menu.icon className="h-4 w-4" />
-              <span>{menu.label}</span>
-            </Link>
-          );
-        })}
+        <DashboardNavLinks menus={visibleMenus} pathname={pathname} />
         {!loading && !visibleMenus.length ? (
           <p className="px-3 py-2 text-xs text-[hsl(var(--menu-muted))]">Menu tidak tersedia untuk role ini.</p>
         ) : null}

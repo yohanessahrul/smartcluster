@@ -10,16 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
+import { isLunasPaymentStatus, normalizePaymentStatus } from "@/lib/payment-status";
 
 function badgeClassForCreditCard(status: string | null | undefined) {
-  const lowered = status?.trim().toLowerCase() ?? "";
+  const normalized = normalizePaymentStatus(status);
   const base = "border-0 shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)]";
-  if (lowered === "belum bayar" || lowered === "belum dibayar") return `${base} !bg-rose-500 !text-white`;
-  if (lowered === "pending" || lowered === "menunggu verifikasi" || lowered === "menunggu_verifikasi") {
-    return `${base} !bg-amber-300 !text-amber-950`;
-  }
-  if (lowered === "verifikasi") return `${base} !bg-sky-300 !text-sky-950`;
-  if (lowered === "lunas") return `${base} !bg-emerald-300 !text-emerald-950`;
+  if (normalized === "Belum bayar") return `${base} !bg-rose-500 !text-white`;
+  if (normalized === "Menunggu Verifikasi") return `${base} !bg-amber-300 !text-amber-950`;
+  if (normalized === "Verifikasi") return `${base} !bg-sky-300 !text-sky-950`;
+  if (normalized === "Lunas") return `${base} !bg-emerald-300 !text-emerald-950`;
   return `${base} !bg-white/90 !text-slate-900`;
 }
 
@@ -35,10 +34,6 @@ function textOrDash(value: string | null | undefined) {
 
 function normalizePeriode(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
-}
-
-function isLunasStatus(value: string | null | undefined) {
-  return (value ?? "").trim().toLowerCase() === "lunas";
 }
 
 function currentPeriodeLabel() {
@@ -121,7 +116,7 @@ export default function WargaDashboardPage() {
         );
         const activeBill = [...currentPeriodBills].sort((a, b) => b.id.localeCompare(a.id))[0];
         const billPeriodeById = new Map(data.houseBills.map((bill) => [bill.id, bill.periode]));
-        const latestPaidTransactions = data.houseTransactions.filter((item) => isLunasStatus(item.status));
+        const latestPaidTransactions = data.houseTransactions.filter((item) => isLunasPaymentStatus(item.status));
         return (
           <div>
             <DashboardHeader
