@@ -2010,7 +2010,10 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
       throw new ApiHttpError(409, `Periode ${periode} sudah pernah digenerate.`);
     }
 
-    const houses = await transaction.query("SELECT id FROM houses ORDER BY id ASC");
+    const houses = await transaction.query<{ id: string; is_occupied: boolean }>(
+      "SELECT id, COALESCE(is_occupied, FALSE) AS is_occupied FROM houses ORDER BY id ASC",
+    );
+    const occupiedHouseCount = houses.rows.reduce((total, house) => (normalizeBoolean(house.is_occupied, false) ? total + 1 : total), 0);
     await transaction.query(
       "UPDATE bills SET payment_method='Transfer Bank' WHERE periode=$1 AND (payment_method IS NULL OR BTRIM(payment_method) = '' OR payment_method NOT IN ('Transfer Bank', 'Cash', 'QRIS', 'E-wallet'))",
       [periode],
@@ -2083,6 +2086,8 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
       updated,
       skipPaid,
       skipExisting,
+      occupiedHouseCount,
+      totalHouseCount: houses.rows.length,
       message: `Generate ${periode} selesai.`,
     };
   } catch (error) {

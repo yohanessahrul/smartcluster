@@ -122,7 +122,7 @@ type CreateUserModalProps = {
 
 function CreateUserModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: CreateUserModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Create Pengguna">
+    <SimpleModal open={open} onClose={onClose} title="Create Pengguna" closeDisabled={Boolean(submitting)}>
       <UserForm
         value={value}
         onChange={onChange}
@@ -148,7 +148,7 @@ type UpdateUserModalProps = {
 
 function UpdateUserModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: UpdateUserModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Update Pengguna">
+    <SimpleModal open={open} onClose={onClose} title="Update Pengguna" closeDisabled={Boolean(submitting)}>
       <UserForm
         value={value}
         onChange={onChange}

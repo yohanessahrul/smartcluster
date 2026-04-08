@@ -454,7 +454,13 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
         <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
-        <SimpleModal open={resetDbModalOpen} onClose={() => setResetDbModalOpen(false)} title="Reset Database" className="max-w-md">
+        <SimpleModal
+          open={resetDbModalOpen}
+          onClose={() => setResetDbModalOpen(false)}
+          title="Reset Database"
+          className="max-w-md"
+          closeDisabled={resetDbSubmitting}
+        >
           <div className="space-y-4">
             <FormErrorAlert message={resetDbError} />
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -503,7 +509,13 @@ export default function AdminDashboardPage() {
 
       <ServerStatusModal open={showServerStatus} onClose={closeServerStatusModal} />
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
-      <SimpleModal open={resetDbModalOpen} onClose={() => setResetDbModalOpen(false)} title="Reset Database" className="max-w-md">
+      <SimpleModal
+        open={resetDbModalOpen}
+        onClose={() => setResetDbModalOpen(false)}
+        title="Reset Database"
+        className="max-w-md"
+        closeDisabled={resetDbSubmitting}
+      >
         <div className="space-y-4">
           <FormErrorAlert message={resetDbError} />
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">

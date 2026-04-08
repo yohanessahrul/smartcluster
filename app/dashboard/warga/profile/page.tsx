@@ -214,7 +214,7 @@ function WargaProfileContent({ data }: { data: WargaProfileData }) {
 
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
 
-      <SimpleModal open={updateOpen} onClose={() => setUpdateOpen(false)} title="Update Secondary">
+      <SimpleModal open={updateOpen} onClose={() => setUpdateOpen(false)} title="Update Secondary" closeDisabled={submitting}>
         <form className="space-y-3" onSubmit={upsertSecondaryUser}>
           <FormErrorAlert message={formError} />
           <div>

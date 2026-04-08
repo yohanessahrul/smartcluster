@@ -354,7 +354,7 @@ function CreateBillModal({
   errorMessage,
 }: CreateBillModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Create IPL">
+    <SimpleModal open={open} onClose={onClose} title="Create IPL" closeDisabled={Boolean(submitting)}>
       <BillForm
         value={value}
         houses={houses}
@@ -398,7 +398,7 @@ function UpdateBillModal({
   errorMessage,
 }: UpdateBillModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Update IPL">
+    <SimpleModal open={open} onClose={onClose} title="Update IPL" closeDisabled={Boolean(submitting)}>
       <BillForm
         value={value}
         houses={houses}
@@ -451,6 +451,7 @@ function FinanceVerifyModal({
     <SimpleModal
       open={open}
       onClose={onClose}
+      closeDisabled={Boolean(submitting)}
       title={
         <span className="inline-flex flex-wrap items-center gap-2">
           <span>Verifikasi IPL</span>
@@ -515,6 +516,8 @@ type GenerateBillModalProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   alreadyGenerated?: boolean;
   periodeLabel?: string;
+  progressCreated?: number;
+  progressTotal?: number;
   submitting?: boolean;
   errorMessage?: string;
 };
@@ -527,13 +530,38 @@ function GenerateBillModal({
   onSubmit,
   alreadyGenerated = false,
   periodeLabel,
+  progressCreated = 0,
+  progressTotal = 0,
   submitting,
   errorMessage,
 }: GenerateBillModalProps) {
+  const safeTotal = Math.max(0, progressTotal);
+  const safeCreated = Math.max(0, Math.min(progressCreated, safeTotal || progressCreated));
+  const progressPercent = safeTotal > 0 ? Math.round((safeCreated / safeTotal) * 100) : 0;
+
   return (
-    <SimpleModal open={open} onClose={onClose} title="Generate IPL">
+    <SimpleModal open={open} onClose={onClose} title="Generate IPL" closeDisabled={Boolean(submitting)}>
       <form className="space-y-3" onSubmit={onSubmit}>
         <FormErrorAlert message={errorMessage} />
+        {submitting ? (
+          <div className="rounded-lg border border-orange-300 bg-orange-50 p-3">
+            <div className="mb-2 flex items-center justify-between text-xs font-semibold text-orange-900">
+              <span>Progress Generate IPL</span>
+              <span>{safeTotal > 0 ? `${safeCreated} / ${safeTotal}` : `${safeCreated}`}</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-orange-200/70">
+              <div
+                className="h-full rounded-full bg-orange-500 transition-all duration-300 ease-out motion-safe:animate-pulse"
+                style={{ width: `${Math.min(100, Math.max(6, progressPercent))}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-orange-900">
+              {safeTotal > 0
+                ? `Sudah terbuat ${safeCreated} IPL dari ${safeTotal} rumah yang dihuni.`
+                : "Sedang memproses generate IPL..."}
+            </p>
+          </div>
+        ) : null}
         <div>
           <label className={labelClass}>Periode Bulan</label>
           <input
@@ -541,6 +569,7 @@ function GenerateBillModal({
             className={inputClass}
             value={value.month}
             onChange={(event) => onChange({ ...value, month: event.target.value })}
+            disabled={submitting}
             required
           />
         </div>
@@ -551,6 +580,7 @@ function GenerateBillModal({
             value={value.amount}
             onChange={(event) => onChange({ ...value, amount: event.target.value })}
             placeholder="Rp150.000"
+            disabled={submitting}
             required
           />
         </div>
@@ -619,6 +649,8 @@ export function BillsCrud() {
   const [updateSubmitting, setUpdateSubmitting] = useState(false);
   const [verifySubmitting, setVerifySubmitting] = useState(false);
   const [generateSubmitting, setGenerateSubmitting] = useState(false);
+  const [generateProgressCreated, setGenerateProgressCreated] = useState(0);
+  const [generateProgressTotal, setGenerateProgressTotal] = useState(0);
   const [verifyForm, setVerifyForm] = useState<FinanceVerifyForm>({
     payment_method: "Transfer Bank",
   });
@@ -649,6 +681,8 @@ export function BillsCrud() {
   const houseById = useMemo(() => {
     return new Map(houses.map((house) => [house.id, house]));
   }, [houses]);
+  const occupiedHouseCount = useMemo(() => houses.filter((house) => house.isOccupied).length, [houses]);
+  const generateTargetCount = occupiedHouseCount || houses.length;
 
   function houseDisplayValue(houseId: string) {
     const house = houseById.get(houseId);
@@ -1065,27 +1099,56 @@ export function BillsCrud() {
       setGenerateError(`Periode ${selectedGeneratePeriode || "-"} sudah pernah digenerate.`);
       return;
     }
+
+    const targetCount = generateTargetCount;
+    setGenerateProgressCreated(0);
+    setGenerateProgressTotal(targetCount);
+
+    let progressInterval: ReturnType<typeof setInterval> | null = null;
+    if (targetCount > 1) {
+      const step = Math.max(1, Math.floor(targetCount / 20));
+      progressInterval = setInterval(() => {
+        setGenerateProgressCreated((current) => {
+          const maxBeforeDone = Math.max(0, targetCount - 1);
+          if (current >= maxBeforeDone) return current;
+          return Math.min(maxBeforeDone, current + step);
+        });
+      }, 350);
+    }
+
     try {
       setGenerateSubmitting(true);
       const result = await apiClient.generateBills({
         month: generateForm.month,
         amount: generateForm.amount,
       }, { actorEmail });
+      const finalTargetCount =
+        Number.isFinite(result.occupiedHouseCount) && result.occupiedHouseCount > 0
+          ? result.occupiedHouseCount
+          : targetCount;
+      const finalCreatedCount = Math.max(0, Math.min(result.created, finalTargetCount || result.created));
+      setGenerateProgressTotal(finalTargetCount);
+      setGenerateProgressCreated(finalCreatedCount);
       await loadInitialData();
       emitDataChanged();
       setGenerateOpen(false);
       setMessage(
-        `Generate ${result.periode} selesai: dibuat ${result.created}, diperbarui ${result.updated}, skip lunas ${result.skipPaid}, skip existing ${result.skipExisting}.`
+        `Generate ${result.periode} selesai: sudah terbuat ${result.created} IPL dari ${finalTargetCount} rumah yang dihuni, diperbarui ${result.updated}, skip lunas ${result.skipPaid}, skip existing ${result.skipExisting}.`
       );
     } catch (error) {
       setGenerateError(error instanceof Error ? error.message : "Gagal generate IPL.");
     } finally {
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
       setGenerateSubmitting(false);
     }
   }
 
   function openGenerateModal() {
     setGenerateError("");
+    setGenerateProgressCreated(0);
+    setGenerateProgressTotal(generateTargetCount);
     setGenerateOpen(true);
   }
 
@@ -1449,6 +1512,8 @@ export function BillsCrud() {
         onSubmit={generateBillForAllHouses}
         alreadyGenerated={isGeneratePeriodAlreadyExists}
         periodeLabel={selectedGeneratePeriode}
+        progressCreated={generateProgressCreated}
+        progressTotal={generateProgressTotal}
         submitting={generateSubmitting}
         errorMessage={generateError}
       />

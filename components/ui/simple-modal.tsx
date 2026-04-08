@@ -12,9 +12,10 @@ type SimpleModalProps = {
   title: ReactNode;
   children: ReactNode;
   className?: string;
+  closeDisabled?: boolean;
 };
 
-export function SimpleModal({ open, onClose, title, children, className }: SimpleModalProps) {
+export function SimpleModal({ open, onClose, title, children, className, closeDisabled = false }: SimpleModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -40,6 +41,11 @@ export function SimpleModal({ open, onClose, title, children, className }: Simpl
 
   if (!open || !mounted) return null;
 
+  const handleClose = () => {
+    if (closeDisabled) return;
+    onClose();
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/35 backdrop-blur-sm backdrop-grayscale px-3 py-4 sm:px-4 sm:py-8">
       <div
@@ -47,7 +53,7 @@ export function SimpleModal({ open, onClose, title, children, className }: Simpl
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h3 className="font-heading text-lg">{title}</h3>
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+          <Button type="button" variant="outline" size="sm" onClick={handleClose} disabled={closeDisabled}>
             Tutup
           </Button>
         </div>

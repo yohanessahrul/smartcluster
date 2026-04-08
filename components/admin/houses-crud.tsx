@@ -297,7 +297,7 @@ type CreateHouseModalProps = {
 
 function CreateHouseModal({ open, onClose, value, emailOptions, onChange, onSubmit, submitting, errorMessage }: CreateHouseModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Create Rumah">
+    <SimpleModal open={open} onClose={onClose} title="Create Rumah" closeDisabled={Boolean(submitting)}>
       <HouseForm
         value={value}
         onChange={onChange}
@@ -325,7 +325,7 @@ type UpdateHouseModalProps = {
 
 function UpdateHouseModal({ open, onClose, value, onChange, onSubmit, emailOptions, submitting, errorMessage }: UpdateHouseModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Update Rumah">
+    <SimpleModal open={open} onClose={onClose} title="Update Rumah" closeDisabled={Boolean(submitting)}>
       <HouseForm
         value={value}
         onChange={onChange}

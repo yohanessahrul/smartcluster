@@ -25,7 +25,7 @@ export function DeleteConfirmModal({
   loading = false,
 }: DeleteConfirmModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title={title} className="max-w-md">
+    <SimpleModal open={open} onClose={onClose} title={title} className="max-w-md" closeDisabled={loading}>
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">{description}</p>
         <div className="flex items-center justify-end gap-2">

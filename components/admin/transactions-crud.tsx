@@ -313,7 +313,7 @@ type CreateTransactionModalProps = {
 
 function CreateTransactionModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: CreateTransactionModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Create Transaksi">
+    <SimpleModal open={open} onClose={onClose} title="Create Transaksi" closeDisabled={Boolean(submitting)}>
       <TransactionForm
         value={value}
         onChange={onChange}
@@ -342,7 +342,7 @@ type UpdateTransactionModalProps = {
 
 function UpdateTransactionModal({ open, onClose, value, onChange, onSubmit, submitting, errorMessage }: UpdateTransactionModalProps) {
   return (
-    <SimpleModal open={open} onClose={onClose} title="Update Transaksi">
+    <SimpleModal open={open} onClose={onClose} title="Update Transaksi" closeDisabled={Boolean(submitting)}>
       <TransactionForm
         value={value}
         onChange={onChange}

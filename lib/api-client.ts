@@ -376,6 +376,8 @@ export const apiClient = {
       updated: number;
       skipPaid: number;
       skipExisting: number;
+      occupiedHouseCount: number;
+      totalHouseCount: number;
       message: string;
     }>("/api/bills/generate", {
       method: "POST",

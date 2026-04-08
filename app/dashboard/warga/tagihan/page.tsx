@@ -753,6 +753,7 @@ export default function WargaTagihanPage() {
             <SimpleModal
               open={bulkPayModalOpen}
               onClose={() => setBulkPayModalOpen(false)}
+              closeDisabled={bulkPaySubmitting}
               title={
                 <span className="inline-flex flex-wrap items-center gap-2">
                   <span>Bayar Sekaligus</span>
@@ -875,6 +876,7 @@ export default function WargaTagihanPage() {
             <SimpleModal
               open={payModalOpen}
               onClose={() => setPayModalOpen(false)}
+              closeDisabled={paySubmitting}
               title={
                 <span className="inline-flex flex-wrap items-center gap-2">
                   <span>Bayar Tagihan IPL</span>
