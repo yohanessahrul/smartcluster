@@ -391,6 +391,26 @@ export const apiClient = {
       body: JSON.stringify(payload),
       ...options,
     }),
+  payBillsBulk: (
+    payload: { house_id: string; months_count: 3 | 6 | 12; payment_method?: BillRow["payment_method"]; payment_proof_url: string },
+    options?: MutationOptions
+  ) =>
+    request<{
+      status: boolean;
+      months_count: number;
+      start_periode: string | null;
+      total_processed: number;
+      processed_bill_ids: string[];
+      processed_periods: string[];
+      skipped_periods: string[];
+    }>(
+      "/api/warga/pay-bulk",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+        ...options,
+      }
+    ),
   uploadBillPaymentProof: async (billId: string, file: File, options?: MutationOptions) => {
     const formData = new FormData();
     formData.set("billId", billId);

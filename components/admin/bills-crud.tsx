@@ -670,7 +670,7 @@ export function BillsCrud() {
   const isGeneratePeriodAlreadyExists = useMemo(() => {
     if (!selectedGeneratePeriode) return false;
     const target = selectedGeneratePeriode.trim().toLowerCase();
-    return rows.some((row) => row.periode.trim().toLowerCase() === target);
+    return rows.some((row) => row.bill_source === "generated" && row.periode.trim().toLowerCase() === target);
   }, [rows, selectedGeneratePeriode]);
 
   const filteredRows = useMemo(() => {

@@ -20,6 +20,7 @@ export type BillRow = {
   house_id: string;
   periode: string;
   amount: string;
+  bill_source?: "manual" | "generated";
   payment_method: "Transfer Bank" | "Cash" | "QRIS" | "E-wallet";
   status: "Lunas" | "Belum bayar" | "Menunggu Verifikasi" | "Verifikasi";
   status_date: string;
@@ -113,6 +114,7 @@ export const bills: BillRow[] = [
     house_id: "H001",
     periode: "Maret 2026",
     amount: "Rp150.000",
+    bill_source: "generated",
     payment_method: "Transfer Bank",
     status: "Lunas",
     status_date: "2026-03-08T08:15:00+07:00",
@@ -125,6 +127,7 @@ export const bills: BillRow[] = [
     house_id: "H002",
     periode: "Maret 2026",
     amount: "Rp150.000",
+    bill_source: "generated",
     payment_method: "Transfer Bank",
     status: "Belum bayar",
     status_date: "2026-03-01T09:00:00+07:00",
@@ -137,6 +140,7 @@ export const bills: BillRow[] = [
     house_id: "H003",
     periode: "Maret 2026",
     amount: "Rp150.000",
+    bill_source: "generated",
     payment_method: "QRIS",
     status: "Verifikasi",
     status_date: "2026-03-10T10:20:00+07:00",
@@ -149,6 +153,7 @@ export const bills: BillRow[] = [
     house_id: "H004",
     periode: "Maret 2026",
     amount: "Rp150.000",
+    bill_source: "generated",
     payment_method: "Cash",
     status: "Lunas",
     status_date: "2026-03-09T11:40:00+07:00",

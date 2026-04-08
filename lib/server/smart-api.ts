@@ -110,7 +110,7 @@ type GlobalApiState = typeof globalThis & {
   smartPerumahanApiSchemaVersion?: number;
 };
 
-const API_SCHEMA_VERSION = 7;
+const API_SCHEMA_VERSION = 8;
 
 export type OverviewFinanceNeedActionRow = {
   id: string;
@@ -280,6 +280,17 @@ function normalizeIplId(value: unknown) {
   return billId;
 }
 
+function normalizeBillIdList(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  const unique = new Set<string>();
+  for (const item of value) {
+    const normalized = normalizeIplId(item);
+    if (!normalized) continue;
+    unique.add(normalized);
+  }
+  return Array.from(unique);
+}
+
 function normalizeBillStatus(value: unknown) {
   const status = asString(value).trim();
   if (!status) return null;
@@ -370,6 +381,52 @@ function toPeriode(monthValue: string) {
   const [year, month] = String(monthValue).split("-");
   const index = Number(month) - 1;
   return `${monthNames[index]} ${year}`;
+}
+
+function toPeriodeMonthKey(year: number, monthIndex: number) {
+  return year * 12 + monthIndex;
+}
+
+function normalizePeriodeText(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function parsePeriodeMonthKey(periodeValue: unknown) {
+  const periode = asString(periodeValue).trim();
+  if (!periode) return null;
+  const compact = periode.replace(/\s+/g, " ");
+  const [monthLabelRaw, yearRaw] = compact.split(" ");
+  const year = Number.parseInt(yearRaw ?? "", 10);
+  if (!Number.isInteger(year)) return null;
+  const monthLabel = (monthLabelRaw ?? "").toLowerCase();
+  const monthIndex = monthNames.findIndex((name) => name.toLowerCase() === monthLabel);
+  if (monthIndex < 0) return null;
+  return toPeriodeMonthKey(year, monthIndex);
+}
+
+function formatPeriodeFromMonthKey(key: number) {
+  if (!Number.isInteger(key)) return "";
+  const year = Math.floor(key / 12);
+  const monthIndex = key % 12;
+  const monthLabel = monthNames[monthIndex];
+  if (!monthLabel || !Number.isInteger(year)) return "";
+  return `${monthLabel} ${year}`;
+}
+
+function getCurrentJakartaMonthKey() {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+  });
+  const [yearPart, monthPart] = formatter.format(now).split("-");
+  const year = Number.parseInt(yearPart ?? "", 10);
+  const month = Number.parseInt(monthPart ?? "", 10);
+  if (!Number.isInteger(year) || !Number.isInteger(month)) {
+    return toPeriodeMonthKey(now.getFullYear(), now.getMonth());
+  }
+  return toPeriodeMonthKey(year, month - 1);
 }
 
 function toNumber(value: unknown) {
@@ -669,6 +726,7 @@ async function ensureBillColumns() {
   await query("ALTER TABLE bills ADD COLUMN IF NOT EXISTS date_paid_period_to_developer DATE");
   await query("ALTER TABLE bills ADD COLUMN IF NOT EXISTS payment_method TEXT");
   await query("ALTER TABLE bills ADD COLUMN IF NOT EXISTS payment_proof_url TEXT");
+  await query("ALTER TABLE bills ADD COLUMN IF NOT EXISTS bill_source TEXT");
   await query(`
     DO $$
     DECLARE column_type TEXT;
@@ -761,6 +819,21 @@ async function ensureBillColumns() {
       ALTER TABLE bills
       ADD CONSTRAINT bills_payment_method_check
       CHECK (payment_method IN ('Transfer Bank', 'Cash', 'QRIS', 'E-wallet'));
+    EXCEPTION
+      WHEN duplicate_object OR duplicate_table THEN NULL;
+    END $$;
+  `);
+  await query("UPDATE bills SET bill_source = 'manual' WHERE bill_source IS NULL OR BTRIM(bill_source) = ''");
+  await query("UPDATE bills SET bill_source = 'manual' WHERE bill_source NOT IN ('manual', 'generated')");
+  await query("ALTER TABLE bills ALTER COLUMN bill_source SET NOT NULL");
+  await query("ALTER TABLE bills ALTER COLUMN bill_source SET DEFAULT 'manual'");
+  await query("ALTER TABLE bills DROP CONSTRAINT IF EXISTS bills_bill_source_check");
+  await query(`
+    DO $$
+    BEGIN
+      ALTER TABLE bills
+      ADD CONSTRAINT bills_bill_source_check
+      CHECK (bill_source IN ('manual', 'generated'));
     EXCEPTION
       WHEN duplicate_object OR duplicate_table THEN NULL;
     END $$;
@@ -1731,7 +1804,7 @@ export async function deleteHouse(id: string, actor: string) {
 export async function listBills() {
   try {
     const result = await query(
-      "SELECT id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills ORDER BY id DESC",
+      "SELECT id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills ORDER BY id DESC",
     );
     return result.rows;
   } catch (error) {
@@ -1757,12 +1830,13 @@ export async function createBill(payload: JsonRecord, actor: string) {
 
     await beginTransaction(transaction);
     const result = await transaction.query(
-      "INSERT INTO bills (id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7,$8,$9) RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+      "INSERT INTO bills (id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
       [
         payload.id,
         payload.house_id,
         payload.periode,
         payload.amount,
+        "manual",
         paymentMethod,
         status,
         paymentProofUrl,
@@ -1810,7 +1884,7 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
     await beginTransaction(transaction);
 
     const before = await transaction.query(
-      "SELECT id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills WHERE id=$1 FOR UPDATE",
+      "SELECT id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills WHERE id=$1 FOR UPDATE",
       [id],
     );
     if (!before.rows.length) {
@@ -1835,7 +1909,7 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
         : normalizeOptionalDateOnly(payload.date_paid_period_to_developer);
 
     const result = await transaction.query(
-      "UPDATE bills SET house_id=$1, periode=$2, amount=$3, payment_method=$4, status=$5, status_date=CASE WHEN status IS DISTINCT FROM $5 THEN NOW() ELSE status_date END, payment_proof_url=$6, paid_to_developer=$7, date_paid_period_to_developer=$8 WHERE id=$9 RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+      "UPDATE bills SET house_id=$1, periode=$2, amount=$3, payment_method=$4, status=$5, status_date=CASE WHEN status IS DISTINCT FROM $5 THEN NOW() ELSE status_date END, payment_proof_url=$6, paid_to_developer=$7, date_paid_period_to_developer=$8 WHERE id=$9 RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
       [
         payload.house_id,
         payload.periode,
@@ -1892,7 +1966,7 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
 export async function deleteBill(id: string, actor: string) {
   try {
     const result = await query(
-      "DELETE FROM bills WHERE id=$1 RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+      "DELETE FROM bills WHERE id=$1 RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
       [id],
     );
     if (!result.rows.length) throw new ApiHttpError(404, "IPL tidak ditemukan.");
@@ -1924,7 +1998,10 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
     if (!periode) throw new ApiHttpError(400, "Format month tidak valid.");
     await beginTransaction(transaction);
 
-    const existingPeriodeCount = await transaction.query("SELECT COUNT(*)::int AS total FROM bills WHERE periode=$1", [periode]);
+    const existingPeriodeCount = await transaction.query(
+      "SELECT COUNT(*)::int AS total FROM bills WHERE periode=$1 AND bill_source='generated'",
+      [periode],
+    );
     if (Number(existingPeriodeCount.rows[0]?.total ?? 0) > 0) {
       throw new ApiHttpError(409, `Periode ${periode} sudah pernah digenerate.`);
     }
@@ -1935,7 +2012,7 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
       [periode],
     );
     const existingBills = await transaction.query(
-      "SELECT id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills WHERE periode=$1",
+      "SELECT id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills WHERE periode=$1",
       [periode],
     );
     const billByHouse = new Map(existingBills.rows.map((row) => [asString(row.house_id), row]));
@@ -1960,7 +2037,7 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
         if (updateExistingUnpaid) {
           const beforeValue = { ...existing } as JsonRecord;
           const updatedResult = await transaction.query(
-            "UPDATE bills SET amount=$1 WHERE id=$2 RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+            "UPDATE bills SET amount=$1 WHERE id=$2 RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
             [amount, existing.id],
           );
           await writeAuditLog((text, params) => transaction.query(text, params), {
@@ -1980,8 +2057,8 @@ export async function generateBills(payload: GenerateBillsPayload, actor: string
 
       const billId = `BILL${String(nextNumber).padStart(3, "0")}`;
       const inserted = await transaction.query(
-        "INSERT INTO bills (id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7,$8,$9) RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
-        [billId, houseId, periode, amount, "Transfer Bank", "Belum bayar", null, false, null],
+        "INSERT INTO bills (id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+        [billId, houseId, periode, amount, "generated", "Transfer Bank", "Belum bayar", null, false, null],
       );
       await writeAuditLog((text, params) => transaction.query(text, params), {
         author: actor,
@@ -2182,7 +2259,7 @@ export async function payBillWithQris(
 
     await beginTransaction(transaction);
     const billResult = await transaction.query(
-      "SELECT id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills WHERE id=$1 FOR UPDATE",
+      "SELECT id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills WHERE id=$1 FOR UPDATE",
       [billId],
     );
     const bill = billResult.rows[0] as JsonRecord | undefined;
@@ -2205,7 +2282,7 @@ export async function payBillWithQris(
       currentStatus === "Verifikasi"
     ) {
       const updatedBill = await transaction.query(
-        "UPDATE bills SET status=$1, status_date=NOW(), payment_method=$2, payment_proof_url=$3 WHERE id=$4 RETURNING id, house_id, periode, amount, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+        "UPDATE bills SET status=$1, status_date=NOW(), payment_method=$2, payment_proof_url=$3 WHERE id=$4 RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
         ["Menunggu Verifikasi", paymentMethod, paymentProofUrl, billId],
       );
       latestBill = (updatedBill.rows[0] as JsonRecord) ?? bill;
@@ -2233,6 +2310,181 @@ export async function payBillWithQris(
       billId,
       newBillStatus: asString(latestBill.status),
       transaction: upsertedTransaction,
+    };
+  } catch (error) {
+    await rollbackTransaction(transaction).catch(() => null);
+    throwServerError(error);
+  } finally {
+    transaction.release();
+  }
+}
+
+export async function payBillsInBulk(
+  payload: { house_id?: unknown; months_count?: unknown; payment_method?: unknown; payment_proof_url?: unknown },
+  actor: string,
+) {
+  const transaction = await connect();
+  try {
+    const actorEmail = actor.trim().toLowerCase();
+    const houseId = asString(payload.house_id).trim();
+    if (!houseId) throw new ApiHttpError(400, "house_id wajib diisi.");
+    const monthsCount = Number(payload.months_count);
+    if (!Number.isInteger(monthsCount) || ![3, 6, 12].includes(monthsCount)) {
+      throw new ApiHttpError(400, "months_count harus salah satu dari: 3, 6, 12.");
+    }
+
+    const paymentMethod = normalizePaymentMethod(payload.payment_method, "Transfer Bank");
+    const paymentProofUrl = normalizeOptionalUrl(payload.payment_proof_url);
+    if (!paymentProofUrl) throw new ApiHttpError(400, "Bukti transaksi wajib diupload.");
+
+    await beginTransaction(transaction);
+
+    const houseAccessResult = await transaction.query(
+      "SELECT 1 FROM house_users WHERE house_id=$1 AND LOWER(user_email)=$2 LIMIT 1",
+      [houseId, actorEmail],
+    );
+    if (!houseAccessResult.rowCount) {
+      await rollbackTransaction(transaction);
+      throw new ApiHttpError(403, "Kamu hanya bisa membayar IPL milik rumah yang terhubung dengan akunmu.");
+    }
+
+    const billResult = await transaction.query(
+      "SELECT id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer FROM bills WHERE house_id=$1 FOR UPDATE",
+      [houseId],
+    );
+    const billRows = billResult.rows as JsonRecord[];
+
+    const rowsWithPeriode = billRows
+      .map((row) => ({
+        row,
+        status: asString(row.status),
+        monthKey: parsePeriodeMonthKey(row.periode),
+      }))
+      .filter((item) => item.monthKey !== null);
+
+    const lastPaidMonthKey = rowsWithPeriode
+      .filter((item) => item.status === "Lunas")
+      .reduce<number | null>((acc, item) => (acc === null || (item.monthKey as number) > acc ? (item.monthKey as number) : acc), null);
+
+    const unpaidMonthKeysAsc = rowsWithPeriode
+      .filter((item) => item.status !== "Lunas")
+      .map((item) => item.monthKey as number)
+      .sort((a, b) => a - b);
+
+    const startMonthKey =
+      lastPaidMonthKey !== null
+        ? lastPaidMonthKey + 1
+        : unpaidMonthKeysAsc.length
+          ? unpaidMonthKeysAsc[0]
+          : getCurrentJakartaMonthKey();
+
+    const targetPeriods = Array.from({ length: monthsCount }, (_, index) => formatPeriodeFromMonthKey(startMonthKey + index)).filter(Boolean);
+    if (!targetPeriods.length) {
+      await rollbackTransaction(transaction);
+      throw new ApiHttpError(400, "Tidak ada periode yang bisa diproses.");
+    }
+
+    const latestBillByPeriodMap = new Map<string, JsonRecord>();
+    for (const row of billRows) {
+      const normalizedPeriode = normalizePeriodeText(asString(row.periode));
+      if (!normalizedPeriode) continue;
+      const existing = latestBillByPeriodMap.get(normalizedPeriode);
+      if (!existing) {
+        latestBillByPeriodMap.set(normalizedPeriode, row);
+        continue;
+      }
+      const existingTime = new Date(asString(existing.status_date)).getTime();
+      const nextTime = new Date(asString(row.status_date)).getTime();
+      if (Number.isFinite(nextTime) && (!Number.isFinite(existingTime) || nextTime >= existingTime)) {
+        latestBillByPeriodMap.set(normalizedPeriode, row);
+      }
+    }
+
+    const amountReference =
+      billRows.find((row) => asString(row.amount).trim())?.amount ?? "Rp 0";
+
+    const processedBillIds: string[] = [];
+    const processedPeriods: string[] = [];
+    const skippedPeriods: string[] = [];
+
+    for (const periode of targetPeriods) {
+      const existing = latestBillByPeriodMap.get(normalizePeriodeText(periode));
+      const currentStatus = asString(existing?.status);
+      if (existing && currentStatus === "Lunas") {
+        skippedPeriods.push(periode);
+        continue;
+      }
+
+      if (existing) {
+        const billId = asString(existing.id);
+        const updatedBillResult = await transaction.query(
+          "UPDATE bills SET status=$1, status_date=NOW(), payment_method=$2, payment_proof_url=$3, bill_source='manual' WHERE id=$4 RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+          ["Menunggu Verifikasi", paymentMethod, paymentProofUrl, billId],
+        );
+        const updatedBill = (updatedBillResult.rows[0] as JsonRecord) ?? existing;
+        processedBillIds.push(billId);
+        processedPeriods.push(periode);
+
+        await writeAuditLog((text, params) => transaction.query(text, params), {
+          author: actor,
+          tableName: "bills",
+          action: "UPDATE",
+          recordId: billId,
+          beforeValue: existing,
+          afterValue: updatedBill,
+        });
+
+        await upsertIplIncomeTransaction((text, params) => transaction.query(text, params), {
+          actor,
+          billId,
+          amount: asString(updatedBill.amount),
+          billStatus: asString(updatedBill.status),
+          paymentMethod: asString(updatedBill.payment_method),
+        });
+        continue;
+      }
+
+      const nextBillId = await getNextPrefixedId("BILL", "bills", (text, params) => transaction.query(text, params));
+      const createdBillResult = await transaction.query(
+        "INSERT INTO bills (id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer) VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING id, house_id, periode, amount, bill_source, payment_method, status, status_date, payment_proof_url, paid_to_developer, date_paid_period_to_developer",
+        [nextBillId, houseId, periode, asString(amountReference), "manual", paymentMethod, "Menunggu Verifikasi", paymentProofUrl, false, null],
+      );
+      const createdBill = createdBillResult.rows[0] as JsonRecord;
+      processedBillIds.push(asString(createdBill.id));
+      processedPeriods.push(periode);
+
+      await writeAuditLog((text, params) => transaction.query(text, params), {
+        author: actor,
+        tableName: "bills",
+        action: "CREATE",
+        recordId: asString(createdBill.id),
+        beforeValue: null,
+        afterValue: createdBill,
+      });
+
+      await upsertIplIncomeTransaction((text, params) => transaction.query(text, params), {
+        actor,
+        billId: asString(createdBill.id),
+        amount: asString(createdBill.amount),
+        billStatus: asString(createdBill.status),
+        paymentMethod: asString(createdBill.payment_method),
+      });
+    }
+
+    if (!processedBillIds.length) {
+      await rollbackTransaction(transaction);
+      throw new ApiHttpError(400, "Tidak ada IPL yang bisa diproses untuk durasi yang dipilih.");
+    }
+
+    await commitTransaction(transaction);
+    return {
+      status: true,
+      months_count: monthsCount,
+      start_periode: targetPeriods[0] ?? null,
+      total_processed: processedBillIds.length,
+      processed_bill_ids: processedBillIds,
+      processed_periods: processedPeriods,
+      skipped_periods: skippedPeriods,
     };
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);

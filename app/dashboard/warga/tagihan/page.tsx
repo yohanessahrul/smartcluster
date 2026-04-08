@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, FileCheck2, FileSpreadsheet, ReceiptText, SlidersHorizontal, Upload } from "lucide-react";
+import { ArrowRight, FileCheck2, FileSpreadsheet, ReceiptText, SlidersHorizontal, Upload, WalletCards } from "lucide-react";
 
 import { DashboardHeader } from "@/components/dashboard-header";
 import { WargaAccessGuard } from "@/components/warga-access-guard";
@@ -14,6 +14,7 @@ import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
 import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { formatRupiah, parseRupiahToNumber } from "@/lib/currency";
 import { formatDateTimeUnified } from "@/lib/date-time";
 import { downloadRowsAsExcel } from "@/lib/download-excel";
 import { BillRow, UserRow } from "@/lib/mock-data";
@@ -36,6 +37,85 @@ type BillTimelineStep = {
   at: string | null;
 };
 
+type BulkAllocationItem = {
+  periode: string;
+  amount: string;
+  existingBillId: string | null;
+};
+
+type BulkAllocationPlan = {
+  items: BulkAllocationItem[];
+  totalNominal: number;
+  uploadReferenceBillId: string | null;
+  startPeriode: string | null;
+};
+
+function buildBulkAllocationPlan(rows: BillRow[], monthsCount: number): BulkAllocationPlan {
+  if (!rows.length || !Number.isInteger(monthsCount) || monthsCount <= 0) {
+    return { items: [], totalNominal: 0, uploadReferenceBillId: null, startPeriode: null };
+  }
+
+  const parsedRows = rows
+    .map((row) => ({
+      row,
+      monthKey: parsePeriodeMonthKey(row.periode),
+    }))
+    .filter((item) => item.monthKey !== null);
+
+  const latestPaidMonthKey = parsedRows
+    .filter((item) => item.row.status === "Lunas")
+    .reduce<number | null>((acc, item) => (acc === null || (item.monthKey as number) > acc ? (item.monthKey as number) : acc), null);
+
+  const unpaidMonthKeysAsc = parsedRows
+    .filter((item) => item.row.status !== "Lunas")
+    .map((item) => item.monthKey as number)
+    .sort((a, b) => a - b);
+
+  const now = new Date();
+  const currentMonthKey = toPeriodeMonthKey(now.getFullYear(), now.getMonth());
+  const startMonthKey =
+    latestPaidMonthKey !== null ? latestPaidMonthKey + 1 : unpaidMonthKeysAsc.length ? unpaidMonthKeysAsc[0] : currentMonthKey;
+
+  const referenceAmount =
+    rows.find((item) => parseRupiahToNumber(item.amount) > 0)?.amount ?? formatRupiah(0);
+
+  const latestBillByPeriode = new Map<string, BillRow>();
+  for (const row of rows) {
+    const key = normalizePeriodeText(row.periode);
+    if (!key) continue;
+    const existing = latestBillByPeriode.get(key);
+    if (!existing) {
+      latestBillByPeriode.set(key, row);
+      continue;
+    }
+    const existingTime = new Date(existing.status_date).getTime();
+    const nextTime = new Date(row.status_date).getTime();
+    if (Number.isFinite(nextTime) && (!Number.isFinite(existingTime) || nextTime >= existingTime)) {
+      latestBillByPeriode.set(key, row);
+    }
+  }
+
+  const items: BulkAllocationItem[] = Array.from({ length: monthsCount }, (_, index) => {
+    const periode = formatPeriodeFromMonthKey(startMonthKey + index);
+    const existing = latestBillByPeriode.get(normalizePeriodeText(periode)) ?? null;
+    return {
+      periode,
+      amount: existing?.amount ?? referenceAmount,
+      existingBillId: existing?.id ?? null,
+    };
+  }).filter((item) => item.periode);
+
+  const uploadReferenceBillId = items.find((item) => item.existingBillId)?.existingBillId ?? rows[0]?.id ?? null;
+  const totalNominal = items.reduce((sum, item) => sum + parseRupiahToNumber(item.amount), 0);
+
+  return {
+    items,
+    totalNominal,
+    uploadReferenceBillId,
+    startPeriode: items[0]?.periode ?? null,
+  };
+}
+
 function readStringField(value: Record<string, unknown> | null | undefined, key: string) {
   const field = value?.[key];
   return typeof field === "string" ? field : null;
@@ -43,6 +123,54 @@ function readStringField(value: Record<string, unknown> | null | undefined, key:
 
 function normalizeStatus(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
+}
+
+function isBelumBayarStatus(value: string | null | undefined) {
+  const normalized = normalizeStatus(value);
+  return normalized === "belum bayar" || normalized === "belum dibayar";
+}
+
+const periodeMonthNames = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+] as const;
+
+function toPeriodeMonthKey(year: number, monthIndex: number) {
+  return year * 12 + monthIndex;
+}
+
+function parsePeriodeMonthKey(value: string | null | undefined) {
+  const raw = (value ?? "").trim();
+  if (!raw) return null;
+  const [monthLabelRaw, yearRaw] = raw.replace(/\s+/g, " ").split(" ");
+  const year = Number.parseInt(yearRaw ?? "", 10);
+  if (!Number.isInteger(year)) return null;
+  const monthIndex = periodeMonthNames.findIndex((item) => item.toLowerCase() === (monthLabelRaw ?? "").toLowerCase());
+  if (monthIndex < 0) return null;
+  return toPeriodeMonthKey(year, monthIndex);
+}
+
+function formatPeriodeFromMonthKey(key: number) {
+  if (!Number.isInteger(key)) return "";
+  const year = Math.floor(key / 12);
+  const monthIndex = key % 12;
+  const monthName = periodeMonthNames[monthIndex];
+  if (!monthName) return "";
+  return `${monthName} ${year}`;
+}
+
+function normalizePeriodeText(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 function normalizeEmail(value: string | null | undefined) {
@@ -152,6 +280,14 @@ export default function WargaTagihanPage() {
   const payProofFileInputRef = useRef<HTMLInputElement | null>(null);
   const [payMethod, setPayMethod] = useState<BillRow["payment_method"]>("Transfer Bank");
   const [paySubmitting, setPaySubmitting] = useState(false);
+  const [bulkPayModalOpen, setBulkPayModalOpen] = useState(false);
+  const [bulkPayError, setBulkPayError] = useState("");
+  const [bulkPayProofFile, setBulkPayProofFile] = useState<File | null>(null);
+  const [bulkPayProofPreviewUrl, setBulkPayProofPreviewUrl] = useState<string>("");
+  const bulkPayProofFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [bulkPayDuration, setBulkPayDuration] = useState<"3" | "6" | "12">("3");
+  const [bulkPayMethod, setBulkPayMethod] = useState<BillRow["payment_method"]>("Transfer Bank");
+  const [bulkPaySubmitting, setBulkPaySubmitting] = useState(false);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [userDirectory, setUserDirectory] = useState<UserDirectory>({});
   const [previewViewerEmail, setPreviewViewerEmail] = useState<string | null>(null);
@@ -241,6 +377,18 @@ export default function WargaTagihanPage() {
     };
   }, [payProofFile]);
 
+  useEffect(() => {
+    if (!bulkPayProofFile || !bulkPayProofFile.type.startsWith("image/")) {
+      setBulkPayProofPreviewUrl("");
+      return;
+    }
+    const objectUrl = URL.createObjectURL(bulkPayProofFile);
+    setBulkPayProofPreviewUrl(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [bulkPayProofFile]);
+
   function resetFilters() {
     setDraftStatusFilter("all");
   }
@@ -261,6 +409,18 @@ export default function WargaTagihanPage() {
     setPayProofFile(null);
     setPayError("");
     setPayMethod((bill.payment_method as BillRow["payment_method"]) ?? "Transfer Bank");
+  }
+
+  function openBulkPayModal() {
+    setBulkPayModalOpen(true);
+    setBulkPayError("");
+    setBulkPayProofFile(null);
+    setBulkPayDuration("3");
+    setBulkPayMethod("Transfer Bank");
+  }
+
+  function handleBulkProofFileChange(fileList: FileList | null) {
+    setBulkPayProofFile(fileList?.[0] ?? null);
   }
 
   function handleProofFileChange(fileList: FileList | null) {
@@ -312,6 +472,52 @@ export default function WargaTagihanPage() {
     }
   }
 
+  async function submitBulkBillPayment(
+    actorEmail: string | undefined,
+    options: { houseId: string | null; monthsCount: 3 | 6 | 12; uploadReferenceBillId: string | null }
+  ) {
+    if (!options.houseId) {
+      setBulkPayError("Data rumah tidak ditemukan.");
+      return;
+    }
+    if (!options.uploadReferenceBillId) {
+      setBulkPayError("Belum ada referensi tagihan untuk upload bukti transaksi.");
+      return;
+    }
+    if (!bulkPayProofFile) {
+      setBulkPayError("Bukti transaksi wajib diupload.");
+      return;
+    }
+
+    try {
+      setBulkPaySubmitting(true);
+      setBulkPayError("");
+      const uploaded = await apiClient.uploadBillPaymentProof(options.uploadReferenceBillId, bulkPayProofFile, { actorEmail });
+      const result = await apiClient.payBillsBulk(
+        {
+          house_id: options.houseId,
+          months_count: options.monthsCount,
+          payment_method: bulkPayMethod,
+          payment_proof_url: uploaded.public_url,
+        },
+        { actorEmail }
+      );
+      const rows = await apiClient.getBills();
+      setLocalBills(rows);
+      emitDataChanged();
+      setBulkPayModalOpen(false);
+      setBulkPayProofFile(null);
+      setBulkPayError("");
+      setBulkPayDuration("3");
+      setBulkPayMethod("Transfer Bank");
+      setSuccessToast(`Pembayaran sekaligus berhasil dikirim untuk ${result.total_processed} periode.`);
+    } catch (error) {
+      setBulkPayError(error instanceof Error ? error.message : "Gagal memproses pembayaran sekaligus.");
+    } finally {
+      setBulkPaySubmitting(false);
+    }
+  }
+
   return (
     <WargaAccessGuard>
       {(data) => {
@@ -321,6 +527,8 @@ export default function WargaTagihanPage() {
         const filteredRows = rows.filter((item) => {
           return statusFilter === "all" ? true : item.status === statusFilter;
         });
+        const selectedMonthsCount = Number.parseInt(bulkPayDuration, 10) as 3 | 6 | 12;
+        const bulkAllocationPlan = buildBulkAllocationPlan(rows, selectedMonthsCount);
         const totalItems = filteredRows.length;
         const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
         const currentPage = Math.min(page, totalPages);
@@ -362,29 +570,47 @@ export default function WargaTagihanPage() {
               </CardHeader>
               <CardContent>
                 <div className="mb-3 flex flex-wrap items-end gap-2">
-                  <div className="flex w-full items-end justify-end gap-2 sm:hidden">
+                  <div className="flex w-full items-end justify-between gap-2 sm:hidden">
+                    <Button
+                      type="button"
+                      className="h-10 gap-2"
+                      onClick={openBulkPayModal}
+                    >
+                      <WalletCards className="h-4 w-4" />
+                      Bayar Sekaligus
+                    </Button>
                     <Button type="button" variant="outline" className="h-10 sm:flex-none" onClick={openFilterModal}>
                       <SlidersHorizontal className="mr-2 h-4 w-4" />
                       Filter
                     </Button>
                   </div>
-                  <div className="ml-auto hidden items-end gap-2 sm:flex">
-                    <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
-                      <SlidersHorizontal className="h-4 w-4" />
-                      <span className="text-sm">Filter</span>
-                    </Button>
+                  <div className="hidden w-full items-end justify-between gap-2 sm:flex">
                     <Button
                       type="button"
-                      variant="outline"
-                      className="h-10 gap-2 px-3"
-                      aria-label="Download Excel"
-                      title="Download Excel"
-                      onClick={downloadFilteredReport}
-                      disabled={!filteredRows.length}
+                      className="h-10 gap-2 px-4"
+                      onClick={openBulkPayModal}
                     >
-                      <FileSpreadsheet className="h-4 w-4" />
-                      <span className="text-sm">Download Excel</span>
+                      <WalletCards className="h-4 w-4" />
+                      <span className="text-sm">Bayar Sekaligus</span>
                     </Button>
+                    <div className="ml-auto flex items-end gap-2">
+                      <Button type="button" variant="outline" className="h-10 gap-2 px-3" onClick={openFilterModal}>
+                        <SlidersHorizontal className="h-4 w-4" />
+                        <span className="text-sm">Filter</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 gap-2 px-3"
+                        aria-label="Download Excel"
+                        title="Download Excel"
+                        onClick={downloadFilteredReport}
+                        disabled={!filteredRows.length}
+                      >
+                        <FileSpreadsheet className="h-4 w-4" />
+                        <span className="text-sm">Download Excel</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-3">
@@ -392,7 +618,7 @@ export default function WargaTagihanPage() {
                     pagedRows.map((item) => {
                       const isLunas = item.status === "Lunas";
                       const isMenungguVerifikasi = item.status === "Menunggu Verifikasi";
-                      const isBelumBayar = item.status === "Belum bayar";
+                      const isBelumBayar = isBelumBayarStatus(item.status);
 
                       return (
                         <div
@@ -427,7 +653,7 @@ export default function WargaTagihanPage() {
 
                           <div className="mt-3 flex items-center justify-between gap-3">
                             <p className="font-heading text-2xl font-black sm:text-3xl">{textOrDash(item.amount)}</p>
-                            {item.status === "Belum bayar" ? (
+                            {isBelumBayar ? (
                               <Button
                                 size="sm"
                                 className="h-9 bg-black px-4 text-sm text-white hover:bg-black/90"
@@ -496,6 +722,128 @@ export default function WargaTagihanPage() {
             </SimpleModal>
 
             <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
+
+            <SimpleModal
+              open={bulkPayModalOpen}
+              onClose={() => setBulkPayModalOpen(false)}
+              title={
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  <span>Bayar Sekaligus</span>
+                  <Badge variant="outline">{selectedMonthsCount} Bulan</Badge>
+                </span>
+              }
+            >
+              <div className="space-y-4">
+                <FormErrorAlert message={bulkPayError} />
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Unit</p>
+                    <p className="font-medium">{houseDisplay}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Periode Pembayaran</p>
+                    <select
+                      className="mt-1 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      value={bulkPayDuration}
+                      onChange={(event) => setBulkPayDuration(event.target.value as "3" | "6" | "12")}
+                    >
+                      <option value="3">3 bulan</option>
+                      <option value="6">6 bulan</option>
+                      <option value="12">1 tahun</option>
+                    </select>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Nominal</p>
+                    <p className="font-heading text-lg font-bold">{formatRupiah(bulkAllocationPlan.totalNominal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Metode Pembayaran</p>
+                    <select
+                      className="mt-1 h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      value={bulkPayMethod}
+                      onChange={(event) => setBulkPayMethod(event.target.value as BillRow["payment_method"])}
+                    >
+                      <option value="Transfer Bank">Transfer Bank</option>
+                      <option value="QRIS">QRIS</option>
+                      <option value="Cash">Cash</option>
+                      <option value="E-wallet">E-wallet</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Tagihan Yang Akan Diproses</p>
+                  <div className="mt-2 max-h-48 overflow-y-auto pr-1 text-sm">
+                    {bulkAllocationPlan.items.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {bulkAllocationPlan.items.map((item) => (
+                          <Badge key={item.periode}>{item.periode}</Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Belum ada periode yang bisa dialokasikan.</p>
+                    )}
+                  </div>
+                </div>
+
+                {bulkPayProofPreviewUrl ? (
+                  <div>
+                    {bulkPayProofFile ? <p className="mb-1 text-xs text-muted-foreground">File dipilih: {bulkPayProofFile.name}</p> : null}
+                    <div className="relative isolate rounded-lg border border-border bg-muted/20">
+                      <input
+                        ref={bulkPayProofFileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,application/pdf"
+                        className="hidden"
+                        onChange={(event) => handleBulkProofFileChange(event.target.files)}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="absolute right-[13px] top-[13px] z-30 bg-background/95 shadow-lg ring-1 ring-border/70"
+                        onClick={() => {
+                          if (!bulkPayProofFileInputRef.current) return;
+                          bulkPayProofFileInputRef.current.value = "";
+                          bulkPayProofFileInputRef.current.click();
+                        }}
+                      >
+                        <Upload className="mr-1 h-3.5 w-3.5" />
+                        Ganti Bukti Transaksi
+                      </Button>
+                      <div className="h-[280px] overflow-y-auto overflow-x-hidden rounded-lg">
+                        <img src={bulkPayProofPreviewUrl} alt="Preview bukti transaksi bayar sekaligus" className="h-auto w-full" />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className={filterLabelClass}>Upload Bukti Transaksi</label>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,application/pdf"
+                      className="h-10 w-full rounded-lg border border-input bg-background px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+                      onChange={(event) => handleBulkProofFileChange(event.target.files)}
+                    />
+                    {bulkPayProofFile ? <p className="mt-1 text-xs text-muted-foreground">File dipilih: {bulkPayProofFile.name}</p> : null}
+                  </div>
+                )}
+
+                <Button
+                  className="w-full"
+                  onClick={() =>
+                    submitBulkBillPayment(data.session?.email, {
+                      houseId: data.house?.id ?? null,
+                      monthsCount: selectedMonthsCount,
+                      uploadReferenceBillId: bulkAllocationPlan.uploadReferenceBillId,
+                    })
+                  }
+                  disabled={bulkPaySubmitting || !bulkAllocationPlan.items.length}
+                >
+                  {bulkPaySubmitting ? "Menyimpan..." : "Kirim Pembayaran Sekaligus"}
+                </Button>
+              </div>
+            </SimpleModal>
 
             <SimpleModal
               open={payModalOpen}
