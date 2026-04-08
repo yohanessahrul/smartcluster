@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { BarChart3, Home, Receipt, ShieldCheck, UserRound } from "lucide-react";
 
 import { BrandMark } from "@/components/brand-mark";
-import { useWargaResolvedData } from "@/lib/auth-client";
+import { useAuthSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 const overviewMenu = { href: "/dashboard/warga", label: "Beranda", icon: Home } as const;
@@ -19,9 +19,9 @@ const protectedMenus = [
 
 export function WargaSidebar() {
   const pathname = usePathname();
-  const { loading, session, house } = useWargaResolvedData();
+  const { loading, session } = useAuthSession();
   const isWarga = session?.role === "warga";
-  const hasHouse = Boolean(house);
+  const hasHouse = session?.hasHouse ?? true;
   const menus = loading ? [] : isWarga ? (hasHouse ? protectedMenus : [overviewMenu]) : [];
 
   return (

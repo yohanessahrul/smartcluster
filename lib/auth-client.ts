@@ -12,6 +12,7 @@ export type SessionData = {
   role: SessionRole;
   name: string;
   userId: string;
+  hasHouse?: boolean;
 };
 
 type AuthSessionApiResponse = {
