@@ -148,8 +148,8 @@ export default function WargaDashboardPage() {
 
                   <div>
                     <p className="text-xs uppercase tracking-widest text-white/70">Nominal IPL</p>
-                    <p className="font-heading text-2xl font-bold leading-tight text-white">
-                      Rp {normalizeAmountLabel(latestBill?.amount)}
+                    <p className="font-heading text-2xl font-bold leading-tight text-white whitespace-nowrap">
+                      Rp&nbsp;{normalizeAmountLabel(latestBill?.amount)}
                     </p>
                   </div>
 
