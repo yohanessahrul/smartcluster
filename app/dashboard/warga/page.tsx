@@ -37,6 +37,10 @@ function normalizePeriode(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
 
+function isLunasStatus(value: string | null | undefined) {
+  return (value ?? "").trim().toLowerCase() === "lunas";
+}
+
 function currentPeriodeLabel() {
   return new Intl.DateTimeFormat("id-ID", {
     month: "long",
@@ -117,6 +121,7 @@ export default function WargaDashboardPage() {
         );
         const activeBill = [...currentPeriodBills].sort((a, b) => b.id.localeCompare(a.id))[0];
         const billPeriodeById = new Map(data.houseBills.map((bill) => [bill.id, bill.periode]));
+        const latestPaidTransactions = data.houseTransactions.filter((item) => isLunasStatus(item.status));
         return (
           <div>
             <DashboardHeader
@@ -191,11 +196,11 @@ export default function WargaDashboardPage() {
             <Card>
               <CardHeader className="flex-row items-center justify-between pb-3">
                 <CardTitle>Pembayaran Terakhir Anda</CardTitle>
-                <Badge variant="outline">{data.houseTransactions.length} transaksi</Badge>
+                <Badge variant="outline">{latestPaidTransactions.length} transaksi</Badge>
               </CardHeader>
               <CardContent className="space-y-2">
-                {data.houseTransactions.length ? (
-                  data.houseTransactions.map((item) => (
+                {latestPaidTransactions.length ? (
+                  latestPaidTransactions.map((item) => (
                     <div key={item.id} className="flex items-center justify-between rounded-lg border border-border p-3">
                       <div>
                         <p className="text-sm font-medium">

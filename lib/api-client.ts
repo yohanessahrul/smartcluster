@@ -2,6 +2,7 @@ import { BillRow, HouseRow, TransactionRow, UserRow } from "@/lib/mock-data";
 import { emitDeveloperError } from "@/lib/developer-error";
 
 const API_BASE_URL = "";
+const GET_CACHE_TTL_MS = 15_000;
 
 type GenerateBillsPayload = {
   month: string;
@@ -41,6 +42,14 @@ type JsonRecord = Record<string, unknown>;
 type MutationOptions = {
   actorEmail?: string;
 };
+
+type ApiCacheEntry = {
+  expiresAt: number;
+  data: unknown;
+};
+
+const apiResponseCache = new Map<string, ApiCacheEntry>();
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
 
 export type UploadPaymentProofResponse = {
   status: boolean;
@@ -145,12 +154,63 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function cloneValue<T>(value: T): T {
+  if (value == null) return value;
+  try {
+    if (typeof structuredClone === "function") {
+      return structuredClone(value);
+    }
+  } catch {}
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function buildGetCacheKey(path: string, actorEmail?: string) {
+  return `GET:${path}:actor=${(actorEmail ?? "").trim().toLowerCase()}`;
+}
+
+function getCachedGetResponse<T>(key: string): T | null {
+  const entry = apiResponseCache.get(key);
+  if (!entry) return null;
+  if (entry.expiresAt <= Date.now()) {
+    apiResponseCache.delete(key);
+    return null;
+  }
+  return cloneValue(entry.data as T);
+}
+
+function setCachedGetResponse<T>(key: string, value: T) {
+  apiResponseCache.set(key, {
+    expiresAt: Date.now() + GET_CACHE_TTL_MS,
+    data: cloneValue(value),
+  });
+}
+
+export function clearApiCache() {
+  apiResponseCache.clear();
+  inFlightGetRequests.clear();
+}
+
 async function request<T>(path: string, init?: RequestInit & MutationOptions): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
+  const isGetRequest = method === "GET";
   const isNonFormRequest = method === "GET" || method === "HEAD";
   const maxAttempts = isNonFormRequest ? 2 : 1;
+  const cacheKey = isGetRequest ? buildGetCacheKey(path, init?.actorEmail) : null;
   let lastError: unknown = null;
 
+  if (cacheKey) {
+    const cached = getCachedGetResponse<T>(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+
+    const inFlight = inFlightGetRequests.get(cacheKey);
+    if (inFlight) {
+      return (await inFlight) as T;
+    }
+  }
+
+  const runRequest = async () => {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     let response: Response;
 
@@ -212,10 +272,29 @@ async function request<T>(path: string, init?: RequestInit & MutationOptions): P
       });
     }
 
-    throw new Error(message);
+      throw new Error(message);
   }
 
-  throw lastError instanceof Error ? lastError : new Error("API request gagal.");
+    throw lastError instanceof Error ? lastError : new Error("API request gagal.");
+  };
+
+  if (cacheKey) {
+    const promise = runRequest();
+    inFlightGetRequests.set(cacheKey, promise as Promise<unknown>);
+    try {
+      const result = await promise;
+      setCachedGetResponse(cacheKey, result);
+      return result;
+    } finally {
+      if (inFlightGetRequests.get(cacheKey) === promise) {
+        inFlightGetRequests.delete(cacheKey);
+      }
+    }
+  }
+
+  const result = await runRequest();
+  clearApiCache();
+  return result;
 }
 
 async function uploadRequest<T>(path: string, formData: FormData, options?: MutationOptions): Promise<T> {
@@ -235,7 +314,9 @@ async function uploadRequest<T>(path: string, formData: FormData, options?: Muta
     throw new Error(message);
   }
 
-  return (await response.json()) as T;
+  const payload = (await response.json()) as T;
+  clearApiCache();
+  return payload;
 }
 
 export const apiClient = {
@@ -334,5 +415,6 @@ export const apiClient = {
 
 export function emitDataChanged() {
   if (typeof window === "undefined") return;
+  clearApiCache();
   window.dispatchEvent(new Event("smart-perumahan-data-changed"));
 }
