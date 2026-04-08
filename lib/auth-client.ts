@@ -21,11 +21,31 @@ type AuthSessionApiResponse = {
 
 const AUTH_CHANGED_EVENT = "smart-perumahan-auth-changed";
 const AUTH_SESSION_UPDATED_EVENT = "smart-perumahan-auth-session-updated";
+const WARGA_DATA_UPDATED_EVENT = "smart-perumahan-warga-data-updated";
 
 let cachedSession: SessionData | null = null;
 let cachedSessionLoading = false;
 let hasLoadedCachedSession = false;
 let inFlightSessionRequest: Promise<void> | null = null;
+
+type WargaDatasetCache = {
+  users: UserRow[];
+  houses: HouseRow[];
+  bills: BillRow[];
+  transactions: TransactionRow[];
+};
+
+const EMPTY_WARGA_DATASET: WargaDatasetCache = {
+  users: [],
+  houses: [],
+  bills: [],
+  transactions: [],
+};
+
+let cachedWargaDataset: WargaDatasetCache = EMPTY_WARGA_DATASET;
+let cachedWargaDatasetLoading = false;
+let hasLoadedWargaDataset = false;
+let inFlightWargaDatasetRequest: Promise<void> | null = null;
 
 function emitAuthSessionUpdated() {
   if (typeof window === "undefined") return;
@@ -35,6 +55,72 @@ function emitAuthSessionUpdated() {
 function emitAuthChanged() {
   if (typeof window === "undefined") return;
   window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+function emitWargaDataUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(WARGA_DATA_UPDATED_EVENT));
+}
+
+function resetWargaDataCache() {
+  cachedWargaDataset = EMPTY_WARGA_DATASET;
+  cachedWargaDatasetLoading = false;
+  hasLoadedWargaDataset = false;
+  inFlightWargaDatasetRequest = null;
+  emitWargaDataUpdated();
+}
+
+async function syncWargaDataCache(force = false) {
+  if (!force && hasLoadedWargaDataset) {
+    return;
+  }
+
+  if (inFlightWargaDatasetRequest) {
+    await inFlightWargaDatasetRequest;
+    return;
+  }
+
+  cachedWargaDatasetLoading = true;
+  emitWargaDataUpdated();
+
+  const request = (async () => {
+    try {
+      // Keep sequential requests to reduce burst load on pooled DB connections.
+      const usersRows = await apiClient.getUsers().catch(() => null);
+      if (usersRows) {
+        cachedWargaDataset = { ...cachedWargaDataset, users: usersRows };
+      }
+
+      const housesRows = await apiClient.getHouses().catch(() => null);
+      if (housesRows) {
+        cachedWargaDataset = { ...cachedWargaDataset, houses: housesRows };
+      }
+
+      const billsRows = await apiClient.getBills().catch(() => null);
+      if (billsRows) {
+        cachedWargaDataset = { ...cachedWargaDataset, bills: billsRows };
+      }
+
+      const transactionRows = await apiClient.getTransactions().catch(() => null);
+      if (transactionRows) {
+        cachedWargaDataset = { ...cachedWargaDataset, transactions: transactionRows };
+      }
+    } finally {
+      // Mark as loaded even when API partially fails so route transitions aren't blocked by endless loaders.
+      hasLoadedWargaDataset = true;
+      cachedWargaDatasetLoading = false;
+    }
+  })();
+
+  inFlightWargaDatasetRequest = request;
+  try {
+    await request;
+  } finally {
+    if (inFlightWargaDatasetRequest === request) {
+      inFlightWargaDatasetRequest = null;
+    }
+    emitWargaDataUpdated();
+  }
 }
 
 async function syncSessionCache(force = false) {
@@ -94,6 +180,7 @@ export async function logout() {
   cachedSession = null;
   hasLoadedCachedSession = true;
   cachedSessionLoading = false;
+  resetWargaDataCache();
   emitAuthSessionUpdated();
   emitAuthChanged();
 }
@@ -148,63 +235,70 @@ export type WargaResolvedData = {
 
 export function useWargaResolvedData() {
   const { loading, session } = useAuthSession();
-  const [usersData, setUsersData] = useState<UserRow[]>([]);
-  const [housesData, setHousesData] = useState<HouseRow[]>([]);
-  const [billsData, setBillsData] = useState<BillRow[]>([]);
-  const [transactionsData, setTransactionsData] = useState<TransactionRow[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [usersData, setUsersData] = useState<UserRow[]>(() => cachedWargaDataset.users);
+  const [housesData, setHousesData] = useState<HouseRow[]>(() => cachedWargaDataset.houses);
+  const [billsData, setBillsData] = useState<BillRow[]>(() => cachedWargaDataset.bills);
+  const [transactionsData, setTransactionsData] = useState<TransactionRow[]>(() => cachedWargaDataset.transactions);
+  const [dataLoading, setDataLoading] = useState<boolean>(() => {
+    if (loading) return true;
+    if (!session) return false;
+    return !hasLoadedWargaDataset;
+  });
 
-  const loadAllData = useCallback(async () => {
-    if (loading) return;
+  const syncHookStateFromWargaCache = useCallback(() => {
+    setUsersData(cachedWargaDataset.users);
+    setHousesData(cachedWargaDataset.houses);
+    setBillsData(cachedWargaDataset.bills);
+    setTransactionsData(cachedWargaDataset.transactions);
+
+    if (loading) {
+      setDataLoading(true);
+      return;
+    }
     if (!session) {
-      setUsersData([]);
-      setHousesData([]);
-      setBillsData([]);
-      setTransactionsData([]);
       setDataLoading(false);
       return;
     }
-
-    try {
-      setDataLoading(true);
-      // Fetch sequentially to avoid bursty concurrent DB hits that can exhaust session-mode pool limits.
-      const usersRows = await apiClient.getUsers().catch(() => null);
-      if (usersRows) setUsersData(usersRows);
-      else setUsersData((prev) => (prev.length ? prev : []));
-
-      const housesRows = await apiClient.getHouses().catch(() => null);
-      if (housesRows) setHousesData(housesRows);
-      else setHousesData((prev) => (prev.length ? prev : []));
-
-      const billsRows = await apiClient.getBills().catch(() => null);
-      if (billsRows) setBillsData(billsRows);
-      else setBillsData((prev) => (prev.length ? prev : []));
-
-      const transactionRows = await apiClient.getTransactions().catch(() => null);
-      if (transactionRows) setTransactionsData(transactionRows);
-      else setTransactionsData((prev) => (prev.length ? prev : []));
-    } catch {
-      setUsersData((prev) => (prev.length ? prev : []));
-      setHousesData((prev) => (prev.length ? prev : []));
-      setBillsData((prev) => (prev.length ? prev : []));
-      setTransactionsData((prev) => (prev.length ? prev : []));
-    } finally {
-      setDataLoading(false);
-    }
+    setDataLoading(!hasLoadedWargaDataset);
   }, [loading, session]);
 
+  const loadAllData = useCallback(
+    async (force = false) => {
+      if (loading) return;
+      if (!session) {
+        resetWargaDataCache();
+        return;
+      }
+      await syncWargaDataCache(force);
+    },
+    [loading, session]
+  );
+
   useEffect(() => {
-    if (!loading) {
-      void loadAllData();
+    function onWargaDataUpdated() {
+      syncHookStateFromWargaCache();
     }
 
+    syncHookStateFromWargaCache();
+    if (!loading && session && !hasLoadedWargaDataset) {
+      void syncWargaDataCache(false);
+    }
+
+    window.addEventListener(WARGA_DATA_UPDATED_EVENT, onWargaDataUpdated);
+    return () => window.removeEventListener(WARGA_DATA_UPDATED_EVENT, onWargaDataUpdated);
+  }, [loading, session, syncHookStateFromWargaCache]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!session) return;
+
     function onDataChanged() {
-      void loadAllData();
+      void syncWargaDataCache(true);
     }
 
     window.addEventListener("smart-perumahan-data-changed", onDataChanged);
     return () => window.removeEventListener("smart-perumahan-data-changed", onDataChanged);
-  }, [loadAllData]);
+  }, [loading, session]);
 
   const data = useMemo<WargaResolvedData>(() => {
     if (!session?.email) {
@@ -226,5 +320,10 @@ export function useWargaResolvedData() {
     return { user, house, linkedUsers, houseBills, houseTransactions };
   }, [billsData, housesData, session?.email, transactionsData, usersData]);
 
-  return { loading: loading || dataLoading, session, refresh: loadAllData, ...data };
+  return {
+    loading: loading || dataLoading,
+    session,
+    refresh: () => loadAllData(true),
+    ...data,
+  };
 }
