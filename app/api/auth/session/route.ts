@@ -8,6 +8,9 @@ type SessionUserRow = {
   name: string;
   email: string;
   role: "admin" | "superadmin" | "warga" | "finance";
+};
+
+type SessionHouseRow = {
   has_house: boolean;
 };
 
@@ -21,28 +24,7 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await query<SessionUserRow>(
-      `
-        SELECT
-          u.id,
-          u.name,
-          u.email,
-          u.role,
-          CASE
-            WHEN LOWER(u.role) = 'warga' THEN EXISTS (
-              SELECT 1
-              FROM houses h
-              WHERE EXISTS (
-                SELECT 1
-                FROM unnest(h.linked_emails) AS linked_email
-                WHERE LOWER(BTRIM(linked_email)) = LOWER(u.email)
-              )
-            )
-            ELSE true
-          END AS has_house
-        FROM users u
-        WHERE u.id = $1 AND LOWER(u.email) = $2
-        LIMIT 1
-      `,
+      "SELECT id, name, email, role FROM users WHERE id = $1 AND LOWER(email) = $2 LIMIT 1",
       [session.userId, session.email.toLowerCase()]
     );
 
@@ -51,6 +33,30 @@ export async function GET(request: NextRequest) {
       const unauthorized = NextResponse.json({ message: "Sesi tidak valid." }, { status: 401 });
       clearSessionCookie(unauthorized);
       return unauthorized;
+    }
+
+    let hasHouse = true;
+    if (user.role === "warga") {
+      try {
+        const houseResult = await query<SessionHouseRow>(
+          `
+            SELECT EXISTS (
+              SELECT 1
+              FROM houses h
+              WHERE EXISTS (
+                SELECT 1
+                FROM unnest(COALESCE(h.linked_emails, '{}'::text[])) AS linked_email
+                WHERE LOWER(BTRIM(linked_email)) = LOWER($1)
+              )
+            ) AS has_house
+          `,
+          [user.email]
+        );
+        hasHouse = Boolean(houseResult.rows[0]?.has_house);
+      } catch {
+        // Do not block auth/session when house schema differs or table is unavailable.
+        hasHouse = true;
+      }
     }
 
     const nextToken = createSessionToken({
@@ -66,7 +72,7 @@ export async function GET(request: NextRequest) {
         email: user.email,
         role: user.role,
         name: user.name,
-        hasHouse: Boolean(user.has_house),
+        hasHouse,
       },
     });
     applySessionCookie(response, nextToken);
