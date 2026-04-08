@@ -67,6 +67,7 @@ type GenerateProgressEventPayload = {
   message?: string;
   error_message?: string | null;
 };
+type GenerateConnectionState = "connecting" | "streaming" | "reconnecting" | "polling";
 
 const monthNames = [
   "Januari",
@@ -531,7 +532,9 @@ type GenerateBillModalProps = {
   alreadyGenerated?: boolean;
   periodeLabel?: string;
   progressCreated?: number;
+  progressProcessed?: number;
   progressTotal?: number;
+  connectionState?: GenerateConnectionState;
   submitting?: boolean;
   errorMessage?: string;
 };
@@ -545,13 +548,24 @@ function GenerateBillModal({
   alreadyGenerated = false,
   periodeLabel,
   progressCreated = 0,
+  progressProcessed = 0,
   progressTotal = 0,
+  connectionState = "connecting",
   submitting,
   errorMessage,
 }: GenerateBillModalProps) {
   const safeTotal = Math.max(0, progressTotal);
   const safeCreated = Math.max(0, Math.min(progressCreated, safeTotal || progressCreated));
-  const progressPercent = safeTotal > 0 ? Math.round((safeCreated / safeTotal) * 100) : 0;
+  const safeProcessed = Math.max(0, Math.min(progressProcessed, safeTotal || progressProcessed));
+  const progressPercent = safeTotal > 0 ? Math.round((safeProcessed / safeTotal) * 100) : 0;
+  const connectionMessage =
+    connectionState === "reconnecting"
+      ? "Koneksi terputus, menyambungkan ulang..."
+      : connectionState === "polling"
+        ? "Koneksi tidak stabil, lanjut dengan mode cadangan."
+        : connectionState === "streaming"
+          ? "Koneksi live."
+          : "Menyambungkan...";
 
   return (
     <SimpleModal open={open} onClose={onClose} title="Generate IPL" closeDisabled={Boolean(submitting)}>
@@ -561,7 +575,7 @@ function GenerateBillModal({
           <div className="rounded-lg border border-orange-300 bg-orange-50 p-3">
             <div className="mb-2 flex items-center justify-between text-xs font-semibold text-orange-900">
               <span>Progress Generate IPL</span>
-              <span>{safeTotal > 0 ? `${safeCreated} / ${safeTotal}` : `${safeCreated}`}</span>
+              <span>{safeTotal > 0 ? `${safeProcessed} / ${safeTotal}` : `${safeProcessed}`}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-orange-200/70">
               <div
@@ -573,6 +587,10 @@ function GenerateBillModal({
               {safeTotal > 0
                 ? `Sudah terbuat ${safeCreated} IPL dari ${safeTotal} rumah yang dihuni.`
                 : "Sedang memproses generate IPL..."}
+            </p>
+            <p className="mt-1 inline-flex items-center gap-2 text-[11px] text-orange-900/90">
+              <span className="h-2 w-2 rounded-full bg-orange-500 motion-safe:animate-pulse" />
+              {connectionMessage}
             </p>
           </div>
         ) : null}
@@ -664,7 +682,9 @@ export function BillsCrud() {
   const [verifySubmitting, setVerifySubmitting] = useState(false);
   const [generateSubmitting, setGenerateSubmitting] = useState(false);
   const [generateProgressCreated, setGenerateProgressCreated] = useState(0);
+  const [generateProgressProcessed, setGenerateProgressProcessed] = useState(0);
   const [generateProgressTotal, setGenerateProgressTotal] = useState(0);
+  const [generateConnectionState, setGenerateConnectionState] = useState<GenerateConnectionState>("connecting");
   const generateStreamRef = useRef<EventSource | null>(null);
   const [verifyForm, setVerifyForm] = useState<FinanceVerifyForm>({
     payment_method: "Transfer Bank",
@@ -1177,12 +1197,15 @@ export function BillsCrud() {
 
   async function streamGenerateProgress(jobId: string) {
     if (typeof EventSource === "undefined") {
+      setGenerateConnectionState("polling");
       return pollGenerateProgress(jobId, (payload) => {
         if (!payload) return;
         const totalTarget = Math.max(0, toSafeNumber(payload.total_target, generateTargetCount));
         const createdCount = Math.max(0, toSafeNumber(payload.created_count));
+        const processedCount = Math.max(0, toSafeNumber(payload.processed_count, createdCount));
         setGenerateProgressTotal(totalTarget);
         setGenerateProgressCreated(Math.min(createdCount, totalTarget || createdCount));
+        setGenerateProgressProcessed(Math.min(processedCount, totalTarget || processedCount));
       });
     }
 
@@ -1195,6 +1218,7 @@ export function BillsCrud() {
       const streamUrl = `/api/bills/generate/stream?jobId=${encodeURIComponent(jobId)}`;
       const eventSource = new EventSource(streamUrl);
       generateStreamRef.current = eventSource;
+      setGenerateConnectionState("connecting");
       let settled = false;
       let fallbackStarted = false;
       let lastActivityAt = Date.now();
@@ -1229,8 +1253,11 @@ export function BillsCrud() {
         lastActivityAt = Date.now();
         const totalTarget = Math.max(0, toSafeNumber(payload.total_target, generateTargetCount));
         const createdCount = Math.max(0, toSafeNumber(payload.created_count));
+        const processedCount = Math.max(0, toSafeNumber(payload.processed_count, createdCount));
         setGenerateProgressTotal(totalTarget);
         setGenerateProgressCreated(Math.min(createdCount, totalTarget || createdCount));
+        setGenerateProgressProcessed(Math.min(processedCount, totalTarget || processedCount));
+        setGenerateConnectionState((previous) => (previous === "polling" ? "polling" : "streaming"));
       };
 
       const switchToPollingFallback = () => {
@@ -1238,6 +1265,7 @@ export function BillsCrud() {
         fallbackStarted = true;
         clearWatchdog();
         closeStream();
+        setGenerateConnectionState("polling");
         pollGenerateProgress(jobId, applyProgress)
           .then((payload) => {
             cleanupAndResolve(payload);
@@ -1255,6 +1283,7 @@ export function BillsCrud() {
 
       eventSource.onopen = () => {
         lastActivityAt = Date.now();
+        setGenerateConnectionState((previous) => (previous === "polling" ? "polling" : "streaming"));
       };
 
       eventSource.addEventListener("snapshot", (event) => {
@@ -1287,7 +1316,9 @@ export function BillsCrud() {
         if (settled) return;
         if (eventSource.readyState === EventSource.CLOSED) {
           switchToPollingFallback();
+          return;
         }
+        setGenerateConnectionState((previous) => (previous === "polling" ? "polling" : "reconnecting"));
       };
     });
   }
@@ -1302,7 +1333,9 @@ export function BillsCrud() {
 
     const targetCount = generateTargetCount;
     setGenerateProgressCreated(0);
+    setGenerateProgressProcessed(0);
     setGenerateProgressTotal(targetCount);
+    setGenerateConnectionState("connecting");
 
     try {
       setGenerateSubmitting(true);
@@ -1313,16 +1346,19 @@ export function BillsCrud() {
       const startTargetCount = Math.max(0, toSafeNumber(startResult.total_target, targetCount));
       setGenerateProgressTotal(startTargetCount);
       setGenerateProgressCreated(Math.max(0, toSafeNumber(startResult.created_count, 0)));
+      setGenerateProgressProcessed(Math.max(0, toSafeNumber(startResult.processed_count, 0)));
 
       const completedPayload = await streamGenerateProgress(startResult.job_id);
       const finalTargetCount = Math.max(0, toSafeNumber(completedPayload.total_target, startTargetCount));
       const finalCreatedCount = Math.max(0, toSafeNumber(completedPayload.created_count));
+      const finalProcessedCount = Math.max(0, toSafeNumber(completedPayload.processed_count, finalCreatedCount));
       const finalUpdatedCount = Math.max(0, toSafeNumber(completedPayload.updated_count));
       const finalSkipPaidCount = Math.max(0, toSafeNumber(completedPayload.skip_paid_count));
       const finalSkipExistingCount = Math.max(0, toSafeNumber(completedPayload.skip_existing_count));
 
       setGenerateProgressTotal(finalTargetCount);
       setGenerateProgressCreated(Math.min(finalCreatedCount, finalTargetCount || finalCreatedCount));
+      setGenerateProgressProcessed(Math.min(finalProcessedCount, finalTargetCount || finalProcessedCount));
       await loadInitialData();
       emitDataChanged();
       setGenerateOpen(false);
@@ -1343,7 +1379,9 @@ export function BillsCrud() {
   function openGenerateModal() {
     setGenerateError("");
     setGenerateProgressCreated(0);
+    setGenerateProgressProcessed(0);
     setGenerateProgressTotal(generateTargetCount);
+    setGenerateConnectionState("connecting");
     setGenerateOpen(true);
   }
 
@@ -1708,7 +1746,9 @@ export function BillsCrud() {
         alreadyGenerated={isGeneratePeriodAlreadyExists}
         periodeLabel={selectedGeneratePeriode}
         progressCreated={generateProgressCreated}
+        progressProcessed={generateProgressProcessed}
         progressTotal={generateProgressTotal}
+        connectionState={generateConnectionState}
         submitting={generateSubmitting}
         errorMessage={generateError}
       />
