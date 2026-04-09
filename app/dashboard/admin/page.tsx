@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, RefreshCw, ScanSearch, Server } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { ArrowRight, RefreshCw, ScanSearch } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { MasterWidgetGrid } from "@/components/dashboard/master-widget-grid";
-import { ServerStatusModal } from "@/components/admin/server-status-modal";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { PageLoadingScreen } from "@/components/ui/page-loading-screen";
 import { Badge } from "@/components/ui/badge";
@@ -13,9 +12,7 @@ import { ApiTableLoadingHead, ApiTableLoadingRow } from "@/components/ui/api-loa
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateTimeText } from "@/components/ui/date-time-text";
-import { FormErrorAlert } from "@/components/ui/form-error-alert";
 import { PaymentStatusBadge } from "@/components/ui/payment-status-badge";
-import { SimpleModal } from "@/components/ui/simple-modal";
 import { SuccessToast } from "@/components/ui/success-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuthSession } from "@/lib/auth-client";
@@ -64,7 +61,6 @@ export default function AdminDashboardPage() {
     return normalized || "-";
   };
   const router = useRouter();
-  const pathname = usePathname();
   const { loading: sessionLoading, session } = useAuthSession();
   const actorEmail = session?.email ?? "system@smart-cluster";
   const [snapshot, setSnapshot] = useState<OverviewSnapshotRow | null>(null);
@@ -72,44 +68,15 @@ export default function AdminDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [successToast, setSuccessToast] = useState("");
-  const [showServerStatus, setShowServerStatus] = useState(false);
-  const [resetDbModalOpen, setResetDbModalOpen] = useState(false);
-  const [resetDbSubmitting, setResetDbSubmitting] = useState(false);
-  const [resetDbError, setResetDbError] = useState("");
-  const [openedFromQuery, setOpenedFromQuery] = useState(false);
   const shouldLogTableData = process.env.NODE_ENV !== "production";
 
   const isFinance = isFinanceRole(session?.role);
   const isAdmin = isAdminLikeRole(session?.role);
-  const isSuperadmin = session?.role === "superadmin";
 
   useEffect(() => {
     void loadDashboardData();
     window.addEventListener("smart-perumahan-data-changed", loadDashboardData);
     return () => window.removeEventListener("smart-perumahan-data-changed", loadDashboardData);
-  }, []);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    const params = new URLSearchParams(window.location.search);
-    const shouldOpen = params.get("statusServer") === "1";
-    if (shouldOpen) {
-      setShowServerStatus(true);
-      setOpenedFromQuery(true);
-    } else {
-      setOpenedFromQuery(false);
-    }
-  }, [isAdmin, pathname]);
-
-  useEffect(() => {
-    function onOpenServerStatus() {
-      setShowServerStatus(true);
-    }
-
-    window.addEventListener("smart-open-server-status", onOpenServerStatus);
-    return () => {
-      window.removeEventListener("smart-open-server-status", onOpenServerStatus);
-    };
   }, []);
 
   async function loadDashboardData() {
@@ -132,48 +99,17 @@ export default function AdminDashboardPage() {
       setLoadError("");
       const response = await apiClient.refreshOverviewSnapshot({ actorEmail });
       setSnapshot(response.snapshot ?? EMPTY_SNAPSHOT);
-      setSuccessToast("Snapshot berhasil disinkronkan.");
+      setSuccessToast("Beranda berhasil diperbarui.");
       emitDataChanged();
     } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Gagal sinkron snapshot overview.");
+      setLoadError(error instanceof Error ? error.message : "Gagal refresh data overview.");
     } finally {
       setRefreshing(false);
     }
   }
 
-  function openResetDbModal() {
-    setResetDbError("");
-    setResetDbModalOpen(true);
-  }
-
-  async function confirmResetDatabase() {
-    try {
-      setResetDbSubmitting(true);
-      setResetDbError("");
-      const result = await apiClient.resetDatabaseExceptUsers({ actorEmail });
-      setResetDbModalOpen(false);
-      emitDataChanged();
-      await loadDashboardData();
-      setSuccessToast(
-        `Reset DB selesai. Bills dan Transactions dikosongkan, audit log terkait dihapus (${result.removed_audit_logs_count} baris).`,
-      );
-    } catch (error) {
-      setResetDbError(error instanceof Error ? error.message : "Gagal mereset database.");
-    } finally {
-      setResetDbSubmitting(false);
-    }
-  }
-
   function openBillVerification(billId: string) {
     router.push(`/dashboard/admin/bills?verifyBill=${encodeURIComponent(billId)}&focus=pending-verification`);
-  }
-
-  function closeServerStatusModal() {
-    setShowServerStatus(false);
-    if (openedFromQuery) {
-      setOpenedFromQuery(false);
-      router.replace("/dashboard/admin");
-    }
   }
 
   const safeSnapshot = snapshot ?? EMPTY_SNAPSHOT;
@@ -197,31 +133,22 @@ export default function AdminDashboardPage() {
 
   const headerActions = isAdmin ? (
     <div className="flex flex-wrap items-center gap-2">
-      <Button type="button" variant="outline" onClick={() => setShowServerStatus(true)}>
-        <Server className="mr-2 h-4 w-4" />
-        Status Server
-      </Button>
-      {isSuperadmin ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="border-destructive/60 text-destructive hover:bg-destructive/10"
-          onClick={openResetDbModal}
-        >
-          <AlertTriangle className="mr-2 h-4 w-4" />
-          Reset DB
-        </Button>
-      ) : null}
       <Button
         type="button"
         variant="outline"
         loading={refreshing}
-        loadingText="Sinkronisasi..."
+        loadingText="Refreshing widget..."
         onClick={refreshSnapshotData}
-        title="Gunakan ini setelah proses Generate IPL"
       >
         <RefreshCw className="mr-2 h-4 w-4" />
-        Sync Generate IPL
+        Refresh widget
+      </Button>
+    </div>
+  ) : isFinance ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button type="button" variant="outline" loading={refreshing} loadingText="Refreshing widget..." onClick={refreshSnapshotData}>
+        <RefreshCw className="mr-2 h-4 w-4" />
+        Refresh widget
       </Button>
     </div>
   ) : null;
@@ -453,40 +380,6 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
         <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
-        <SimpleModal
-          open={resetDbModalOpen}
-          onClose={() => setResetDbModalOpen(false)}
-          title="Reset Database"
-          className="max-w-md"
-          closeDisabled={resetDbSubmitting}
-        >
-          <div className="space-y-4">
-            <FormErrorAlert message={resetDbError} />
-            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Action ini akan:
-              kosongkan seluruh data `bills`, kosongkan seluruh data `transactions`, dan hapus semua `audit_logs`
-              yang berkaitan dengan `bills` serta `transactions`.
-              Pastikan Anda benar-benar yakin.
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Hanya role superadmin yang bisa menjalankan action ini.
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-1">
-              <Button type="button" variant="outline" onClick={() => setResetDbModalOpen(false)} disabled={resetDbSubmitting}>
-                Batal
-              </Button>
-              <Button
-                type="button"
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                loading={resetDbSubmitting}
-                loadingText="Mereset database..."
-                onClick={confirmResetDatabase}
-              >
-                Reset DB
-              </Button>
-            </div>
-          </div>
-        </SimpleModal>
       </div>
     );
   }
@@ -506,43 +399,7 @@ export default function AdminDashboardPage() {
       {loadError ? <p className="mb-3 text-sm text-destructive">{loadError}</p> : null}
 
       <MasterWidgetGrid widgets={adminWidgets} />
-
-      <ServerStatusModal open={showServerStatus} onClose={closeServerStatusModal} />
       <SuccessToast message={successToast} onClose={() => setSuccessToast("")} />
-      <SimpleModal
-        open={resetDbModalOpen}
-        onClose={() => setResetDbModalOpen(false)}
-        title="Reset Database"
-        className="max-w-md"
-        closeDisabled={resetDbSubmitting}
-      >
-        <div className="space-y-4">
-          <FormErrorAlert message={resetDbError} />
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Action ini akan:
-            kosongkan seluruh data `bills`, kosongkan seluruh data `transactions`, dan hapus semua `audit_logs`
-            yang berkaitan dengan `bills` serta `transactions`.
-            Pastikan Anda benar-benar yakin.
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Hanya role superadmin yang bisa menjalankan action ini.
-          </p>
-          <div className="flex items-center justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={() => setResetDbModalOpen(false)} disabled={resetDbSubmitting}>
-              Batal
-            </Button>
-            <Button
-              type="button"
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              loading={resetDbSubmitting}
-              loadingText="Mereset database..."
-              onClick={confirmResetDatabase}
-            >
-              Reset DB
-            </Button>
-          </div>
-        </div>
-      </SimpleModal>
     </div>
   );
 }

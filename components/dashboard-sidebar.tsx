@@ -1,14 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { History, Home, House, ReceiptText, Users, WalletCards } from "lucide-react";
+import { History, Home, House, ReceiptText, ShieldEllipsis, Users, WalletCards } from "lucide-react";
 
 import { useAuthSession } from "@/lib/auth-client";
 import { BrandMark } from "@/components/brand-mark";
 import { DashboardNavLinks } from "@/components/dashboard-nav-links";
 import { isAdminLikeRole, isFinanceRole } from "@/lib/role-access";
 
-const adminMenus = [
+const baseAdminMenus = [
   { href: "/dashboard/admin", label: "Beranda", icon: Home },
   { href: "/dashboard/admin/history", label: "Riwayat", icon: History },
   { href: "/dashboard/admin/users", label: "Pengguna", icon: Users },
@@ -17,7 +17,14 @@ const adminMenus = [
   { href: "/dashboard/admin/transactions", label: "Transaksi", icon: WalletCards },
 ] as const;
 
-const financeMenus = adminMenus.filter(
+const devOnlyMenu = {
+  href: "/dashboard/admin/dev-only",
+  label: "Dev Only",
+  icon: ShieldEllipsis,
+  tone: "dev-only" as const,
+};
+
+const financeMenus = baseAdminMenus.filter(
   (menu) =>
     menu.href === "/dashboard/admin" ||
     menu.href === "/dashboard/admin/bills" ||
@@ -30,7 +37,16 @@ export function AdminSidebar() {
   const role = session?.role;
   const isFinance = isFinanceRole(role);
   const isAdmin = isAdminLikeRole(role);
-  const visibleMenus = loading ? [] : isFinance ? financeMenus : isAdmin ? adminMenus : [];
+  const isSuperadmin = role === "superadmin";
+  const visibleMenus = loading
+    ? []
+    : isFinance
+      ? financeMenus
+      : isSuperadmin
+        ? [...baseAdminMenus, devOnlyMenu]
+        : isAdmin
+          ? baseAdminMenus
+          : [];
   const panelLabel = isFinance ? "Finance Panel" : "Admin Panel";
 
   return (

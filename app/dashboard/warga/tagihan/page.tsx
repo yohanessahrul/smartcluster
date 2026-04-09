@@ -547,9 +547,29 @@ export default function WargaTagihanPage() {
           return statusFilter === "all" ? true : item.status === statusFilter;
         });
         const currentPeriodeLabel = getCurrentPeriodeLabel();
-        const canShowBulkPayCta = rows.some(
-          (item) => normalizePeriodeText(item.periode) === normalizePeriodeText(currentPeriodeLabel) && isLunasStatus(item.status)
-        );
+        const currentPeriodeKey = parsePeriodeMonthKey(currentPeriodeLabel);
+        const rowsWithPeriodeKey = rows
+          .map((item) => ({
+            item,
+            periodeKey: parsePeriodeMonthKey(item.periode),
+          }))
+          .filter((entry): entry is { item: BillRow; periodeKey: number } => entry.periodeKey !== null);
+        const activePeriodeRows =
+          currentPeriodeKey === null ? [] : rowsWithPeriodeKey.filter((entry) => entry.periodeKey === currentPeriodeKey);
+        const activePeriodeLatest =
+          activePeriodeRows.reduce<BillRow | null>((latest, entry) => {
+            if (!latest) return entry.item;
+            const latestTime = new Date(latest.status_date).getTime();
+            const nextTime = new Date(entry.item.status_date).getTime();
+            if (Number.isFinite(nextTime) && (!Number.isFinite(latestTime) || nextTime >= latestTime)) {
+              return entry.item;
+            }
+            return latest;
+          }, null) ?? null;
+        const isActivePeriodeLunas = Boolean(activePeriodeLatest && isLunasStatus(activePeriodeLatest.status));
+        const hasBillsAfterActivePeriode =
+          currentPeriodeKey === null ? true : rowsWithPeriodeKey.some((entry) => entry.periodeKey > currentPeriodeKey);
+        const canShowBulkPayCta = isActivePeriodeLunas && !hasBillsAfterActivePeriode;
         const selectedMonthsCount = Number.parseInt(bulkPayDuration, 10) as 3 | 6 | 12;
         const bulkAllocationPlan = buildBulkAllocationPlan(rows, selectedMonthsCount);
         const totalItems = filteredRows.length;
@@ -763,7 +783,7 @@ export default function WargaTagihanPage() {
             >
               <div className="space-y-4">
                 <FormErrorAlert message={bulkPayError} />
-                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                <div className="space-y-3 text-sm">
                   <div>
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Unit</p>
                     <p className="font-medium">{houseDisplay}</p>
@@ -886,7 +906,7 @@ export default function WargaTagihanPage() {
             >
               <div className="space-y-4">
                 <FormErrorAlert message={payError} />
-                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+                <div className="space-y-3 text-sm">
                   <div>
                     <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Unit</p>
                     <p className="font-medium">{houseDisplay}</p>

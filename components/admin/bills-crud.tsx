@@ -564,8 +564,9 @@ function GenerateBillModal({
       : connectionState === "polling"
         ? "Koneksi tidak stabil, lanjut dengan mode cadangan."
         : connectionState === "streaming"
-          ? "Koneksi live."
+          ? "Koneksi Live."
           : "Menyambungkan...";
+  const connectionDotClass = connectionState === "streaming" ? "bg-emerald-500" : "bg-red-500";
 
   return (
     <SimpleModal open={open} onClose={onClose} title="Generate IPL" closeDisabled={Boolean(submitting)}>
@@ -589,7 +590,7 @@ function GenerateBillModal({
                 : "Sedang memproses generate IPL..."}
             </p>
             <p className="mt-1 inline-flex items-center gap-2 text-[11px] text-orange-900/90">
-              <span className="h-2 w-2 rounded-full bg-orange-500 motion-safe:animate-pulse" />
+              <span className={`h-2 w-2 rounded-full ${connectionDotClass} motion-safe:animate-pulse`} />
               {connectionMessage}
             </p>
           </div>
