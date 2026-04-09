@@ -1,7 +1,7 @@
 import { PoolClient, QueryResult, QueryResultRow } from "pg";
 
 import { connect, query } from "@/lib/server/db";
-import { deletePaymentProofFromSupabase, emptySupabaseStorageBucket } from "@/lib/server/supabase";
+import { deletePaymentProofFromSupabase } from "@/lib/server/supabase";
 
 type JsonRecord = Record<string, unknown>;
 type QueryFn = (text: string, params?: unknown[]) => Promise<QueryResult<QueryResultRow>>;
@@ -204,10 +204,6 @@ function throwServerError(error: unknown): never {
     throw error;
   }
   throw new ApiHttpError(500, "Server error", getErrorDetail(error));
-}
-
-function quoteIdentifier(value: string) {
-  return `"${value.replace(/"/g, "\"\"")}"`;
 }
 
 function normalizeDateTimeInput(value: unknown) {
@@ -1907,15 +1903,11 @@ export async function listBills() {
 
 export async function createBill(payload: JsonRecord, actor: string) {
   const transaction = await connect();
-  let paymentProofToDeleteAfterCommit: string | null = null;
   try {
     const status = normalizeBillStatus(payload.status) ?? "Belum bayar";
     const paymentMethod = normalizePaymentMethod(payload.payment_method, "Transfer Bank");
     const resolvedPaymentProofUrl = normalizeOptionalUrl(payload.payment_proof_url);
-    const paymentProofUrl = status === "Lunas" ? null : resolvedPaymentProofUrl;
-    if (status === "Lunas" && resolvedPaymentProofUrl) {
-      paymentProofToDeleteAfterCommit = resolvedPaymentProofUrl;
-    }
+    const paymentProofUrl = resolvedPaymentProofUrl;
     const paidToDeveloper = normalizeBoolean(payload.paid_to_developer, false);
     const datePaidPeriodToDeveloper = paidToDeveloper
       ? normalizeOptionalDateOnly(payload.date_paid_period_to_developer)
@@ -1948,14 +1940,6 @@ export async function createBill(payload: JsonRecord, actor: string) {
     });
 
     await commitTransaction(transaction);
-
-    if (paymentProofToDeleteAfterCommit) {
-      try {
-        await deletePaymentProofFromSupabase(paymentProofToDeleteAfterCommit);
-      } catch (error) {
-        console.error("[bills] gagal hapus bukti pembayaran saat create IPL Lunas:", error);
-      }
-    }
     const created = result.rows[0];
     await refreshOverviewSnapshotAfterMutation(actor);
     return created;
@@ -1987,13 +1971,15 @@ export async function updateBill(id: string, payload: UpdateBillPayload, actor: 
     }
 
     const previous = before.rows[0] as JsonRecord;
+    const previousBillSource = asString(previous.bill_source).trim().toLowerCase();
+    const isManualSource = previousBillSource === "manual";
     const paidToDeveloper = normalizeBoolean(payload.paid_to_developer, Boolean(previous.paid_to_developer));
     const paymentMethod = normalizePaymentMethod(payload.payment_method, asString(previous.payment_method) || "Transfer Bank");
     const resolvedPaymentProofUrl = payload.payment_proof_url === undefined
       ? normalizeOptionalUrl(previous.payment_proof_url)
       : normalizeOptionalUrl(payload.payment_proof_url);
-    const paymentProofUrl = status === "Lunas" ? null : resolvedPaymentProofUrl;
-    if (status === "Lunas" && resolvedPaymentProofUrl) {
+    const paymentProofUrl = status === "Lunas" && !isManualSource ? null : resolvedPaymentProofUrl;
+    if (status === "Lunas" && !isManualSource && resolvedPaymentProofUrl) {
       paymentProofToDeleteAfterCommit = resolvedPaymentProofUrl;
     }
     const datePaidPeriodToDeveloper = !paidToDeveloper
@@ -3040,41 +3026,22 @@ export async function resetDatabaseExceptUsers(actor: string) {
   try {
     await beginTransaction(transaction);
 
-    const tableResult = await transaction.query<{ tablename: string }>(
-      `
-        SELECT tablename
-        FROM pg_tables
-        WHERE schemaname='public'
-          AND tablename <> 'users'
-          AND tablename <> 'houses'
-          AND tablename NOT IN ('__drizzle_migrations', 'drizzle_migrations')
-        ORDER BY tablename ASC
-      `,
+    await transaction.query("TRUNCATE TABLE transactions, bills RESTART IDENTITY CASCADE");
+    const auditDeleteResult = await transaction.query(
+      "DELETE FROM audit_logs WHERE table_name = ANY($1::text[])",
+      [["bills", "transactions"]],
     );
-
-    const clearedTables: string[] = [];
-    for (const row of tableResult.rows) {
-      const tableName = asString(row.tablename).trim();
-      if (!tableName) continue;
-      await transaction.query(`TRUNCATE TABLE ${quoteIdentifier(tableName)} RESTART IDENTITY CASCADE`);
-      clearedTables.push(tableName);
-    }
+    const removedAuditLogsCount = Number(auditDeleteResult.rowCount ?? 0);
 
     await commitTransaction(transaction);
-    const storage = await emptySupabaseStorageBucket().catch((error) => {
-      const detail = error instanceof Error ? error.message : "unknown-error";
-      return { cleared: false as const, bucket: "", reason: `error:${detail}` };
-    });
     await refreshOverviewSnapshotAfterMutation(actor);
 
     return {
       status: true,
-      cleared_tables: clearedTables,
-      cleared_count: clearedTables.length,
+      cleared_tables: ["bills", "transactions", "audit_logs(bills,transactions)"],
+      cleared_count: 3,
       users_preserved: true,
-      storage_cleared: storage.cleared,
-      storage_bucket: storage.bucket,
-      storage_reason: storage.reason,
+      removed_audit_logs_count: removedAuditLogsCount,
     };
   } catch (error) {
     await rollbackTransaction(transaction).catch(() => null);

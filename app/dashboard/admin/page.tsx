@@ -154,10 +154,9 @@ export default function AdminDashboardPage() {
       setResetDbModalOpen(false);
       emitDataChanged();
       await loadDashboardData();
-      const storageStatus = result.storage_cleared
-        ? `Storage bucket ${result.storage_bucket || "-"} ikut dibersihkan.`
-        : `Storage tidak sepenuhnya dibersihkan (${result.storage_reason}).`;
-      setSuccessToast(`Reset DB selesai. ${result.cleared_count} tabel berhasil dikosongkan. ${storageStatus}`);
+      setSuccessToast(
+        `Reset DB selesai. Bills dan Transactions dikosongkan, audit log terkait dihapus (${result.removed_audit_logs_count} baris).`,
+      );
     } catch (error) {
       setResetDbError(error instanceof Error ? error.message : "Gagal mereset database.");
     } finally {
@@ -464,8 +463,9 @@ export default function AdminDashboardPage() {
           <div className="space-y-4">
             <FormErrorAlert message={resetDbError} />
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Action ini akan menghapus semua data tabel kecuali tabel users dan houses, sekaligus menghapus seluruh file di
-              storage bucket.
+              Action ini akan:
+              kosongkan seluruh data `bills`, kosongkan seluruh data `transactions`, dan hapus semua `audit_logs`
+              yang berkaitan dengan `bills` serta `transactions`.
               Pastikan Anda benar-benar yakin.
             </div>
             <p className="text-sm text-muted-foreground">
@@ -519,8 +519,9 @@ export default function AdminDashboardPage() {
         <div className="space-y-4">
           <FormErrorAlert message={resetDbError} />
           <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Action ini akan menghapus semua data tabel kecuali tabel users dan houses, sekaligus menghapus seluruh file di
-            storage bucket.
+            Action ini akan:
+            kosongkan seluruh data `bills`, kosongkan seluruh data `transactions`, dan hapus semua `audit_logs`
+            yang berkaitan dengan `bills` serta `transactions`.
             Pastikan Anda benar-benar yakin.
           </div>
           <p className="text-sm text-muted-foreground">
